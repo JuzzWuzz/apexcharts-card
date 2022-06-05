@@ -74,6 +74,9 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   "stroke_width": t.opt("number"),
   "extend_to": t.opt(t.union(t.lit(false), t.lit('end'), t.lit('now'))),
   "unit": t.opt("string"),
+  "unit_step": t.opt("number"),
+  "unit_array": t.opt(t.array("string")),
+  "unit_separator": t.opt("string"),
   "invert": t.opt("boolean"),
   "data_generator": t.opt("string"),
   "statistics": t.opt(t.iface([], {

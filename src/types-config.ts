@@ -74,6 +74,9 @@ export interface ChartCardAllSeriesExternalConfig {
   stroke_width?: number;
   extend_to?: false | 'end' | 'now';
   unit?: string;
+  unit_step?: number;
+  unit_array?: string[];
+  unit_separator?: string;
   invert?: boolean;
   data_generator?: string;
   statistics?: {

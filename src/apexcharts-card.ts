@@ -23,6 +23,7 @@ import {
   computeUom,
   decompress,
   formatApexDate,
+  formatValueAndUom,
   getLang,
   getPercentFromValue,
   interpolateColor,
@@ -538,6 +539,17 @@ class ChartsCard extends LitElement {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         yAxisDup.show = config.yaxis![idx].show === undefined ? true : config.yaxis![idx].show;
         burned[idx] = true;
+      }
+      yAxisDup.labels = {
+        "formatter": function (value) {
+          return formatValueAndUom(
+            value,
+            serie.unit,
+            serie.unit_step,
+            serie.unit_array,
+            yAxisDup.decimalsInFloat
+          ).join(serie.unit_separator ?? ' ');
+        },
       }
       return yAxisDup;
     });

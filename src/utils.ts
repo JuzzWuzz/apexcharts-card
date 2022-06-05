@@ -75,6 +75,44 @@ export function computeName(
   return name + (series[index].show?.offset_in_name && series[index].offset ? ` (${series[index].offset})` : '');
 }
 
+export function formatValueAndUom(
+  value: string | number | null | undefined,
+  unit: string | undefined,
+  unit_step: number | undefined,
+  unit_array: string[] | undefined,
+  precision: number | undefined
+): [string | null, string] {
+  let lValue: string | number | null | undefined = value;
+  let lPrecision: number | undefined = precision;
+  if (lValue === undefined || lValue === null) {
+    lValue = null;
+  } else {
+    if (typeof lValue === 'string') {
+      lValue = parseFloat(lValue);
+    }
+    if (Number.isNaN(lValue)) {
+      lValue = value as string;
+    }
+  }
+  let uom: string | undefined = undefined;
+  if (typeof lValue === 'number') {
+    if (unit_step && unit_array) {
+      let i = 0;
+      if (lValue !== 0) {
+        i = Math.floor(Math.log(lValue) / Math.log(unit_step));
+        lValue = lValue / Math.pow(unit_step, i);
+      }
+      uom = unit_array[i];
+      if (i === 0) {
+        lPrecision = 0;
+      }
+    }
+    lValue = lValue.toFixed(lPrecision);
+  }
+
+  return [lValue, uom || unit || ''];
+}
+
 export function computeUom(
   index: number,
   series: ChartCardSeriesExternalConfig[] | undefined,

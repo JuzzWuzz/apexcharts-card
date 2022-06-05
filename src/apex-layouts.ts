@@ -10,7 +10,7 @@ import {
   TIMESERIES_TYPES,
 } from './const';
 import { ChartCardConfig } from './types';
-import { computeName, computeUom, is12Hour, mergeDeep, myFormatNumber, prettyPrintTime } from './utils';
+import { computeName, computeUom, formatValueAndUom, is12Hour, mergeDeep, myFormatNumber, prettyPrintTime } from './utils';
 import { layoutMinimal } from './layouts/minimal';
 import { getLocales, getDefaultLocale } from './locales';
 import GraphEntry from './graphEntry';
@@ -289,22 +289,32 @@ function getXTooltipFormatter(
 function getYTooltipFormatter(config: ChartCardConfig, hass: HomeAssistant | undefined) {
   return function (value, opts, conf = config, hass2 = hass) {
     let lValue = value;
+    let uom: string | undefined = undefined;
+    const unitSeparator = (conf.series_in_graph[opts.seriesIndex].unit_separator) ?? ' ';
     if (conf.series_in_graph[opts.seriesIndex]?.invert && lValue) {
       lValue = -lValue;
     }
     if (!conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
-      lValue = myFormatNumber(lValue, hass?.locale, conf.series_in_graph[opts.seriesIndex].float_precision);
+      const series = conf.series_in_graph[opts.seriesIndex];
+      [lValue, uom] = formatValueAndUom(
+        lValue,
+        series.unit,
+        series.unit_step,
+        series.unit_array,
+        series.float_precision
+      );
+    } else {
+        uom = computeUom(
+        opts.seriesIndex,
+        conf.series_in_graph,
+        undefined,
+        hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
+      );
     }
-    const uom = computeUom(
-      opts.seriesIndex,
-      conf.series_in_graph,
-      undefined,
-      hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
-    );
     return conf.series_in_graph[opts.seriesIndex]?.show.as_duration
       ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         [`<strong>${prettyPrintTime(lValue, conf.series_in_graph[opts.seriesIndex].show.as_duration!)}</strong>`]
-      : [`<strong>${lValue} ${uom}</strong>`];
+      : [`<strong>${lValue}${unitSeparator}${uom}</strong>`];
   };
 }
 
@@ -393,24 +403,32 @@ function getLegendFormatter(config: ChartCardConfig, hass: HomeAssistant | undef
       let value = TIMESERIES_TYPES.includes(config.chart_type)
         ? opts.w.globals.series[opts.seriesIndex].slice(-1)[0]
         : opts.w.globals.series[opts.seriesIndex];
+      let uom: string | undefined = undefined;
+      const unitSeparator = (conf.series_in_graph[opts.seriesIndex].unit_separator) ?? ' ';
       if (conf.series_in_graph[opts.seriesIndex]?.invert && value) {
         value = -value;
       }
       if (!conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
-        value = myFormatNumber(value, hass2?.locale, conf.series_in_graph[opts.seriesIndex].float_precision);
+        const series = conf.series_in_graph[opts.seriesIndex];
+        [value, uom] = formatValueAndUom(
+          value,
+          series.unit,
+          series.unit_step,
+          series.unit_array,
+          series.float_precision
+        );
+      } else {
+        uom = computeUom(
+          opts.seriesIndex,
+          conf.series_in_graph,
+          undefined,
+          hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
+        );
       }
-      const uom =
-        config.chart_type === 'radialBar'
-          ? '%'
-          : computeUom(
-              opts.seriesIndex,
-              conf.series_in_graph,
-              undefined,
-              hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
-            );
+      uom = config.chart_type === 'radialBar' ? '%' : uom;
       let valueString = '';
       if (value === undefined || value === null) {
-        valueString = `<strong>${NO_VALUE} ${uom}</strong>`;
+        valueString = `<strong>${NO_VALUE}${unitSeparator}${uom}</strong>`;
       } else {
         if (conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
           valueString = `<strong>${prettyPrintTime(
@@ -419,7 +437,7 @@ function getLegendFormatter(config: ChartCardConfig, hass: HomeAssistant | undef
             conf.series_in_graph[opts.seriesIndex].show.as_duration!,
           )}</strong>`;
         } else {
-          valueString = `<strong>${value} ${uom}</strong>`;
+          valueString = `<strong>${value}${unitSeparator}${uom}</strong>`;
         }
       }
       return [name + ':', valueString];
