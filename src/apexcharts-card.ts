@@ -544,6 +544,7 @@ class ChartsCard extends LitElement {
         "formatter": function (value) {
           return formatValueAndUom(
             value,
+            serie.clamp_negative,
             serie.unit,
             serie.unit_step,
             serie.unit_array,

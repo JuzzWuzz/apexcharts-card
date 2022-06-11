@@ -77,6 +77,7 @@ export function computeName(
 
 export function formatValueAndUom(
   value: string | number | null | undefined,
+  clamp_negative: boolean | undefined,
   unit: string | undefined,
   unit_step: number | undefined,
   unit_array: string[] | undefined,
@@ -96,10 +97,13 @@ export function formatValueAndUom(
   }
   let uom: string | undefined = undefined;
   if (typeof lValue === 'number') {
+    if ((clamp_negative ?? false) && lValue < 0) {
+      lValue = 0;
+    }
     if (unit_step && unit_array) {
       let i = 0;
       if (lValue !== 0) {
-        i = Math.floor(Math.log(lValue) / Math.log(unit_step));
+        i = Math.min(Math.floor(Math.log(Math.abs(lValue)) / Math.log(unit_step)), unit_array.length - 1);
         lValue = lValue / Math.pow(unit_step, i);
       }
       uom = unit_array[i];

@@ -73,6 +73,7 @@ export interface ChartCardAllSeriesExternalConfig {
   curve?: 'smooth' | 'straight' | 'stepline';
   stroke_width?: number;
   extend_to?: false | 'end' | 'now';
+  clamp_negative?: boolean;
   unit?: string;
   unit_step?: number;
   unit_array?: string[];

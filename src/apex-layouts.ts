@@ -298,6 +298,7 @@ function getYTooltipFormatter(config: ChartCardConfig, hass: HomeAssistant | und
       const series = conf.series_in_graph[opts.seriesIndex];
       [lValue, uom] = formatValueAndUom(
         lValue,
+        series.clamp_negative,
         series.unit,
         series.unit_step,
         series.unit_array,
@@ -412,6 +413,7 @@ function getLegendFormatter(config: ChartCardConfig, hass: HomeAssistant | undef
         const series = conf.series_in_graph[opts.seriesIndex];
         [value, uom] = formatValueAndUom(
           value,
+          series.clamp_negative,
           series.unit,
           series.unit_step,
           series.unit_array,
