@@ -33,6 +33,7 @@ export interface ChartCardSeriesConfig extends ChartCardSeriesExternalConfig {
 
 export interface ChartCardSeriesShowConfig extends ChartCardSeriesShowConfigExt {
   legend_value: boolean;
+  legend_function: 'last' | 'sum';
   in_header: boolean | 'raw' | 'before_now' | 'after_now';
   name_in_header: boolean;
   in_chart: boolean;

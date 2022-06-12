@@ -114,6 +114,7 @@ export const ActionsConfig = t.iface([], {
 export const ChartCardSeriesShowConfigExt = t.iface([], {
   "as_duration": t.opt("ChartCardPrettyTime"),
   "legend_value": t.opt("boolean"),
+  "legend_function": t.opt(t.union(t.lit('last'), t.lit('sum'))),
   "in_header": t.opt(t.union("boolean", t.lit('raw'), t.lit('before_now'), t.lit('after_now'))),
   "name_in_header": t.opt("boolean"),
   "header_color_threshold": t.opt("boolean"),

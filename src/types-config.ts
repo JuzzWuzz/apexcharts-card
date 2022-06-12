@@ -114,6 +114,7 @@ export interface ActionsConfig {
 export interface ChartCardSeriesShowConfigExt {
   as_duration?: ChartCardPrettyTime;
   legend_value?: boolean;
+  legend_function?: 'last' | 'sum';
   in_header?: boolean | 'raw' | 'before_now' | 'after_now';
   name_in_header?: boolean;
   header_color_threshold?: boolean;

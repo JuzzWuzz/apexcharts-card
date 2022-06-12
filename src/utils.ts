@@ -103,7 +103,7 @@ export function formatValueAndUom(
     if (unit_step && unit_array) {
       let i = 0;
       if (lValue !== 0) {
-        i = Math.min(Math.floor(Math.log(Math.abs(lValue)) / Math.log(unit_step)), unit_array.length - 1);
+        i = Math.min(Math.max(Math.floor(Math.log(Math.abs(lValue)) / Math.log(unit_step)), 0), unit_array.length - 1);
         lValue = lValue / Math.pow(unit_step, i);
       }
       uom = unit_array[i];
