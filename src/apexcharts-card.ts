@@ -20,7 +20,6 @@ import {
   computeColors,
   computeName,
   computeTextColor,
-  computeUom,
   decompress,
   formatApexDate,
   formatValueAndUom,
@@ -690,6 +689,19 @@ class ChartsCard extends LitElement {
       <div id="header__states">
         ${this._config?.series.map((serie, index) => {
           if (serie.show.in_header) {
+            const valueRaw = this._headerState?.[index];
+            let value: string | number | null | undefined = valueRaw;
+            let uom: string | undefined = undefined;
+            if (!serie.show.as_duration) {
+              [value, uom] = formatValueAndUom(
+                value,
+                serie.clamp_negative,
+                serie.unit,
+                serie.unit_step,
+                serie.unit_array,
+                serie.float_precision
+              );
+            }
             return html`
               <div
                 id="states__state"
@@ -734,15 +746,15 @@ class ChartsCard extends LitElement {
                 }}"
               >
                 <div id="state__value">
-                  <span id="state" style="${this._computeHeaderStateColor(serie, this._headerState?.[index])}"
-                    >${this._headerState?.[index] === 0
+                  <span id="state" style="${this._computeHeaderStateColor(serie, valueRaw)}"
+                    >${valueRaw === 0
                       ? 0
                       : serie.show.as_duration
-                      ? prettyPrintTime(this._headerState?.[index], serie.show.as_duration)
-                      : this._computeLastState(this._headerState?.[index], index) || NO_VALUE}</span
+                      ? prettyPrintTime(valueRaw, serie.show.as_duration)
+                      : value || NO_VALUE}</span
                   >
                   ${!serie.show.as_duration
-                    ? html`<span id="uom">${computeUom(index, this._config?.series, this._entities)}</span>`
+                    ? html`<span id="uom">${uom}</span>`
                     : ''}
                 </div>
                 ${serie.show.name_in_header
@@ -827,7 +839,11 @@ class ChartsCard extends LitElement {
               );
             } else {
               // not raw
-              this._headerState[index] = graph.lastState;
+              if (this._config?.series[index].show.legend_function === 'sum') {
+                this._headerState[index] = graph.sumStates;
+              } else {
+                this._headerState[index] = graph.lastState;
+              }
             }
           }
           if (!this._config?.series[index].show.in_chart && !this._config?.series[index].show.in_brush) {

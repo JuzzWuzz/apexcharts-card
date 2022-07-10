@@ -405,12 +405,12 @@ function getLegendFormatter(config: ChartCardConfig, hass: HomeAssistant | undef
       if (TIMESERIES_TYPES.includes(config.chart_type)) {
         const legend_function = conf.series_in_graph[opts.seriesIndex].show.legend_function;
         if (legend_function === 'sum') {
-          opts.w.globals.series[opts.seriesIndex].reduce((a, b) => a + b, 0);
+          value = opts.w.globals.series[opts.seriesIndex].reduce((a, b) => a + b, 0);
         } else {
-          opts.w.globals.series[opts.seriesIndex].slice(-1)[0];
+          value = opts.w.globals.series[opts.seriesIndex].slice(-1)[0];
         }
       } else {
-        opts.w.globals.series[opts.seriesIndex];
+        value = opts.w.globals.series[opts.seriesIndex];
       }
       let uom: string | undefined = undefined;
       const unitSeparator = (conf.series_in_graph[opts.seriesIndex].unit_separator) ?? ' ';
