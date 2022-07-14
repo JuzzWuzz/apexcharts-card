@@ -90,9 +90,10 @@ export function formatValueAndUom(
   } else {
     if (typeof lValue === 'string') {
       lValue = parseFloat(lValue);
-    }
-    if (Number.isNaN(lValue)) {
-      lValue = value as string;
+
+      if (Number.isNaN(lValue)) {
+        lValue = value as string;
+      }
     }
   }
   let uom: string | undefined = undefined;
