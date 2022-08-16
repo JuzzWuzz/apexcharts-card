@@ -807,13 +807,14 @@ class ChartsCard extends LitElement {
   private async _updateData() {
     if (!this._config || !this._apexChart || !this._graphs) return;
 
-    const { start, end } = this._getSpanDates();
     const now = new Date();
     this._lastUpdated = now;
     const editMode = getLovelace()?.editMode;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const caching = editMode === true ? false : this._config!.cache;
     try {
+      const { start, end } = await this._getSpanDates();
+
       const promise = this._graphs.map((graph, index) => {
         if (graph) graph.cache = caching;
         return graph?._updateHistory(
@@ -1473,27 +1474,57 @@ class ChartsCard extends LitElement {
     });
   }
 
-  private _getSpanDates(): { start: Date; end: Date } {
+  private async _getSpanDates(): Promise<{ start: Date; end: Date; }> {
     let end = new Date();
     let start = new Date(end.getTime() - this._graphSpan + 1);
     // Span
-    if (this._config?.span?.start) {
-      // Just Span
-      const startM = moment().startOf(this._config.span.start);
-      start = startM.toDate();
-      end = new Date(start.getTime() + this._graphSpan);
-    } else if (this._config?.span?.end) {
-      const endM = moment().endOf(this._config.span.end);
-      end = new Date(endM.toDate().getTime() + 1);
-      start = new Date(end.getTime() - this._graphSpan + 1);
-    }
-    if (this._offset) {
-      end.setTime(end.getTime() + this._offset);
-      start.setTime(start.getTime() + this._offset);
+    if (this._config?.span_generator) {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+      let startM, endM;
+      try {
+        const datafn = new AsyncFunction(
+          'entities',
+          'hass',
+          'moment',
+          `'use strict'; ${this._config.span_generator}`,
+        );
+        [ startM, endM ] = await datafn(this._entities, this._hass, moment);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (e: any) {
+        const funcTrimmed =
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          this._config.span_generator!.length <= 100
+            ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              this._config.span_generator!.trim()
+            : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              `${this._config.span_generator!.trim().substring(0, 98)}...`;
+        e.message = `${e.name}: ${e.message} in '${funcTrimmed}'`;
+        e.name = 'Error';
+        throw e;
+      }
+      if (startM !== undefined && endM !== undefined) {
+        start = startM.toDate();
+        end = endM.toDate();
+      }
+    } else {
+      if (this._config?.span?.start) {
+        // Just Span
+        const startM = moment().startOf(this._config.span.start);
+        start = startM.toDate();
+        end = new Date(start.getTime() + this._graphSpan);
+      } else if (this._config?.span?.end) {
+        const endM = moment().endOf(this._config.span.end);
+        end = new Date(endM.toDate().getTime() + 1);
+        start = new Date(end.getTime() - this._graphSpan + 1);
+      }
+      if (this._offset) {
+        end.setTime(end.getTime() + this._offset);
+        start.setTime(start.getTime() + this._offset);
+      }
     }
     return { start, end };
   }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _handleAction(ev: any, serieConfig: ChartCardSeriesConfig) {
     if (ev.detail?.action) {

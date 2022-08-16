@@ -23,6 +23,7 @@ export const ChartCardExternalConfig = t.iface([], {
   "series": t.array("ChartCardSeriesExternalConfig"),
   "graph_span": t.opt("string"),
   "span": t.opt("ChartCardSpanExtConfig"),
+  "span_generator": t.opt("string"),
   "now": t.opt(t.iface([], {
     "show": t.opt("boolean"),
     "color": t.opt("string"),

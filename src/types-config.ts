@@ -17,6 +17,7 @@ export interface ChartCardExternalConfig {
   series: ChartCardSeriesExternalConfig[];
   graph_span?: string;
   span?: ChartCardSpanExtConfig;
+  span_generator?: string;
   now?: {
     show?: boolean;
     color?: string;
