@@ -15,6 +15,10 @@ apexcharts_card_templates:
       stroke_width: 2
 
 views:
+  - title: Juzz
+    panel: true
+    cards:
+
   - title: Main
     panel: true
     cards:

@@ -1,10 +1,49 @@
+# Contents of the `default_config:` tag but disabling things I don't want
+application_credentials:
+# automation:
+#bluetooth:
+#cloud:
+counter:
+dhcp:
+energy:
+frontend:
+hardware:
+history:
+homeassistant_alerts:
+# input_boolean:
+input_button:
+input_datetime:
+input_number:
+input_select:
+input_text:
+logbook:
+logger:
+map:
+media_source:
+mobile_app:
+my:
+network:
+person:
+scene:
+schedule:
+script:
+ssdp:
+sun:
+system_health:
+tag:
+timer:
+#usb:
+webhook:
+zeroconf:
+zone:
+
 lovelace:
   mode: yaml
   resources:
     - url: http://127.0.0.1:5000/apexcharts-card.js
       type: module
 
-default_config:
+mqtt:
 
 demo:
 
@@ -74,5 +113,3 @@ automation:
         target:
           entity_id:
             - sensor.counter_no_significant_update
-
-browser_mod:
