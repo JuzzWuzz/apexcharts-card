@@ -71,7 +71,6 @@ views:
               #   invert: true
             graph_span: 15min
             cache: true
-            layout: minimal
             header:
               show: false
 
@@ -91,7 +90,6 @@ views:
                 stroke_width: 20
             graph_span: 15min
             cache: true
-            layout: minimal
             header:
               floating: true
 
@@ -863,10 +861,7 @@ views:
           - type: custom:apexcharts-card
             experimental:
               color_threshold: true
-              brush: true
             graph_span: 2h
-            brush:
-              selection_span: 10m
             header:
               show: true
               title: test
@@ -889,7 +884,6 @@ views:
                 stroke_width: 1
                 float_precision: 0
                 show:
-                  in_brush: true
                   in_chart: false
           - type: custom:apexcharts-card
             graph_span: 1h

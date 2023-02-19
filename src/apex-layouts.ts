@@ -10,8 +10,15 @@ import {
   TIMESERIES_TYPES,
 } from './const';
 import { ChartCardConfig } from './types';
-import { computeName, computeUom, formatValueAndUom, is12Hour, mergeDeep, myFormatNumber, prettyPrintTime } from './utils';
-import { layoutMinimal } from './layouts/minimal';
+import {
+  computeName,
+  computeUom,
+  formatValueAndUom,
+  is12Hour,
+  mergeDeep,
+  myFormatNumber,
+  prettyPrintTime,
+} from './utils';
 import { getLocales, getDefaultLocale } from './locales';
 import GraphEntry from './graphEntry';
 
@@ -88,16 +95,7 @@ export function getLayoutConfig(
     },
   };
 
-  let conf = {};
-  switch (config.layout) {
-    case 'minimal':
-      conf = layoutMinimal;
-      break;
-
-    default:
-      break;
-  }
-
+  const conf = {};
   return config.apex_config
     ? mergeDeep(mergeDeep(def, conf), evalApexConfig(config.apex_config))
     : mergeDeep(def, conf);
@@ -290,7 +288,7 @@ function getYTooltipFormatter(config: ChartCardConfig, hass: HomeAssistant | und
   return function (value, opts, conf = config, hass2 = hass) {
     let lValue = value;
     let uom: string | undefined = undefined;
-    const unitSeparator = (conf.series_in_graph[opts.seriesIndex].unit_separator) ?? ' ';
+    const unitSeparator = conf.series_in_graph[opts.seriesIndex].unit_separator ?? ' ';
     if (conf.series_in_graph[opts.seriesIndex]?.invert && lValue) {
       lValue = -lValue;
     }
@@ -302,10 +300,10 @@ function getYTooltipFormatter(config: ChartCardConfig, hass: HomeAssistant | und
         series.unit,
         series.unit_step,
         series.unit_array,
-        series.float_precision
+        series.float_precision,
       );
     } else {
-        uom = computeUom(
+      uom = computeUom(
         opts.seriesIndex,
         conf.series_in_graph,
         undefined,
@@ -413,7 +411,7 @@ function getLegendFormatter(config: ChartCardConfig, hass: HomeAssistant | undef
         value = opts.w.globals.series[opts.seriesIndex];
       }
       let uom: string | undefined = undefined;
-      const unitSeparator = (conf.series_in_graph[opts.seriesIndex].unit_separator) ?? ' ';
+      const unitSeparator = conf.series_in_graph[opts.seriesIndex].unit_separator ?? ' ';
       if (conf.series_in_graph[opts.seriesIndex]?.invert && value) {
         value = -value;
       }
@@ -425,7 +423,7 @@ function getLegendFormatter(config: ChartCardConfig, hass: HomeAssistant | undef
           series.unit,
           series.unit_step,
           series.unit_array,
-          series.float_precision
+          series.float_precision,
         );
       } else {
         uom = computeUom(

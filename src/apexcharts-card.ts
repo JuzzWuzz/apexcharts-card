@@ -79,7 +79,6 @@ import {
 } from './const';
 import parse from 'parse-duration';
 import tinycolor from '@ctrl/tinycolor';
-import { actionHandler } from './action-handler-directive';
 
 /* eslint no-console: 0 */
 console.info(
@@ -544,17 +543,17 @@ class ChartsCard extends LitElement {
         burned[idx] = true;
       }
       yAxisDup.labels = {
-        "formatter": function (value) {
+        formatter: function (value) {
           return formatValueAndUom(
             value,
             serie.clamp_negative,
             serie.unit,
             serie.unit_step,
             serie.unit_array,
-            yAxisDup.decimalsInFloat
+            yAxisDup.decimalsInFloat,
           ).join(serie.unit_separator ?? ' ');
         },
-      }
+      };
       return yAxisDup;
     });
     return yaxisConfig;
@@ -649,14 +648,6 @@ class ChartsCard extends LitElement {
       @action=${(ev) => {
         this._handleTitleAction(ev);
       }}
-      .actionHandler=${actionHandler({
-        hasDoubleClick:
-          this._config?.header?.title_actions?.double_tap_action?.action &&
-          this._config?.header?.title_actions.double_tap_action.action !== 'none',
-        hasHold:
-          this._config?.header?.title_actions?.hold_action?.action &&
-          this._config?.header?.title_actions?.hold_action.action !== 'none',
-      })}
       @focus="${(ev) => {
         this.handleRippleFocus(ev, 'title');
       }}"
@@ -699,7 +690,7 @@ class ChartsCard extends LitElement {
                 serie.unit,
                 serie.unit_step,
                 serie.unit_array,
-                serie.float_precision
+                serie.float_precision,
               );
             }
             return html`
@@ -716,13 +707,6 @@ class ChartsCard extends LitElement {
                 @action=${(ev) => {
                   this._handleAction(ev, serie);
                 }}
-                .actionHandler=${actionHandler({
-                  hasDoubleClick:
-                    serie.header_actions?.double_tap_action?.action &&
-                    serie.header_actions.double_tap_action.action !== 'none',
-                  hasHold:
-                    serie.header_actions?.hold_action?.action && serie.header_actions?.hold_action.action !== 'none',
-                })}
                 @focus="${(ev) => {
                   this.handleRippleFocus(ev, index);
                 }}"
@@ -753,9 +737,7 @@ class ChartsCard extends LitElement {
                       ? prettyPrintTime(valueRaw, serie.show.as_duration)
                       : value || NO_VALUE}</span
                   >
-                  ${!serie.show.as_duration
-                    ? html`<span id="uom">${uom}</span>`
-                    : ''}
+                  ${!serie.show.as_duration ? html`<span id="uom">${uom}</span>` : ''}
                 </div>
                 ${serie.show.name_in_header
                   ? html`<div id="state__name">${computeName(index, this._config?.series, this._entities)}</div>`
@@ -1474,7 +1456,7 @@ class ChartsCard extends LitElement {
     });
   }
 
-  private async _getSpanDates(): Promise<{ start: Date; end: Date; }> {
+  private async _getSpanDates(): Promise<{ start: Date; end: Date }> {
     let end = new Date();
     let start = new Date(end.getTime() - this._graphSpan + 1);
     // Span
@@ -1483,13 +1465,8 @@ class ChartsCard extends LitElement {
       const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
       let startM, endM;
       try {
-        const datafn = new AsyncFunction(
-          'entities',
-          'hass',
-          'moment',
-          `'use strict'; ${this._config.span_generator}`,
-        );
-        [ startM, endM ] = await datafn(this._entities, this._hass, moment);
+        const datafn = new AsyncFunction('entities', 'hass', 'moment', `'use strict'; ${this._config.span_generator}`);
+        [startM, endM] = await datafn(this._entities, this._hass, moment);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (e: any) {
         const funcTrimmed =

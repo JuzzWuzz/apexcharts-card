@@ -35,7 +35,6 @@ export const ChartCardExternalConfig = t.iface([], {
   })),
   "cache": t.opt("boolean"),
   "stacked": t.opt("boolean"),
-  "layout": t.opt("string"),
   "apex_config": t.opt("any"),
   "header": t.opt("ChartCardHeaderExternalConfig"),
   "style": t.opt("any"),
