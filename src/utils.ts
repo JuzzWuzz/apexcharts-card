@@ -81,7 +81,7 @@ export function formatValueAndUom(
   unit: string | undefined,
   unit_step: number | undefined,
   unit_array: string[] | undefined,
-  precision: number | undefined
+  precision: number | undefined,
 ): [string | null, string] {
   let lValue: string | number | null | undefined = value;
   let lPrecision: number | undefined = precision;

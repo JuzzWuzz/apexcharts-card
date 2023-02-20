@@ -7,7 +7,6 @@ export interface ChartCardExternalConfig {
     color_threshold?: boolean;
     disable_config_validation?: boolean;
     hidden_by_default?: boolean;
-    brush?: boolean;
   };
   hours_12?: boolean;
   chart_type?: ChartCardChartType;
@@ -41,17 +40,10 @@ export interface ChartCardExternalConfig {
   view_layout?: any;
   index?: number;
   view_index?: number;
-  brush?: ChartCardBrushExtConfig;
   yaxis?: ChartCardYAxisExternal[];
 }
 
 export type ChartCardChartType = 'line' | 'scatter' | 'pie' | 'donut' | 'radialBar';
-
-export interface ChartCardBrushExtConfig {
-  selection_span?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apex_config?: any;
-}
 
 export interface ChartCardSpanExtConfig {
   start?: ChartCardStartEnd;
@@ -60,8 +52,6 @@ export interface ChartCardSpanExtConfig {
 }
 
 export type ChartCardStartEnd = 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' | 'isoWeek';
-
-export type StatisticsPeriod = '5minute' | 'hour' | 'day' | 'month';
 
 export interface ChartCardAllSeriesExternalConfig {
   entity?: string;
@@ -80,25 +70,12 @@ export interface ChartCardAllSeriesExternalConfig {
   unit_separator?: string;
   invert?: boolean;
   data_generator?: string;
-  statistics?: {
-    type?: 'mean' | 'max' | 'min' | 'sum' | 'state';
-    period?: StatisticsPeriod;
-    align?: 'start' | 'end' | 'middle';
-  };
   float_precision?: number;
   min?: number;
   max?: number;
   offset?: string;
   time_delta?: string;
-  fill_raw?: GroupByFill;
   show?: ChartCardSeriesShowConfigExt;
-  group_by?: {
-    duration?: string;
-    func?: GroupByFunc;
-    fill?: GroupByFill;
-    start_with_last?: boolean;
-  };
-  transform?: string;
   color_threshold?: ChartCardColorThreshold[];
   yaxis_id?: string;
   header_actions?: ActionsConfig;
@@ -122,7 +99,6 @@ export interface ChartCardSeriesShowConfigExt {
   datalabels?: boolean | 'total' | 'percent';
   hidden_by_default?: boolean;
   extremas?: boolean | 'time' | 'min' | 'max' | 'min+time' | 'max+time';
-  in_brush?: boolean;
   offset_in_name?: boolean;
 }
 
@@ -131,10 +107,6 @@ export interface ChartCardSeriesExternalConfig extends ChartCardAllSeriesExterna
 }
 
 export type ChartCardPrettyTime = 'millisecond' | 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
-
-export type GroupByFill = 'null' | 'last' | 'zero';
-
-export type GroupByFunc = 'raw' | 'avg' | 'min' | 'max' | 'last' | 'first' | 'sum' | 'median' | 'delta' | 'diff';
 
 export interface ChartCardHeaderExternalConfig {
   show?: boolean;

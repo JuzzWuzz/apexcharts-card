@@ -4,16 +4,12 @@ import {
   ChartCardSeriesExternalConfig,
   ChartCardSeriesShowConfigExt,
   ChartCardYAxisExternal,
-  GroupByFill,
-  GroupByFunc,
 } from './types-config';
 
 export interface ChartCardConfig extends ChartCardExternalConfig {
   series: ChartCardSeriesConfig[];
   series_in_graph: ChartCardSeriesConfig[];
-  series_in_brush: ChartCardSeriesConfig[];
   graph_span: string;
-  cache: boolean;
   useCompress: boolean;
   apex_config?: ApexOptions;
   yaxis?: ChartCardYAxis[];
@@ -21,12 +17,6 @@ export interface ChartCardConfig extends ChartCardExternalConfig {
 
 export interface ChartCardSeriesConfig extends ChartCardSeriesExternalConfig {
   index: number;
-  group_by: {
-    duration: string;
-    func: GroupByFunc;
-    fill: GroupByFill;
-    start_with_last?: boolean;
-  };
   show: ChartCardSeriesShowConfig;
   ignore_history: boolean;
 }
@@ -51,38 +41,10 @@ export type EntityCachePoints = Array<HistoryPoint>;
 
 export type HistoryPoint = [number, number | null];
 
-export interface Statistics {
-  [statisticId: string]: StatisticValue[];
-}
-
-export interface StatisticValue {
-  statistic_id: string;
-  start: string;
-  end: string;
-  last_reset: string | null;
-  max: number | null;
-  mean: number | null;
-  min: number | null;
-  sum: number | null;
-  state: number | null;
-}
-
-export type HassHistory = Array<[HassHistoryEntry] | undefined>;
-
-export interface HassHistoryEntry {
-  last_updated: string;
-  state: string;
-  last_changed: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  attributes?: any;
-}
-
 export interface HistoryBucket {
   timestamp: number;
   data: EntityCachePoints;
 }
-
-export type HistoryBuckets = Array<HistoryBucket>;
 
 export interface ChartCardYAxis extends ChartCardYAxisExternal {
   series_id?: number[];

@@ -42,7 +42,7 @@ import ApexCharts from 'apexcharts';
 import { Ripple } from '@material/mwc-ripple';
 import { stylesApex } from './styles';
 import { HassEntity } from 'home-assistant-js-websocket';
-import { getBrushLayoutConfig, getLayoutConfig } from './apex-layouts';
+import { getLayoutConfig } from './apex-layouts';
 import GraphEntry from './graphEntry';
 import { createCheckers } from 'ts-interface-checker';
 import {
@@ -54,7 +54,6 @@ import {
 import exportedTypeSuite from './types-config-ti';
 import {
   DEFAULT_AREA_OPACITY,
-  DEFAULT_FILL_RAW,
   DEFAULT_FLOAT_PRECISION,
   DEFAULT_SHOW_IN_CHART,
   DEFAULT_SHOW_IN_HEADER,
@@ -68,16 +67,7 @@ import {
   PLAIN_COLOR_TYPES,
   TIMESERIES_TYPES,
 } from './const';
-import {
-  DEFAULT_COLORS,
-  DEFAULT_DURATION,
-  DEFAULT_FUNC,
-  DEFAULT_GROUP_BY_FILL,
-  DEFAULT_GRAPH_SPAN,
-  DEFAULT_SERIE_TYPE,
-  HOUR_24,
-} from './const';
-import parse from 'parse-duration';
+import { DEFAULT_COLORS, DEFAULT_GRAPH_SPAN, DEFAULT_SERIE_TYPE, HOUR_24 } from './const';
 import tinycolor from '@ctrl/tinycolor';
 
 /* eslint no-console: 0 */
@@ -120,8 +110,6 @@ class ChartsCard extends LitElement {
 
   private _apexChart?: ApexCharts;
 
-  private _apexBrush?: ApexCharts;
-
   private _loaded = false;
 
   @property({ type: Boolean }) private _updating = false;
@@ -138,8 +126,6 @@ class ChartsCard extends LitElement {
 
   private _colors: string[] = [];
 
-  private _brushColors: string[] = [];
-
   private _headerColors: string[] = [];
 
   private _graphSpan: number = HOUR_24;
@@ -155,10 +141,6 @@ class ChartsCard extends LitElement {
   private _seriesTimeDelta: number[] = [];
 
   private _updateDelay: number = DEFAULT_UPDATE_DELAY;
-
-  private _brushInit = false;
-
-  private _brushSelectionSpan = 0;
 
   private _yAxisConfig?: ChartCardYAxis[];
 
@@ -286,11 +268,6 @@ class ChartsCard extends LitElement {
       this._loaded = false;
       this._dataLoaded = false;
       this._updating = false;
-      if (this._apexBrush) {
-        this._apexBrush.destroy();
-        this._apexBrush = undefined;
-        this._brushInit = false;
-      }
     }
     if (this._config && this._hass && !this._loaded) {
       this._initialLoad();
@@ -337,9 +314,6 @@ class ChartsCard extends LitElement {
       if (configDup.span?.end && configDup.span?.start) {
         throw new Error(`span: Only one of 'start' or 'end' is allowed.`);
       }
-      if (configDup.brush?.selection_span) {
-        this._brushSelectionSpan = validateInterval(configDup.brush.selection_span, 'brush.selection_span');
-      }
       configDup.series.forEach((serie, index) => {
         if (serie.offset) {
           this._seriesOffset[index] = validateOffset(serie.offset, `series[${index}].offset`);
@@ -355,7 +329,6 @@ class ChartsCard extends LitElement {
       this._config = mergeDeep(
         {
           graph_span: DEFAULT_GRAPH_SPAN,
-          cache: true,
           useCompress: false,
           show: { loading: true },
         },
@@ -399,9 +372,7 @@ class ChartsCard extends LitElement {
           serie.ignore_history = !!(
             this._config?.chart_type &&
             ['donut', 'pie', 'radialBar'].includes(this._config?.chart_type) &&
-            (!serie.group_by || serie.group_by?.func === 'raw') &&
             !serie.data_generator &&
-            !serie.statistics &&
             !serie.offset
           );
           if (!this._headerColors[index]) {
@@ -410,16 +381,8 @@ class ChartsCard extends LitElement {
           if (serie.color) {
             this._headerColors[index] = serie.color;
           }
-          serie.fill_raw = serie.fill_raw || DEFAULT_FILL_RAW;
           serie.extend_to = serie.extend_to !== undefined ? serie.extend_to : 'end';
           serie.type = this._config?.chart_type ? undefined : serie.type || DEFAULT_SERIE_TYPE;
-          if (!serie.group_by) {
-            serie.group_by = { duration: DEFAULT_DURATION, func: DEFAULT_FUNC, fill: DEFAULT_GROUP_BY_FILL };
-          } else {
-            serie.group_by.duration = serie.group_by.duration || DEFAULT_DURATION;
-            serie.group_by.func = serie.group_by.func || DEFAULT_FUNC;
-            serie.group_by.fill = serie.group_by.fill || DEFAULT_GROUP_BY_FILL;
-          }
           if (!serie.show) {
             serie.show = {
               legend_value: DEFAULT_SHOW_LEGEND_VALUE,
@@ -435,18 +398,12 @@ class ChartsCard extends LitElement {
             serie.show.legend_function =
               serie.show.legend_function === undefined ? DEFAULT_SHOW_LEGEND_FUNCTION : serie.show.legend_function;
             serie.show.in_chart = serie.show.in_chart === undefined ? DEFAULT_SHOW_IN_CHART : serie.show.in_chart;
-            serie.show.in_header =
-              serie.show.in_header === undefined
-                ? !serie.show.in_chart && serie.show.in_brush
-                  ? false
-                  : DEFAULT_SHOW_IN_HEADER
-                : serie.show.in_header;
+            serie.show.in_header = serie.show.in_header === undefined ? DEFAULT_SHOW_IN_HEADER : serie.show.in_header;
             serie.show.name_in_header =
               serie.show.name_in_header === undefined ? DEFAULT_SHOW_NAME_IN_HEADER : serie.show.name_in_header;
             serie.show.offset_in_name =
               serie.show.offset_in_name === undefined ? DEFAULT_SHOW_OFFSET_IN_NAME : serie.show.offset_in_name;
           }
-          validateInterval(serie.group_by.duration, `series[${index}].group_by.duration`);
           if (serie.color_threshold && serie.color_threshold.length > 0) {
             const sorted: ChartCardColorThreshold[] = JSON.parse(JSON.stringify(serie.color_threshold));
             sorted.sort((a, b) => (a.value < b.value ? -1 : 1));
@@ -454,16 +411,10 @@ class ChartsCard extends LitElement {
           }
 
           if (serie.entity) {
-            const editMode = getLovelace()?.editMode;
-            // disable caching for editor
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const caching = editMode === true ? false : this._config!.cache;
             const graphEntry = new GraphEntry(
               index,
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               this._graphSpan!,
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              caching,
               serie,
               this._config?.span,
             );
@@ -473,17 +424,11 @@ class ChartsCard extends LitElement {
           return undefined;
         });
         this._config.series_in_graph = [];
-        this._config.series_in_brush = [];
         this._config.series.forEach((serie, index) => {
           if (serie.show.in_chart) {
             this._colors.push(this._headerColors[index]);
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             this._config!.series_in_graph.push(serie);
-          }
-          if (this._config?.experimental?.brush && serie.show.in_brush) {
-            this._brushColors.push(this._headerColors[index]);
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            this._config!.series_in_brush.push(serie);
           }
         });
         this._headerColors = this._headerColors.slice(0, this._config?.series.length);
@@ -595,7 +540,6 @@ class ChartsCard extends LitElement {
             : html``}
           <div id="graph-wrapper">
             <div id="graph"></div>
-            ${this._config.series_in_brush.length ? html`<div id="brush"></div>` : ``}
           </div>
         </div>
         ${this._renderLastUpdated()}
@@ -767,21 +711,8 @@ class ChartsCard extends LitElement {
       this._loaded = true;
       const graph = this.shadowRoot.querySelector('#graph');
       const layout = getLayoutConfig(this._config, this._hass, this._graphs);
-      if (this._config.series_in_brush.length) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (layout as any).chart.id = Math.random().toString(36).substring(7);
-      }
       this._apexChart = new ApexCharts(graph, layout);
       this._apexChart.render();
-      if (this._config.series_in_brush.length) {
-        const brush = this.shadowRoot.querySelector('#brush');
-        this._apexBrush = new ApexCharts(
-          brush,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          getBrushLayoutConfig(this._config, this._hass, (layout as any).chart.id),
-        );
-        this._apexBrush.render();
-      }
       this._firstDataLoad();
     }
   }
@@ -791,14 +722,10 @@ class ChartsCard extends LitElement {
 
     const now = new Date();
     this._lastUpdated = now;
-    const editMode = getLovelace()?.editMode;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const caching = editMode === true ? false : this._config!.cache;
     try {
       const { start, end } = await this._getSpanDates();
 
       const promise = this._graphs.map((graph, index) => {
-        if (graph) graph.cache = caching;
         return graph?._updateHistory(
           this._seriesOffset[index] ? new Date(start.getTime() + this._seriesOffset[index]) : start,
           this._seriesOffset[index] ? new Date(end.getTime() + this._seriesOffset[index]) : end,
@@ -807,8 +734,6 @@ class ChartsCard extends LitElement {
       await Promise.all(promise);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let graphData: any = { series: [] };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const brushData: any = { series: [] };
       if (TIMESERIES_TYPES.includes(this._config.chart_type)) {
         this._graphs.forEach((graph, index) => {
           if (!graph) return [];
@@ -829,12 +754,11 @@ class ChartsCard extends LitElement {
               }
             }
           }
-          if (!this._config?.series[index].show.in_chart && !this._config?.series[index].show.in_brush) {
+          if (!this._config?.series[index].show.in_chart) {
             return;
           }
           if (graph.history.length === 0) {
             if (this._config?.series[index].show.in_chart) graphData.series.push({ data: [] });
-            if (this._config?.series[index].show.in_brush) brushData.series.push({ data: [] });
             return;
           }
           let data: EntityCachePoints = [];
@@ -857,18 +781,11 @@ class ChartsCard extends LitElement {
           }
           const result = this._config?.series[index].invert ? { data: this._invertData(data) } : { data };
           if (this._config?.series[index].show.in_chart) graphData.series.push(result);
-          if (this._config?.series[index].show.in_brush) brushData.series.push(result);
           return;
         });
         graphData.annotations = this._computeAnnotations(start, end, now);
         if (this._yAxisConfig) {
           graphData.yaxis = this._computeYAxisAutoMinMax(start, end);
-        }
-        if (!this._apexBrush) {
-          graphData.xaxis = {
-            min: start.getTime(),
-            max: this._findEndOfChart(end, false),
-          };
         }
       } else {
         // No timeline charts
@@ -900,10 +817,7 @@ class ChartsCard extends LitElement {
           }),
         };
       }
-      graphData.colors = this._computeChartColors(false);
-      if (this._apexBrush) {
-        brushData.colors = this._computeChartColors(true);
-      }
+      graphData.colors = this._computeChartColors();
       if (this._config.experimental?.color_threshold && this._config.series.some((serie) => serie.color_threshold)) {
         graphData.markers = {
           colors: computeColors(
@@ -930,73 +844,13 @@ class ChartsCard extends LitElement {
             }),
           },
         };
-        if (this._apexBrush) {
-          brushData.fill = {
-            gradient: {
-              type: 'vertical',
-              colorStops: this._config.series_in_brush.map((serie, index) => {
-                if (!serie.color_threshold || ![undefined, 'area', 'line'].includes(serie.type)) return [];
-                const min = this._graphs?.[serie.index]?.min;
-                const max = this._graphs?.[serie.index]?.max;
-                if (min === undefined || max === undefined) return [];
-                return (
-                  this._computeFillColorStops(serie, min, max, computeColor(this._colors[index]), serie.invert) || []
-                );
-              }),
-            },
-          };
-        }
       }
-      // graphData.tooltip = { marker: { fillColors: ['#ff0000', '#00ff00'] } };
-      const brushIsAtEnd =
-        this._apexBrush &&
-        this._brushInit &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this._apexChart as any).axes?.w?.globals?.maxX === (this._apexBrush as any).axes?.w?.globals?.maxX;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentMin = (this._apexChart as any).axes?.w?.globals?.minX;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentMax = (this._apexChart as any).axes?.w?.globals?.maxX;
       this._headerState = [...this._headerState];
       this._apexChart?.updateOptions(
         graphData,
         false,
         TIMESERIES_TYPES.includes(this._config.chart_type) ? false : true,
       );
-      if (this._apexBrush) {
-        const newMin = start.getTime();
-        const newMax = this._findEndOfChart(end, false);
-        brushData.xaxis = {
-          min: newMin,
-          max: newMax,
-        };
-        if (brushIsAtEnd || !this._brushInit) {
-          brushData.chart = {
-            selection: {
-              enabled: true,
-              xaxis: {
-                min: brushData.xaxis.max - (this._brushSelectionSpan ? this._brushSelectionSpan : this._graphSpan / 4),
-                max: brushData.xaxis.max,
-              },
-            },
-          };
-        } else {
-          brushData.chart = {
-            selection: {
-              enabled: true,
-              xaxis: {
-                min: currentMin < newMin ? newMin : currentMin,
-                max: currentMin < newMin ? newMin + (currentMax - currentMin) : currentMax,
-              },
-            },
-          };
-        }
-        const selectionColor = computeColor('var(--primary-text-color)');
-        brushData.chart.selection.stroke = { color: selectionColor };
-        brushData.chart.selection.fill = { color: selectionColor, opacity: 0.1 };
-        this._brushInit = true;
-        this._apexBrush?.updateOptions(brushData, false, false);
-      }
     } catch (err) {
       log(err);
     }
@@ -1285,9 +1139,9 @@ class ChartsCard extends LitElement {
     throw new Error(`Bad yaxis min/max format: ${value}`);
   }
 
-  private _computeChartColors(brush: boolean): (string | (({ value }) => string))[] {
-    const defaultColors: (string | (({ value }) => string))[] = computeColors(brush ? this._brushColors : this._colors);
-    const series = brush ? this._config?.series_in_brush : this._config?.series_in_graph;
+  private _computeChartColors(): (string | (({ value }) => string))[] {
+    const defaultColors: (string | (({ value }) => string))[] = computeColors(this._colors);
+    const series = this._config?.series_in_graph;
     series?.forEach((serie, index) => {
       if (
         this._config?.experimental?.color_threshold &&
@@ -1423,30 +1277,6 @@ class ChartsCard extends LitElement {
   private _computeLastState(value: number | null, index: number): string | number | null {
     if (value === null) return value;
     return myFormatNumber(value, this._hass?.locale, this._config?.series[index].float_precision);
-  }
-
-  /*
-    Makes the chart end at the last timestamp of the data when everything displayed is a
-    column and group_by is enabled for every serie
-  */
-  private _findEndOfChart(end: Date, brush: boolean): number {
-    const localEnd = new Date(end);
-    let offsetEnd: number | undefined = 0;
-    const series = brush ? this._config?.series_in_brush : this._config?.series_in_graph;
-    const onlyGroupBy = series?.reduce((acc, serie) => {
-      return acc && serie.group_by.func !== 'raw';
-    }, series?.length > 0);
-    if (onlyGroupBy) {
-      offsetEnd = series?.reduce((acc, serie) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const dur = parse(serie.group_by.duration)!;
-        if (acc === -1 || dur < acc) {
-          return dur;
-        }
-        return acc;
-      }, -1);
-    }
-    return new Date(localEnd.getTime() - (offsetEnd ? offsetEnd : 0)).getTime();
   }
 
   private _invertData(data: EntityCachePoints): EntityCachePoints {

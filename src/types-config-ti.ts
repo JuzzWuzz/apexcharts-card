@@ -13,7 +13,6 @@ export const ChartCardExternalConfig = t.iface([], {
     "color_threshold": t.opt("boolean"),
     "disable_config_validation": t.opt("boolean"),
     "hidden_by_default": t.opt("boolean"),
-    "brush": t.opt("boolean"),
   })),
   "hours_12": t.opt("boolean"),
   "chart_type": t.opt("ChartCardChartType"),
@@ -42,16 +41,10 @@ export const ChartCardExternalConfig = t.iface([], {
   "view_layout": t.opt("any"),
   "index": t.opt("number"),
   "view_index": t.opt("number"),
-  "brush": t.opt("ChartCardBrushExtConfig"),
   "yaxis": t.opt(t.array("ChartCardYAxisExternal")),
 });
 
 export const ChartCardChartType = t.union(t.lit('line'), t.lit('scatter'), t.lit('pie'), t.lit('donut'), t.lit('radialBar'));
-
-export const ChartCardBrushExtConfig = t.iface([], {
-  "selection_span": t.opt("string"),
-  "apex_config": t.opt("any"),
-});
 
 export const ChartCardSpanExtConfig = t.iface([], {
   "start": t.opt("ChartCardStartEnd"),
@@ -60,8 +53,6 @@ export const ChartCardSpanExtConfig = t.iface([], {
 });
 
 export const ChartCardStartEnd = t.union(t.lit('minute'), t.lit('hour'), t.lit('day'), t.lit('week'), t.lit('month'), t.lit('year'), t.lit('isoWeek'));
-
-export const StatisticsPeriod = t.union(t.lit('5minute'), t.lit('hour'), t.lit('day'), t.lit('month'));
 
 export const ChartCardAllSeriesExternalConfig = t.iface([], {
   "entity": t.opt("string"),
@@ -80,25 +71,12 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   "unit_separator": t.opt("string"),
   "invert": t.opt("boolean"),
   "data_generator": t.opt("string"),
-  "statistics": t.opt(t.iface([], {
-    "type": t.opt(t.union(t.lit('mean'), t.lit('max'), t.lit('min'), t.lit('sum'), t.lit('state'))),
-    "period": t.opt("StatisticsPeriod"),
-    "align": t.opt(t.union(t.lit('start'), t.lit('end'), t.lit('middle'))),
-  })),
   "float_precision": t.opt("number"),
   "min": t.opt("number"),
   "max": t.opt("number"),
   "offset": t.opt("string"),
   "time_delta": t.opt("string"),
-  "fill_raw": t.opt("GroupByFill"),
   "show": t.opt("ChartCardSeriesShowConfigExt"),
-  "group_by": t.opt(t.iface([], {
-    "duration": t.opt("string"),
-    "func": t.opt("GroupByFunc"),
-    "fill": t.opt("GroupByFill"),
-    "start_with_last": t.opt("boolean"),
-  })),
-  "transform": t.opt("string"),
   "color_threshold": t.opt(t.array("ChartCardColorThreshold")),
   "yaxis_id": t.opt("string"),
   "header_actions": t.opt("ActionsConfig"),
@@ -122,7 +100,6 @@ export const ChartCardSeriesShowConfigExt = t.iface([], {
   "datalabels": t.opt(t.union("boolean", t.lit('total'), t.lit('percent'))),
   "hidden_by_default": t.opt("boolean"),
   "extremas": t.opt(t.union("boolean", t.lit('time'), t.lit('min'), t.lit('max'), t.lit('min+time'), t.lit('max+time'))),
-  "in_brush": t.opt("boolean"),
   "offset_in_name": t.opt("boolean"),
 });
 
@@ -131,10 +108,6 @@ export const ChartCardSeriesExternalConfig = t.iface(["ChartCardAllSeriesExterna
 });
 
 export const ChartCardPrettyTime = t.union(t.lit('millisecond'), t.lit('second'), t.lit('minute'), t.lit('hour'), t.lit('day'), t.lit('week'), t.lit('month'), t.lit('year'));
-
-export const GroupByFill = t.union(t.lit('null'), t.lit('last'), t.lit('zero'));
-
-export const GroupByFunc = t.union(t.lit('raw'), t.lit('avg'), t.lit('min'), t.lit('max'), t.lit('last'), t.lit('first'), t.lit('sum'), t.lit('median'), t.lit('delta'), t.lit('diff'));
 
 export const ChartCardHeaderExternalConfig = t.iface([], {
   "show": t.opt("boolean"),
@@ -230,17 +203,13 @@ export const ActionConfig = t.union("ToggleActionConfig", "CallServiceActionConf
 const exportedTypeSuite: t.ITypeSuite = {
   ChartCardExternalConfig,
   ChartCardChartType,
-  ChartCardBrushExtConfig,
   ChartCardSpanExtConfig,
   ChartCardStartEnd,
-  StatisticsPeriod,
   ChartCardAllSeriesExternalConfig,
   ActionsConfig,
   ChartCardSeriesShowConfigExt,
   ChartCardSeriesExternalConfig,
   ChartCardPrettyTime,
-  GroupByFill,
-  GroupByFunc,
   ChartCardHeaderExternalConfig,
   ChartCardColorThreshold,
   ChartCardYAxisExternal,
