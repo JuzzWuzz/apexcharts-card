@@ -787,6 +787,10 @@ class ChartsCard extends LitElement {
         if (this._yAxisConfig) {
           graphData.yaxis = this._computeYAxisAutoMinMax(start, end);
         }
+        graphData.xaxis = {
+          min: start.getTime(),
+          max: end.getTime(),
+        };
       } else {
         // No timeline charts
         graphData = {
@@ -1272,11 +1276,6 @@ class ChartsCard extends LitElement {
       }
     }
     return color ? `color: ${color};` : '';
-  }
-
-  private _computeLastState(value: number | null, index: number): string | number | null {
-    if (value === null) return value;
-    return myFormatNumber(value, this._hass?.locale, this._config?.series[index].float_precision);
   }
 
   private _invertData(data: EntityCachePoints): EntityCachePoints {
