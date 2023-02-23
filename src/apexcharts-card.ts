@@ -12,7 +12,7 @@ import {
   HistoryPoint,
   minmax_type,
 } from './types';
-import { getLovelace, handleAction, HomeAssistant } from 'custom-card-helpers';
+import { getLovelace, HomeAssistant } from 'custom-card-helpers';
 import localForage from 'localforage';
 import * as pjson from '../package.json';
 import {
@@ -45,12 +45,7 @@ import { HassEntity } from 'home-assistant-js-websocket';
 import { getLayoutConfig } from './apex-layouts';
 import GraphEntry from './graphEntry';
 import { createCheckers } from 'ts-interface-checker';
-import {
-  ActionsConfig,
-  ChartCardColorThreshold,
-  ChartCardExternalConfig,
-  ChartCardSeriesExternalConfig,
-} from './types-config';
+import { ChartCardColorThreshold, ChartCardExternalConfig, ChartCardSeriesExternalConfig } from './types-config';
 import exportedTypeSuite from './types-config-ti';
 import {
   DEFAULT_AREA_OPACITY,
@@ -575,23 +570,9 @@ class ChartsCard extends LitElement {
   }
 
   private _renderTitle(): TemplateResult {
-    const classes =
-      this._config?.header?.disable_actions ||
-      !this._config?.header?.title_actions ||
-      (this._config?.header?.title_actions?.tap_action?.action === 'none' &&
-        (!this._config?.header?.title_actions?.hold_action?.action ||
-          this._config?.header?.title_actions?.hold_action?.action === 'none') &&
-        (!this._config?.header?.title_actions?.double_tap_action?.action ||
-          this._config?.header?.title_actions?.double_tap_action?.action === 'none'))
-        ? 'disabled'
-        : 'actions';
-
     return html`<div
       id="header__title"
-      class="${classes}"
-      @action=${(ev) => {
-        this._handleTitleAction(ev);
-      }}
+      class="disabled"
       @focus="${(ev) => {
         this.handleRippleFocus(ev, 'title');
       }}"
@@ -640,17 +621,7 @@ class ChartsCard extends LitElement {
             return html`
               <div
                 id="states__state"
-                class="${this._config?.header?.disable_actions ||
-                (serie.header_actions?.tap_action?.action === 'none' &&
-                  (!serie.header_actions?.hold_action?.action ||
-                    serie.header_actions?.hold_action?.action === 'none') &&
-                  (!serie.header_actions?.double_tap_action?.action ||
-                    serie.header_actions?.double_tap_action?.action === 'none'))
-                  ? 'disabled'
-                  : 'actions'}"
-                @action=${(ev) => {
-                  this._handleAction(ev, serie);
-                }}
+                class="disabled"
                 @focus="${(ev) => {
                   this.handleRippleFocus(ev, index);
                 }}"
@@ -976,7 +947,7 @@ class ChartsCard extends LitElement {
         options.dateStyle = 'medium';
       }
       options = { ...options, ...(is12Hour(this._config, this._hass) ? { hour12: true } : { hourCycle: 'h23' }) };
-      const lang = getLang(this._config, this._hass);
+      const lang = getLang(this._hass);
       points.push({
         x: offset ? value[0] - offset : value[0],
         y: invert && value[1] ? -value[1] : value[1],
@@ -1330,49 +1301,6 @@ class ChartsCard extends LitElement {
       }
     }
     return { start, end };
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private _handleAction(ev: any, serieConfig: ChartCardSeriesConfig) {
-    if (ev.detail?.action) {
-      const configDup: ActionsConfig = serieConfig.header_actions
-        ? JSON.parse(JSON.stringify(serieConfig.header_actions))
-        : {};
-
-      switch (ev.detail.action) {
-        case 'tap':
-        case 'hold':
-        case 'double_tap':
-          configDup.entity = configDup[`${ev.detail.action}_action`]?.entity || serieConfig.entity;
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          handleAction(this, this._hass!, configDup, ev.detail.action);
-          break;
-        default:
-          break;
-      }
-    }
-    return;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private _handleTitleAction(ev: any) {
-    if (ev.detail?.action) {
-      const configDup: ActionsConfig = this._config?.header?.title_actions
-        ? JSON.parse(JSON.stringify(this._config?.header?.title_actions))
-        : {};
-
-      switch (ev.detail.action) {
-        case 'tap':
-        case 'hold':
-        case 'double_tap':
-          configDup.entity = configDup[`${ev.detail.action}_action`]?.entity;
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          handleAction(this, this._hass!, configDup, ev.detail.action);
-          break;
-        default:
-          break;
-      }
-    }
-    return;
   }
 
   // backward compatibility

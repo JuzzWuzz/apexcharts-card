@@ -129,7 +129,6 @@ apexcharts_card_templates:
 
 views:
   - title: Juzz
-    panel: true
     cards:
       - type: custom:apexcharts-card
         config_templates: power_base
@@ -138,3 +137,10 @@ views:
         series:
           - entity: sensor.power_consumption
             name: Server Rack Power
+      - type: custom:apexcharts-card
+        config_templates: energy_base
+        header:
+          title: Server Rack Power
+        series:
+          - entity: sensor.total_energy_kwh
+            name: Inverter Out

@@ -292,7 +292,7 @@ export function is12Hour(config: ChartCardConfig | undefined, hass: HomeAssistan
       }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return is12HourFromLocale(getLang(config, hass));
+      return is12HourFromLocale(getLang(hass));
     }
   }
 }
@@ -305,7 +305,7 @@ export function formatApexDate(
 ): string {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hours12 = is12Hour(config, hass) ? { hour12: true } : { hourCycle: 'h23' };
-  const lang = getLang(config, hass);
+  const lang = getLang(hass);
   if (withDate) {
     return new Intl.DateTimeFormat(lang, {
       year: 'numeric',
@@ -328,8 +328,8 @@ export function formatApexDate(
   }
 }
 
-export function getLang(config: ChartCardConfig | undefined, hass: HomeAssistant | undefined): string {
-  return config?.locale || hass?.language || 'en';
+export function getLang(hass: HomeAssistant | undefined): string {
+  return hass?.language || 'en';
 }
 
 export function truncateFloat(

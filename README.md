@@ -21,12 +21,6 @@ However, some things might be broken :grin:
 
 ## Table of Content <!-- omit in toc -->
 
-- [Installation](#installation)
-  - [HACS (recommended)](#hacs-recommended)
-  - [Manual install](#manual-install)
-  - [CLI install](#cli-install)
-  - [Add resource reference](#add-resource-reference)
-- [Data processing steps](#data-processing-steps)
 - [Using the card](#using-the-card)
   - [Main Options](#main-options)
   - [`series` Options](#series-options)
@@ -39,14 +33,11 @@ However, some things might be broken :grin:
   - [`header` Options](#header-options)
   - [`now` Options](#now-options)
   - [`group_by` Options](#group_by-options)
-  - [`func` Options](#func-options)
   - [`chart_type` Options](#chart_type-options)
   - [`span` Options](#span-options)
-  - [`transform` Option](#transform-option)
   - [`data_generator` Option](#data_generator-option)
   - [`yaxis` Options. Multi-Y axis](#yaxis-options-multi-y-axis)
     - [Min/Max Format](#minmax-format)
-    - [Examples](#examples)
   - [Apex Charts Options Example](#apex-charts-options-example)
   - [Layouts](#layouts)
   - [Configuration Templates](#configuration-templates)
@@ -59,7 +50,7 @@ However, some things might be broken :grin:
   - [`brush` experimental feature](#brush-experimental-feature)
 - [Known issues](#known-issues)
 - [Roadmap](#roadmap)
-- [Examples](#examples-1)
+- [Examples](#examples)
   - [Simple graph](#simple-graph)
   - [Multiple Types of Graphs](#multiple-types-of-graphs)
   - [Aggregating data](#aggregating-data)
@@ -67,54 +58,6 @@ However, some things might be broken :grin:
   - [Change the line thickness](#change-the-line-thickness)
   - [Use apexcharts-card with auto-entities](#use-apexcharts-card-with-auto-entities)
   - [Change the height of the graph](#change-the-height-of-the-graph)
-
-## Installation
-
-### HACS (recommended)
-
-This card is available in [HACS](https://hacs.xyz/) (Home Assistant Community Store).
-<small>_HACS is a third party community store and is not included in Home Assistant out of the box._</small>
-
-### Manual install
-
-1. Download and copy `apexcharts-card.js` from the [latest release](https://github.com/RomRider/apexcharts-card/releases/latest) into your `config/www` directory.
-
-2. Add the resource reference as decribed below.
-
-### CLI install
-
-1. Move into your `config/www` directory.
-
-2. Grab `apexcharts-card.js`:
-
-```
-$ wget https://github.com/RomRider/apexcharts-card/releases/download/v2.0.2/apexcharts-card.js
-```
-
-3. Add the resource reference as decribed below.
-
-### Add resource reference
-
-If you configure Lovelace via YAML, add a reference to `apexcharts-card.js` inside your `configuration.yaml`:
-
-```yaml
-resources:
-  - url: /local/apexcharts-card.js?v=2.0.2
-    type: module
-```
-
-Else, if you prefer the graphical editor, use the menu to add the resource:
-
-1. Make sure, advanced mode is enabled in your user profile (click on your user name to get there)
-2. Navigate to Configuration -> Lovelace Dashboards -> Resources Tab. Hit orange (+) icon
-3. Enter URL `/local/apexcharts-card.js` and select type "JavaScript Module".
-4. Restart Home Assistant.
-
-## Data processing steps
-
-This diagrams shows how your data goes through all the steps allowed by this card:
-
-![data_processing_steps](docs/data_processing_chart.png)
 
 ## Using the card
 
@@ -146,12 +89,10 @@ The card stricly validates all the options available (but not for the `apex_conf
 | `layout` | string | | v1.0.0 | See [layouts](#layouts) |
 | `header` | object | | v1.0.0 | See [header](#header-options) |
 | `now` | object | | v1.5.0 | See [now](#now-options) |
-| ~~`y_axis_precision`~~ | ~~number~~ | ~~`1`~~ | ~~v1.2.0~~ | **DEPRECATED since v1.10.0** ~~The float precision used to display numbers on the Y axis. Only works if `yaxis` is undefined.~~ |
 | `yaxis` | array | | v1.9.0 | See [yaxis](#yaxis-options-multi-y-axis) |
 | `apex_config`| object | | v1.0.0 | Apexcharts API 1:1 mapping. You call see all the options [here](https://apexcharts.com/docs/installation/) --> `Options (Reference)` in the Menu. See [Apex Charts](#apex-charts-options-example) |
 | `experimental` | object | | v1.6.0 | See [experimental](#experimental-features) |
 | `locale` | string | | v1.7.0 | Default is to inherit from Home-Assistant's user configuration. This overrides it and forces the locale. Eg: `en`, or `fr`. Reverts to `en` if locale is unknown. |
-| `brush` | object | | v1.8.0 | See [brush](#brush-experimental-feature) |
 
 
 
@@ -174,7 +115,6 @@ The card stricly validates all the options available (but not for the `apex_conf
 | `fill_raw` | string | `'null'` | v1.5.0 | If there is any missing value in the history, `last` will replace them with the last non-empty state, `zero` will fill missing values with `0`, `'null'` will fill missing values with `null`. This is applied before `group_by` options |
 | `group_by` | object | | v1.0.0 | See [group_by](#group_by-options) |
 | `invert` | boolean | `false` | v1.2.0 | Negates the data (`1` -> `-1`). Usefull to display opposites values like network in (standard)/out (inverted) |
-| `transform` | string | | v1.5.0 | Transform your raw data in any way you like. See [transform](#transform-option) |
 | `data_generator` | string | | v1.2.0 | See [data_generator](#data_generator-option) |
 | `statistics` | object | | v2.0.0 | Use HA statistical data (long-term). See [statistics](#statistics-options) |
 | `offset` | string | | v1.3.0 | This is different from the main `offset` parameter. This is at the series level. It is only usefull if you want to display data from for eg. yesterday on top of the data from today for the same sensor and compare the data. The time displayed in the tooltip will be wrong as will the x axis information. Valid values are any negative time string, eg: `-1h`, `-12min`, `-1d`, `-1h25`, `-10sec`, ... `month` (365.25 days / 12) and `year` (365.25 days) as unit will generate inconsistent result, you should use days instead. |
@@ -184,7 +124,6 @@ The card stricly validates all the options available (but not for the `apex_conf
 | `color_threshold` | object | | v1.6.0 | See [experimental](#experimental-features) |
 | `yaxis_id` | string | | v1.9.0 | The identification name of the y-axis which this serie should be associated to. See [yaxis](#yaxis-options-multi-y-axis) |
 | `show` | object | | v1.3.0 | See [serie's show options](#series-show-options) |
-| `header_actions` | object | | v1.10.0 | See [header_actions](#header_actions-or-title_actions-options) |
 
 ### series' `show` Options
 
@@ -289,7 +228,6 @@ series:
 | `show_states` | boolean | `false` | v1.1.0 | Show or hide the states in the header |
 | `colorize_states` | boolean | `false` | v1.1.0 | Colorize the states based on the color of the serie |
 | `standard_format` | boolean | `false` | v1.8.0 | Display the title using the standard Home-Assistant card format |
-| `disable_actions` | boolean | `false` | v1.10.0 | If `true`, disable all header actions |
 
 ### `now` Options
 
@@ -311,21 +249,6 @@ The position of the marker will only update when the card updates (state change 
 | `duration` | string | `1h` | v1.0.0 | If `func` is **not** `raw` only. It builds buckets of states over `duration` period of time. Doesn't work for months. Eg of valid values: `2h`, `1d`, `10s`, `25min`, `1h30`, ... |
 | `fill` | string | `last` | v1.0.0 | If `func` is **not** `raw` only. If there is any missing value in the buckets of history data (grouped by duration), `last` will replace them with the last non-empty state, `zero` will fill missing values with `0`, `'null'` will fill missing values with `null` |
 | `start_with_last` | boolean | `false` | v1.8.0 | If `true`, each bucket of data will start with the last value from the previous bucket of data. Mostly useful only with `func: diff` |
-
-### `func` Options
-
-| Name | Since | Description |
-| ---- | :---: | ----------- |
-| `raw` | v1.0.0 | Displays all the state history as known by Home Assistant |
-| `avg` | v1.0.0 | Will return the average of all the states in each bucket |
-| `min` | v1.0.0 | Will return the smallest state of each bucket |
-| `max` | v1.0.0 | Will return the biggest state of each bucket |
-| `last` | v1.0.0 | Will return the last state of each bucket |
-| `first` | v1.0.0 | Will return the first state of each bucket |
-| `sum` | v1.0.0 | Will return the sum of all the states in each bucket |
-| `median` | v1.0.0 | Will return the median of all the states in each bucket |
-| `delta` | v1.0.0 | Will return the delta between the biggest and smallest state in each bucket |
-| `diff` | v1.4.0 | Will return the difference between the last and the first entry in the bucket |
 
 ### `chart_type` Options
 
@@ -392,43 +315,6 @@ Eg:
   graph_span: 7d
   span:
     end: day
-  ```
-
-### `transform` Option
-
-With transform, you can modify raw data comming from Home-Assistant's history using a javascript function.
-
-Some of the things you can do:
-* Transform any state into a number (for eg. for binary_sensors)
-* Apply a different scale to your data (eg: divide by 1024 to convert bits into Kbits)
-* Do anything that javascript allows with the value
-
-Your javascript code will receive:
-* `x`: a state or a value of the attribute if you defined one (it can be a `string`, `null` or a `number` depending on the entity type you've assigned)
-* `hass`: the full `hass` object (`hass.states['other.entity']` to get the state object of another entity for eg.)
-* `entity`: the full state object of the entity from the history entry currently being transformed
-
-And should return a `number`, a `float` or `null`.
-
-Some examples:
-* Convert `binary_sensor` to numbers (`1` is `on`, `0` is `off`)
-  ```yaml
-  type: custom:apexcharts-card
-  update_delay: 3s
-  update_interval: 1min
-  series:
-    - entity: binary_sensor.heating
-      transform: "return x === 'on' ? 1 : 0;"
-  ```
-
-* Scale a sensor:
-  ```yaml
-  type: custom:apexcharts-card
-  update_delay: 3s
-  update_interval: 1min
-  series:
-    - entity: sensor.bandwidth
-      transform: "return x / 1024;"
   ```
 
 ### `data_generator` Option
@@ -533,64 +419,6 @@ You can have as many y-axis as there are series defined in your configuration or
 * `'|+20|'` or `'|-20|'`: This will add/remove the value between `| |` from the min/max
   * `min: '|-20|'`: The min of the data in the series is `32`, the y-axis min will be `12` (= `32 - 20`)
   * `max: '|+10|'`: The max of the data in the series is `32`, the y-axis max will be `42` (= `32 + 10`)
-
-#### Examples
-
-* Simple example with one y-axis:
-
-  ```yaml
-  type: custom:apexcharts-card
-  header:
-    show: true
-    title: Max Soft Bounds + Min Fixed Bound
-  graph_span: 20min
-  series:
-    - entity: sensor.random0_100
-  yaxis: # only 1 yaxis, no need for id or yaxis_id
-    - min: 0
-      # if the sensor doesn't go above 50, the max of the axis will be 50
-      # else the max will be the maximum value of the sensor
-      max: ~50
-      decimals: 0
-      apex_config:
-        tickAmount: 4
-  ```
-
-* In this example, we have 2 sensors:
-  * `sensor.random0_100`: goes from `0` to `100`
-  * `sensor.random_0_1000`: goes from `0` to `1000`
-
-  The `min` and `max` of both y-axis are auto calculated based on the spread of the data associated with each axis.
-
-  ![multi_y_axis](docs/multi_y_axis.png)
-
-  ```yaml
-  type: custom:apexcharts-card
-  graph_span: 20min
-  yaxis:
-    - id: first # identification name of the first y-axis
-      decimals: 0
-      apex_config:
-        tickAmount: 4
-    - id: second # identification name of the second y-axis
-      opposite: true # make it show on the right side
-      decimals: 0
-      apex_config:
-        tickAmount: 4
-  all_series_config:
-    stroke_width: 2
-  series:
-    - entity: sensor.random0_100
-      yaxis_id: first # this serie will be associated to the 'id: first' axis.
-    - entity: sensor.random_0_1000
-      yaxis_id: second # this serie will be associated to the 'id: second' axis.
-    - entity: sensor.random0_100
-      yaxis_id: first # this serie will be associated to the 'id: first' axis.
-      transform: 'return Number(x) + 30;' # We make it go fom 30 to 130
-    - entity: sensor.random0_100
-      yaxis_id: first # this serie will be associated to the 'id: first' axis.
-      transform: 'return Number(x) - 30;' # We make it go from -30 to 70
-  ```
 
 ### Apex Charts Options Example
 
@@ -738,7 +566,6 @@ Eg:
   all_series_config:
     stroke_width: 2
     type: area
-    transform: return x / 1024;
     unit: Mb/s
   series:
     - entity: sensor.wan_download
@@ -754,13 +581,11 @@ Generates the same result as repeating the configuration in each series:
     - entity: sensor.wan_download
       stroke_width: 2
       type: area
-      transform: return x / 1024;
       unit: Mb/s
     - entity: sensor.wan_upload
       invert: true
       stroke_width: 2
       type: area
-      transform: return x / 1024;
       unit: Mb/s
 ```
 

@@ -8,7 +8,6 @@ export const ChartCardExternalConfig = t.iface([], {
   "type": t.lit('custom:apexcharts-card'),
   "config_templates": t.opt(t.union(t.array("string"), "string")),
   "color_list": t.opt(t.array("string")),
-  "locale": t.opt("string"),
   "experimental": t.opt(t.iface([], {
     "color_threshold": t.opt("boolean"),
     "disable_config_validation": t.opt("boolean"),
@@ -79,14 +78,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   "show": t.opt("ChartCardSeriesShowConfigExt"),
   "color_threshold": t.opt(t.array("ChartCardColorThreshold")),
   "yaxis_id": t.opt("string"),
-  "header_actions": t.opt("ActionsConfig"),
-});
-
-export const ActionsConfig = t.iface([], {
-  "tap_action": t.opt("ActionConfig"),
-  "hold_action": t.opt("ActionConfig"),
-  "double_tap_action": t.opt("ActionConfig"),
-  "entity": t.opt("string"),
 });
 
 export const ChartCardSeriesShowConfigExt = t.iface([], {
@@ -116,8 +107,6 @@ export const ChartCardHeaderExternalConfig = t.iface([], {
   "show_states": t.opt("boolean"),
   "colorize_states": t.opt("boolean"),
   "standard_format": t.opt("boolean"),
-  "disable_actions": t.opt("boolean"),
-  "title_actions": t.opt("ActionsConfig"),
 });
 
 export const ChartCardColorThreshold = t.iface([], {
@@ -137,68 +126,11 @@ export const ChartCardYAxisExternal = t.iface([], {
   "apex_config": t.opt("any"),
 });
 
-export const ToggleMenuActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('toggle-menu'),
-  "haptic": t.opt("HapticType"),
-});
-
-export const ToggleActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('toggle'),
-  "haptic": t.opt("HapticType"),
-});
-
-export const CallServiceActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('call-service'),
-  "service": "string",
-  "service_data": t.opt("any"),
-  "haptic": t.opt("HapticType"),
-});
-
-export const NavigateActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('navigate'),
-  "navigation_path": "string",
-  "haptic": t.opt("HapticType"),
-});
-
-export const UrlActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('url'),
-  "url_path": "string",
-  "haptic": t.opt("HapticType"),
-});
-
-export const MoreInfoActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('more-info'),
-  "entity": t.opt("string"),
-  "haptic": t.opt("HapticType"),
-});
-
-export const NoActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('none'),
-  "haptic": t.opt("HapticType"),
-});
-
-export const CustomActionConfig = t.iface(["BaseActionConfig"], {
-  "action": t.lit('fire-dom-event'),
-  "haptic": t.opt("HapticType"),
-  "browser_mod": t.opt("any"),
-});
-
-export const BaseActionConfig = t.iface([], {
-  "confirmation": t.opt("ConfirmationRestrictionConfig"),
-});
-
-export const ConfirmationRestrictionConfig = t.iface([], {
-  "text": t.opt("string"),
-  "exemptions": t.opt(t.array("RestrictionConfig")),
-});
-
 export const RestrictionConfig = t.iface([], {
   "user": "string",
 });
 
 export const HapticType = t.union(t.lit('success'), t.lit('warning'), t.lit('failure'), t.lit('light'), t.lit('medium'), t.lit('heavy'), t.lit('selection'));
-
-export const ActionConfig = t.union("ToggleActionConfig", "CallServiceActionConfig", "NavigateActionConfig", "UrlActionConfig", "MoreInfoActionConfig", "NoActionConfig", "CustomActionConfig", "ToggleMenuActionConfig");
 
 const exportedTypeSuite: t.ITypeSuite = {
   ChartCardExternalConfig,
@@ -206,25 +138,13 @@ const exportedTypeSuite: t.ITypeSuite = {
   ChartCardSpanExtConfig,
   ChartCardStartEnd,
   ChartCardAllSeriesExternalConfig,
-  ActionsConfig,
   ChartCardSeriesShowConfigExt,
   ChartCardSeriesExternalConfig,
   ChartCardPrettyTime,
   ChartCardHeaderExternalConfig,
   ChartCardColorThreshold,
   ChartCardYAxisExternal,
-  ToggleMenuActionConfig,
-  ToggleActionConfig,
-  CallServiceActionConfig,
-  NavigateActionConfig,
-  UrlActionConfig,
-  MoreInfoActionConfig,
-  NoActionConfig,
-  CustomActionConfig,
-  BaseActionConfig,
-  ConfirmationRestrictionConfig,
   RestrictionConfig,
   HapticType,
-  ActionConfig,
 };
 export default exportedTypeSuite;

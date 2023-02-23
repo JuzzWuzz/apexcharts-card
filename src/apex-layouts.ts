@@ -19,7 +19,7 @@ import {
   myFormatNumber,
   prettyPrintTime,
 } from './utils';
-import { getLocales, getDefaultLocale } from './locales';
+import { getDefaultLocale } from './locales';
 import GraphEntry from './graphEntry';
 
 export function getLayoutConfig(
@@ -27,16 +27,10 @@ export function getLayoutConfig(
   hass: HomeAssistant | undefined = undefined,
   graphs: (GraphEntry | undefined)[] | undefined,
 ): unknown {
-  const locales = getLocales();
   const def = {
     chart: {
-      locales: [
-        (config.locale && locales[config.locale]) || (hass?.language && locales[hass.language]) || getDefaultLocale(),
-      ],
-      defaultLocale:
-        (config.locale && locales[config.locale] && config.locale) ||
-        (hass?.language && locales[hass.language] && hass.language) ||
-        'en',
+      locales: [getDefaultLocale()],
+      defaultLocale: 'en',
       type: config.chart_type || DEFAULT_SERIE_TYPE,
       stacked: config?.stacked,
       foreColor: 'var(--primary-text-color)',
@@ -185,7 +179,7 @@ function getXTooltipFormatter(
   if (config.apex_config?.tooltip?.x?.format) return undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let hours12: any = undefined;
-  const lang = config.locale || hass?.language || 'en';
+  const lang = hass?.language || 'en';
   hours12 = is12Hour(config, hass) ? { hour12: true } : { hourCycle: 'h23' };
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return parse(config.graph_span)! < HOUR_24 && !config.span?.offset
