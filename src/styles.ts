@@ -1,4 +1,4 @@
-import { css, CSSResultGroup } from 'lit';
+import { css, CSSResultGroup } from "lit";
 
 export const stylesApex: CSSResultGroup = css`
   :host {
@@ -12,7 +12,7 @@ export const stylesApex: CSSResultGroup = css`
 
   .wrapper {
     display: grid;
-    grid-template-areas: 'header' 'graph';
+    grid-template-areas: "header" "graph";
     grid-template-columns: 1fr;
     grid-template-rows: min-content 1fr;
   }
@@ -235,7 +235,8 @@ export const stylesApex: CSSResultGroup = css`
     align-items: center;
   }
 
-  .apexcharts-tooltip-series-group.apexcharts-active .apexcharts-tooltip-marker {
+  .apexcharts-tooltip-series-group.apexcharts-active
+    .apexcharts-tooltip-marker {
     opacity: 1;
   }
 
@@ -307,7 +308,7 @@ export const stylesApex: CSSResultGroup = css`
   .apexcharts-xaxistooltip:before {
     left: 50%;
     border: solid transparent;
-    content: ' ';
+    content: " ";
     height: 0;
     width: 0;
     position: absolute;
@@ -397,7 +398,7 @@ export const stylesApex: CSSResultGroup = css`
   .apexcharts-yaxistooltip:before {
     top: 50%;
     border: solid transparent;
-    content: ' ';
+    content: " ";
     height: 0;
     width: 0;
     position: absolute;
@@ -566,8 +567,12 @@ export const stylesApex: CSSResultGroup = css`
     fill: var(--primary-color);
   }
 
-  .apexcharts-theme-light .apexcharts-selection-icon:not(.apexcharts-selected):hover svg,
-  .apexcharts-theme-light .apexcharts-zoom-icon:not(.apexcharts-selected):hover svg,
+  .apexcharts-theme-light
+    .apexcharts-selection-icon:not(.apexcharts-selected):hover
+    svg,
+  .apexcharts-theme-light
+    .apexcharts-zoom-icon:not(.apexcharts-selected):hover
+    svg,
   .apexcharts-theme-light .apexcharts-zoomin-icon:hover svg,
   .apexcharts-theme-light .apexcharts-zoomout-icon:hover svg,
   .apexcharts-theme-light .apexcharts-reset-icon:hover svg,
@@ -710,8 +715,12 @@ export const stylesApex: CSSResultGroup = css`
   .apexcharts-line,
   .apexcharts-zoom-rect,
   .apexcharts-toolbar svg,
-  .apexcharts-area-series .apexcharts-series-markers .apexcharts-marker.no-pointer-events,
-  .apexcharts-line-series .apexcharts-series-markers .apexcharts-marker.no-pointer-events,
+  .apexcharts-area-series
+    .apexcharts-series-markers
+    .apexcharts-marker.no-pointer-events,
+  .apexcharts-line-series
+    .apexcharts-series-markers
+    .apexcharts-marker.no-pointer-events,
   .apexcharts-radar-series path,
   .apexcharts-radar-series polygon {
     pointer-events: none;
@@ -752,7 +761,7 @@ export const stylesApex: CSSResultGroup = css`
   .resize-triggers,
   .resize-triggers > div,
   .contract-trigger:before {
-    content: ' ';
+    content: " ";
     display: block;
     position: absolute;
     top: 0;

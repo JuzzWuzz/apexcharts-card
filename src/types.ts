@@ -1,10 +1,10 @@
-import { ApexOptions } from 'apexcharts';
+import { ApexOptions } from "apexcharts";
 import {
   ChartCardExternalConfig,
   ChartCardSeriesExternalConfig,
   ChartCardSeriesShowConfigExt,
   ChartCardYAxisExternal,
-} from './types-config';
+} from "./types-config";
 
 export interface ChartCardConfig extends ChartCardExternalConfig {
   series: ChartCardSeriesConfig[];
@@ -21,10 +21,11 @@ export interface ChartCardSeriesConfig extends ChartCardSeriesExternalConfig {
   ignore_history: boolean;
 }
 
-export interface ChartCardSeriesShowConfig extends ChartCardSeriesShowConfigExt {
+export interface ChartCardSeriesShowConfig
+  extends ChartCardSeriesShowConfigExt {
   legend_value: boolean;
-  legend_function: 'last' | 'sum';
-  in_header: boolean | 'raw' | 'before_now' | 'after_now';
+  legend_function: "last" | "sum";
+  in_header: boolean | "raw" | "before_now" | "after_now";
   name_in_header: boolean;
   in_chart: boolean;
   offset_in_name: boolean;

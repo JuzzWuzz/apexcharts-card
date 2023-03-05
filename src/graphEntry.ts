@@ -1,10 +1,15 @@
-import { HomeAssistant } from 'custom-card-helpers';
-import { ChartCardSeriesConfig, EntityCachePoints, EntityEntryCache, HistoryPoint } from './types';
-import { HassEntity } from 'home-assistant-js-websocket';
-import { moment } from './const';
-import SparkMD5 from 'spark-md5';
-import { ChartCardSpanExtConfig } from './types-config';
-import * as pjson from '../package.json';
+import { HomeAssistant } from "custom-card-helpers";
+import {
+  ChartCardSeriesConfig,
+  EntityCachePoints,
+  EntityEntryCache,
+  HistoryPoint,
+} from "./types";
+import { HassEntity } from "home-assistant-js-websocket";
+import { moment } from "./const";
+import SparkMD5 from "spark-md5";
+import { ChartCardSpanExtConfig } from "./types-config";
+import * as pjson from "../package.json";
 
 export default class GraphEntry {
   private _computedHistory?: EntityCachePoints;
@@ -43,7 +48,11 @@ export default class GraphEntry {
     this._config = config;
     this._realEnd = new Date();
     this._realStart = new Date();
-    this._md5Config = SparkMD5.hash(`${this._graphSpan}${JSON.stringify(this._config)}${JSON.stringify(span)}`);
+    this._md5Config = SparkMD5.hash(
+      `${this._graphSpan}${JSON.stringify(this._config)}${JSON.stringify(
+        span,
+      )}`,
+    );
   }
 
   set hass(hass: HomeAssistant) {
@@ -68,7 +77,9 @@ export default class GraphEntry {
   }
 
   get lastState(): number | null {
-    return this.history.length > 0 ? this.history[this.history.length - 1][1] : null;
+    return this.history.length > 0
+      ? this.history[this.history.length - 1][1]
+      : null;
   }
 
   get sumStates(): number | null {
@@ -79,7 +90,8 @@ export default class GraphEntry {
     if (this.history.length === 0) return null;
     const index = this.history.findIndex((point, index, arr) => {
       if (!before && point[0] > now) return true;
-      if (before && point[0] < now && arr[index + 1] && arr[index + 1][0] > now) return true;
+      if (before && point[0] < now && arr[index + 1] && arr[index + 1][0] > now)
+        return true;
       return false;
     });
     if (index === -1) return null;
@@ -87,40 +99,78 @@ export default class GraphEntry {
   }
 
   get min(): number | undefined {
-    if (!this._computedHistory || this._computedHistory.length === 0) return undefined;
-    return Math.min(...this._computedHistory.flatMap((item) => (item[1] === null ? [] : [item[1]])));
+    if (!this._computedHistory || this._computedHistory.length === 0)
+      return undefined;
+    return Math.min(
+      ...this._computedHistory.flatMap((item) =>
+        item[1] === null ? [] : [item[1]],
+      ),
+    );
   }
 
   get max(): number | undefined {
-    if (!this._computedHistory || this._computedHistory.length === 0) return undefined;
-    return Math.max(...this._computedHistory.flatMap((item) => (item[1] === null ? [] : [item[1]])));
+    if (!this._computedHistory || this._computedHistory.length === 0)
+      return undefined;
+    return Math.max(
+      ...this._computedHistory.flatMap((item) =>
+        item[1] === null ? [] : [item[1]],
+      ),
+    );
   }
 
-  public minMaxWithTimestamp(start: number, end: number): { min: HistoryPoint; max: HistoryPoint } | undefined {
-    if (!this._computedHistory || this._computedHistory.length === 0) return undefined;
+  public minMaxWithTimestamp(
+    start: number,
+    end: number,
+  ): { min: HistoryPoint; max: HistoryPoint } | undefined {
+    if (!this._computedHistory || this._computedHistory.length === 0)
+      return undefined;
     if (this._computedHistory.length === 1)
-      return { min: [start, this._computedHistory[0][1]], max: [end, this._computedHistory[0][1]] };
+      return {
+        min: [
+          start,
+          this._computedHistory[0][1],
+        ],
+        max: [
+          end,
+          this._computedHistory[0][1],
+        ],
+      };
     return this._computedHistory.reduce(
       (acc: { min: HistoryPoint; max: HistoryPoint }, point) => {
         if (point[1] === null) return acc;
         if (point[0] > end || point[0] < start) return acc;
         if (acc.max[1] === null || acc.max[1] < point[1]) acc.max = [...point];
-        if (acc.min[1] === null || (point[1] !== null && acc.min[1] > point[1])) acc.min = [...point];
+        if (acc.min[1] === null || (point[1] !== null && acc.min[1] > point[1]))
+          acc.min = [...point];
         return acc;
       },
-      { min: [0, null], max: [0, null] },
+      {
+        min: [
+          0,
+          null,
+        ],
+        max: [
+          0,
+          null,
+        ],
+      },
     );
   }
 
-  public minMaxWithTimestampForYAxis(start: number, end: number): { min: HistoryPoint; max: HistoryPoint } | undefined {
-    if (!this._computedHistory || this._computedHistory.length === 0) return undefined;
+  public minMaxWithTimestampForYAxis(
+    start: number,
+    end: number,
+  ): { min: HistoryPoint; max: HistoryPoint } | undefined {
+    if (!this._computedHistory || this._computedHistory.length === 0)
+      return undefined;
     let lastTimestampBeforeStart = start;
     const lastHistoryIndexBeforeStart =
       this._computedHistory.findIndex((hist) => {
         return hist[0] >= start;
       }) - 1;
     if (lastHistoryIndexBeforeStart >= 0)
-      lastTimestampBeforeStart = this._computedHistory[lastHistoryIndexBeforeStart][0];
+      lastTimestampBeforeStart =
+        this._computedHistory[lastHistoryIndexBeforeStart][0];
     return this.minMaxWithTimestamp(lastTimestampBeforeStart, end);
   }
 
@@ -137,7 +187,12 @@ export default class GraphEntry {
       }
       let stateParsed: number | null = parseFloat(currentState as string);
       stateParsed = !Number.isNaN(stateParsed) ? stateParsed : null;
-      this._computedHistory = [[new Date(this._entityState.last_updated).getTime(), stateParsed]];
+      this._computedHistory = [
+        [
+          new Date(this._entityState.last_updated).getTime(),
+          stateParsed,
+        ],
+      ];
       this._updating = false;
       return true;
     }
@@ -156,17 +211,22 @@ export default class GraphEntry {
     return true;
   }
 
-  private async _generateData(start: Date, end: Date): Promise<EntityEntryCache> {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  private async _generateData(
+    start: Date,
+    end: Date,
+  ): Promise<EntityEntryCache> {
+    const AsyncFunction = Object.getPrototypeOf(
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      async function () {},
+    ).constructor;
     let data;
     try {
       const datafn = new AsyncFunction(
-        'entity',
-        'start',
-        'end',
-        'hass',
-        'moment',
+        "entity",
+        "start",
+        "end",
+        "hass",
+        "moment",
         `'use strict'; ${this._config.data_generator}`,
       );
       data = await datafn(this._entityState, start, end, this._hass, moment);
@@ -180,7 +240,7 @@ export default class GraphEntry {
           : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             `${this._config.data_generator!.trim().substring(0, 98)}...`;
       e.message = `${e.name}: ${e.message} in '${funcTrimmed}'`;
-      e.name = 'Error';
+      e.name = "Error";
       throw e;
     }
     return {

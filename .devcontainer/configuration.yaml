@@ -1,8 +1,9 @@
 # Contents of the `default_config:` tag but disabling things I don't want
 application_credentials:
-# automation:
-#bluetooth:
-#cloud:
+automation:
+# bluetooth:
+# cloud:
+conversation:
 counter:
 dhcp:
 energy:
@@ -10,7 +11,7 @@ frontend:
 hardware:
 history:
 homeassistant_alerts:
-# input_boolean:
+input_boolean:
 input_button:
 input_datetime:
 input_number:
@@ -32,7 +33,7 @@ sun:
 system_health:
 tag:
 timer:
-#usb:
+# usb:
 webhook:
 zeroconf:
 zone:
@@ -40,76 +41,9 @@ zone:
 lovelace:
   mode: yaml
   resources:
-    - url: http://127.0.0.1:5000/apexcharts-card.js
+    - url: http://127.0.0.1:5001/apexcharts-card.js
       type: module
 
 mqtt:
 
 demo:
-
-sensor:
-  - platform: template
-    sensors:
-      pressure:
-        friendly_name: 'Pressure'
-        unit_of_measurement: 'hPa'
-        value_template: "{{ state_attr('weather.home', 'pressure') }}"
-        device_class: pressure
-      temperature:
-        friendly_name: 'Temperature'
-        unit_of_measurement: '°C'
-        value_template: "{{ state_attr('weather.home', 'temperature') }}"
-        device_class: temperature
-      humidity:
-        friendly_name: 'Humidity'
-        unit_of_measurement: '%'
-        value_template: "{{ state_attr('weather.home', 'humidity') }}"
-        device_class: humidity
-  - platform: random
-    name: random0_100
-    minimum: 0
-    maximum: 100
-  - platform: random
-    name: random_big
-    minimum: 12309812
-    maximum: 22309812
-  - platform: random
-    name: random_0_1000
-    minimum: 0
-    maximum: 1000
-  - platform: template
-    sensors:
-      counter:
-        friendly_name: 'Counter'
-        unit_of_measurement: 's'
-        value_template: '{{ as_timestamp(now()) }}'
-
-  - platform: rest
-    name: counter_no_significant_update
-    resource: https://jsonplaceholder.typicode.com/posts/1
-    value_template: '{{ value_json.id | int }}'
-    force_update: true
-
-input_boolean:
-  test_boolean:
-    name: Test Input Boolean
-
-automation:
-  - alias: 'Update counter'
-    trigger:
-      - platform: time_pattern
-        seconds: '/1'
-    action:
-      - service: homeassistant.update_entity
-        target:
-          entity_id:
-            - sensor.counter
-  - alias: 'Update counter 2'
-    trigger:
-      - platform: time_pattern
-        seconds: '/10'
-    action:
-      - service: homeassistant.update_entity
-        target:
-          entity_id:
-            - sensor.counter_no_significant_update

@@ -2,7 +2,10 @@
   "name": "ApexCharts-card Development",
   "image": "ghcr.io/ludeeus/devcontainer/generic:latest",
   "context": "..",
-  "appPort": ["8123:8123", "5000:5000"],
+  "appPort": [
+    "8123:8123",
+    "5001:5001"
+  ],
   "postCreateCommand": "npm ci && sudo container install",
   "extensions": [
     "esbenp.prettier-vscode",

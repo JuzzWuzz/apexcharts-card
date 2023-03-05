@@ -1,5 +1,5 @@
 export interface ChartCardExternalConfig {
-  type: 'custom:apexcharts-card';
+  type: "custom:apexcharts-card-2";
   config_templates?: string[] | string;
   color_list?: string[];
   experimental?: {
@@ -42,7 +42,12 @@ export interface ChartCardExternalConfig {
   yaxis?: ChartCardYAxisExternal[];
 }
 
-export type ChartCardChartType = 'line' | 'scatter' | 'pie' | 'donut' | 'radialBar';
+export type ChartCardChartType =
+  | "line"
+  | "scatter"
+  | "pie"
+  | "donut"
+  | "radialBar";
 
 export interface ChartCardSpanExtConfig {
   start?: ChartCardStartEnd;
@@ -50,18 +55,25 @@ export interface ChartCardSpanExtConfig {
   offset?: string;
 }
 
-export type ChartCardStartEnd = 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' | 'isoWeek';
+export type ChartCardStartEnd =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "year"
+  | "isoWeek";
 
 export interface ChartCardAllSeriesExternalConfig {
   entity?: string;
   attribute?: string;
   name?: string;
-  type?: 'line' | 'column' | 'area';
+  type?: "line" | "column" | "area";
   color?: string;
   opacity?: number;
-  curve?: 'smooth' | 'straight' | 'stepline';
+  curve?: "smooth" | "straight" | "stepline";
   stroke_width?: number;
-  extend_to?: false | 'end' | 'now';
+  extend_to?: false | "end" | "now";
   clamp_negative?: boolean;
   unit?: string;
   unit_step?: number;
@@ -82,22 +94,31 @@ export interface ChartCardAllSeriesExternalConfig {
 export interface ChartCardSeriesShowConfigExt {
   as_duration?: ChartCardPrettyTime;
   legend_value?: boolean;
-  legend_function?: 'last' | 'sum';
-  in_header?: boolean | 'raw' | 'before_now' | 'after_now';
+  legend_function?: "last" | "sum";
+  in_header?: boolean | "raw" | "before_now" | "after_now";
   name_in_header?: boolean;
   header_color_threshold?: boolean;
   in_chart?: boolean;
-  datalabels?: boolean | 'total' | 'percent';
+  datalabels?: boolean | "total" | "percent";
   hidden_by_default?: boolean;
-  extremas?: boolean | 'time' | 'min' | 'max' | 'min+time' | 'max+time';
+  extremas?: boolean | "time" | "min" | "max" | "min+time" | "max+time";
   offset_in_name?: boolean;
 }
 
-export interface ChartCardSeriesExternalConfig extends ChartCardAllSeriesExternalConfig {
+export interface ChartCardSeriesExternalConfig
+  extends ChartCardAllSeriesExternalConfig {
   entity: string;
 }
 
-export type ChartCardPrettyTime = 'millisecond' | 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
+export type ChartCardPrettyTime =
+  | "millisecond"
+  | "second"
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "year";
 
 export interface ChartCardHeaderExternalConfig {
   show?: boolean;
@@ -118,8 +139,8 @@ export interface ChartCardYAxisExternal {
   id?: string;
   show?: boolean;
   opposite?: boolean;
-  min?: 'auto' | number | string;
-  max?: 'auto' | number | string;
+  min?: "auto" | number | string;
+  max?: "auto" | number | string;
   align_to?: number;
   decimals?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -130,4 +151,11 @@ export interface RestrictionConfig {
   user: string;
 }
 
-export declare type HapticType = 'success' | 'warning' | 'failure' | 'light' | 'medium' | 'heavy' | 'selection';
+export declare type HapticType =
+  | "success"
+  | "warning"
+  | "failure"
+  | "light"
+  | "medium"
+  | "heavy"
+  | "selection";

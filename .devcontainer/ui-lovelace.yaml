@@ -15,7 +15,7 @@ apexcharts_card_templates:
       show:
         legend_value: true
       data_generator: |
-        return entity.attributes.querydata;
+        return entity.attributes.data;
     apex_config:
       legend:
         showForSingleSeries: true
@@ -37,8 +37,8 @@ apexcharts_card_templates:
             day: dd MMM
             hour: HH:mm
     yaxis:
-      - min: '|-10|'
-        max: '|+10|'
+      - min: "|-10|"
+        max: "|+10|"
         align_to: 1
         decimals: 0
         apex_config:
@@ -51,9 +51,9 @@ apexcharts_card_templates:
     graph_span: 2 day
     span:
       start: day
-      offset: '-1d'
+      offset: "-1d"
     all_series_config:
-      unit_separator: ''
+      unit_separator: ""
       float_precision: 1
       show:
         legend_value: false
@@ -62,16 +62,16 @@ apexcharts_card_templates:
         show: false
     yaxis:
       - id: temperature
-        min: '|-10|'
-        max: '|+10|'
+        min: "|-10|"
+        max: "|+10|"
         align_to: 1
         decimals: 0
         apex_config:
           tickAmount: 6
           showAlways: true
       - id: humidity
-        min: '|-10|'
-        max: '|+10|'
+        min: "|-10|"
+        max: "|+10|"
         align_to: 1
         decimals: 0
         apex_config:
@@ -81,10 +81,10 @@ apexcharts_card_templates:
     series:
       - yaxis_id: temperature
         name: Temperature
-        unit: '°C'
+        unit: °C
       - yaxis_id: humidity
         name: Humidity
-        unit: '%'
+        unit: "%"
   power_energy_base:
     config_templates: default
     span_generator: |
@@ -108,7 +108,11 @@ apexcharts_card_templates:
       title: Power
       show_states: false
     all_series_config:
-      unit_array: ['W', 'kW', 'MW', 'GW']
+      unit_array:
+        - W
+        - kW
+        - MW
+        - GW
       show:
         legend_value: false
     apex_config:
@@ -119,28 +123,48 @@ apexcharts_card_templates:
     header:
       title: Energy
     all_series_config:
-      unit_array: ['Wh', 'kWh', 'MWh', 'GWh']
+      unit_array:
+        - Wh
+        - kWh
+        - MWh
+        - GWh
       type: column
       show:
-        legend_function: 'sum'
+        legend_function: sum
     apex_config:
       legend:
         show: false
-
+title: Home
 views:
-  - title: Juzz
+  - path: default_view
+    title: Home
+    badges: []
     cards:
-      - type: custom:apexcharts-card
-        config_templates: power_base
-        header:
-          title: Server Rack Power
-        series:
-          - entity: sensor.power_consumption
-            name: Server Rack Power
-      - type: custom:apexcharts-card
+      - type: custom:apexcharts-card-2
         config_templates: energy_base
         header:
-          title: Server Rack Power
+          title: Server Rack Energy 1
         series:
-          - entity: sensor.total_energy_kwh
-            name: Inverter Out
+          - entity: button.graph_entities_server_rack_energy
+            name: Server Rack Energy 1
+      - type: custom:apexcharts-card-2
+        config_templates: power_base
+        header:
+          title: Server Rack Power 1
+        series:
+          - entity: button.graph_entities_server_rack_power
+            name: Server Rack Power 1
+      - type: custom:apexcharts-card-2
+        config_templates: energy_base
+        header:
+          title: Server Rack Energy 2
+        series:
+          - entity: button.graph_entities_server_rack_energy_2
+            name: Server Rack Energy 2
+      - type: custom:apexcharts-card-2
+        config_templates: power_base
+        header:
+          title: Server Rack Power 2
+        series:
+          - entity: button.graph_entities_server_rack_power_2
+            name: Server Rack Power 2
