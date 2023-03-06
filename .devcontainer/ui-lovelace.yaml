@@ -16,6 +16,14 @@ apexcharts_card_templates:
         legend_value: true
       data_generator: |
         return entity.attributes;
+    span_generator: |
+      let start = moment(entities[0].attributes.start);
+      let end = moment(entities[0].attributes.end);
+      if (start.isValid() && end.isValid()) {
+        return [start, end];
+      } else {
+        return [undefined, undefined];
+      }
     apex_config:
       legend:
         showForSingleSeries: true
@@ -48,10 +56,6 @@ apexcharts_card_templates:
     config_templates: default
     header:
       title: Temperature
-    graph_span: 2 day
-    span:
-      start: day
-      offset: "-1d"
     all_series_config:
       unit_separator: ""
       float_precision: 1
@@ -87,14 +91,6 @@ apexcharts_card_templates:
         unit: "%"
   power_energy_base:
     config_templates: default
-    span_generator: |
-      let start = moment(entities[0].attributes.start);
-      let end = moment(entities[0].attributes.end);
-      if (start.isValid() && end.isValid()) {
-        return [start, end];
-      } else {
-        return [undefined, undefined];
-      }
     all_series_config:
       unit_step: 1000
       float_precision: 2
@@ -148,19 +144,19 @@ views:
           - entity: button.graph_entities_server_rack_energy
             name: Server Rack Energy 1
       - type: custom:apexcharts-card-2
-        config_templates: power_base
-        header:
-          title: Server Rack Power 1
-        series:
-          - entity: button.graph_entities_server_rack_power
-            name: Server Rack Power 1
-      - type: custom:apexcharts-card-2
         config_templates: energy_base
         header:
           title: Server Rack Energy 2
         series:
           - entity: button.graph_entities_server_rack_energy_2
             name: Server Rack Energy 2
+      - type: custom:apexcharts-card-2
+        config_templates: power_base
+        header:
+          title: Server Rack Power 1
+        series:
+          - entity: button.graph_entities_server_rack_power
+            name: Server Rack Power 1
       - type: custom:apexcharts-card-2
         config_templates: power_base
         header:

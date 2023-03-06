@@ -9,7 +9,6 @@ import {
 export interface ChartCardConfig extends ChartCardExternalConfig {
   series: ChartCardSeriesConfig[];
   series_in_graph: ChartCardSeriesConfig[];
-  graph_span: string;
   useCompress: boolean;
   apex_config?: ApexOptions;
   yaxis?: ChartCardYAxis[];
@@ -28,7 +27,6 @@ export interface ChartCardSeriesShowConfig
   in_header: boolean | "raw" | "before_now" | "after_now";
   name_in_header: boolean;
   in_chart: boolean;
-  offset_in_name: boolean;
 }
 
 export interface EntityEntryCache {

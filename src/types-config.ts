@@ -7,8 +7,6 @@ export interface ChartCardExternalConfig {
   update_delay?: string;
   all_series_config?: ChartCardAllSeriesExternalConfig;
   series: ChartCardSeriesExternalConfig[];
-  graph_span?: string;
-  span?: ChartCardSpanExtConfig;
   span_generator?: string;
   now?: {
     show?: boolean;
@@ -66,8 +64,6 @@ export interface ChartCardAllSeriesExternalConfig {
   float_precision?: number;
   min?: number;
   max?: number;
-  offset?: string;
-  time_delta?: string;
   show?: ChartCardSeriesShowConfigExt;
   yaxis_id?: string;
 }
@@ -81,7 +77,6 @@ export interface ChartCardSeriesShowConfigExt {
   in_chart?: boolean;
   datalabels?: boolean | "total" | "percent";
   extremas?: boolean | "time" | "min" | "max" | "min+time" | "max+time";
-  offset_in_name?: boolean;
 }
 
 export interface ChartCardSeriesExternalConfig

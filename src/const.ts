@@ -7,14 +7,12 @@ export const moment = extendMoment(Moment);
 export const ONE_HOUR = 1000 * 3600;
 export const HOUR_24 = ONE_HOUR * 24;
 
-export const DEFAULT_GRAPH_SPAN = "24h";
 export const DEFAULT_SERIE_TYPE = "line";
 export const DEFAULT_SHOW_LEGEND_VALUE = true;
 export const DEFAULT_SHOW_LEGEND_FUNCTION = "last";
 export const DEFAULT_SHOW_IN_HEADER = true;
 export const DEFAULT_SHOW_IN_CHART = true;
 export const DEFAULT_SHOW_NAME_IN_HEADER = true;
-export const DEFAULT_SHOW_OFFSET_IN_NAME = true;
 
 export const DEFAULT_FLOAT_PRECISION = 1;
 

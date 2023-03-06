@@ -1,10 +1,8 @@
 import { HomeAssistant } from "custom-card-helpers";
-import parse from "parse-duration";
 import {
   DEFAULT_AREA_OPACITY,
   DEFAULT_FLOAT_PRECISION,
   DEFAULT_SERIE_TYPE,
-  HOUR_24,
   NO_VALUE,
   TIMESERIES_TYPES,
 } from "./const";
@@ -176,35 +174,22 @@ function getXTooltipFormatter(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return parse(config.graph_span)! < HOUR_24 && !config.span?.offset
-    ? function (val, _a, _b) {
-        console.log("Route A");
-        console.log(val);
-        console.log(_a);
-        console.log(_b);
-        return new Intl.DateTimeFormat("en", {
-          hour: "numeric",
-          minute: "numeric",
-          second: "numeric",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any).format(val);
-      }
-    : function (val, _a, _b) {
-        console.log("Route B");
-        console.log(val);
-        console.log(_a);
-        console.log(_b);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return new Intl.DateTimeFormat("en", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "numeric",
-          second: "numeric",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any).format(val);
-      };
+  return function (val, _a, _b) {
+    console.log("Route B");
+    console.log(val);
+    console.log(_a);
+    console.log(_b);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any).format(val);
+  };
 }
 
 function getYTooltipFormatter(

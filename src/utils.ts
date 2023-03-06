@@ -3,7 +3,7 @@ import {
   compress as lzStringCompress,
   decompress as lzStringDecompress,
 } from "lz-string";
-import { ChartCardConfig, EntityCachePoints } from "./types";
+import { EntityCachePoints } from "./types";
 import { TinyColor } from "@ctrl/tinycolor";
 import parse from "parse-duration";
 import {
@@ -11,17 +11,10 @@ import {
   ChartCardPrettyTime,
   ChartCardSeriesExternalConfig,
 } from "./types-config";
-import {
-  DEFAULT_FLOAT_PRECISION,
-  DEFAULT_MAX,
-  DEFAULT_MIN,
-  moment,
-  NO_VALUE,
-} from "./const";
+import { DEFAULT_FLOAT_PRECISION, moment, NO_VALUE } from "./const";
 import {
   formatNumber,
   FrontendLocaleData,
-  HomeAssistant,
   LovelaceConfig,
 } from "custom-card-helpers";
 
@@ -98,12 +91,7 @@ export function computeName(
       entities[index]?.entity_id ||
       "";
   }
-  return (
-    name +
-    (series[index].show?.offset_in_name && series[index].offset
-      ? ` (${series[index].offset})`
-      : "")
-  );
+  return name;
 }
 
 export function formatValueAndUom(

@@ -13,8 +13,6 @@ export const ChartCardExternalConfig = t.iface([], {
   update_delay: t.opt("string"),
   all_series_config: t.opt("ChartCardAllSeriesExternalConfig"),
   series: t.array("ChartCardSeriesExternalConfig"),
-  graph_span: t.opt("string"),
-  span: t.opt("ChartCardSpanExtConfig"),
   span_generator: t.opt("string"),
   now: t.opt(
     t.iface([], {
@@ -75,8 +73,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   float_precision: t.opt("number"),
   min: t.opt("number"),
   max: t.opt("number"),
-  offset: t.opt("string"),
-  time_delta: t.opt("string"),
   show: t.opt("ChartCardSeriesShowConfigExt"),
   yaxis_id: t.opt("string"),
 });
@@ -101,7 +97,6 @@ export const ChartCardSeriesShowConfigExt = t.iface([], {
       t.lit("max+time"),
     ),
   ),
-  offset_in_name: t.opt("boolean"),
 });
 
 export const ChartCardSeriesExternalConfig = t.iface(

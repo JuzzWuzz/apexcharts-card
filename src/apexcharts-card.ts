@@ -38,7 +38,6 @@ import {
   prettyPrintTime,
   truncateFloat,
   validateInterval,
-  validateOffset,
 } from "./utils";
 import ApexCharts from "apexcharts";
 import { Ripple } from "@material/mwc-ripple";
@@ -56,18 +55,12 @@ import {
   DEFAULT_SHOW_LEGEND_VALUE,
   DEFAULT_SHOW_LEGEND_FUNCTION,
   DEFAULT_SHOW_NAME_IN_HEADER,
-  DEFAULT_SHOW_OFFSET_IN_NAME,
   DEFAULT_UPDATE_DELAY,
   moment,
   NO_VALUE,
   TIMESERIES_TYPES,
 } from "./const";
-import {
-  DEFAULT_COLORS,
-  DEFAULT_GRAPH_SPAN,
-  DEFAULT_SERIE_TYPE,
-  HOUR_24,
-} from "./const";
+import { DEFAULT_COLORS, DEFAULT_SERIE_TYPE, HOUR_24 } from "./const";
 import tinycolor from "@ctrl/tinycolor";
 
 /* eslint no-console: 0 */
@@ -132,15 +125,11 @@ class ChartsCard extends LitElement {
 
   private _graphSpan: number = HOUR_24;
 
-  private _offset = 0;
-
   @property({ attribute: false }) private _headerState: (number | null)[] = [];
 
   private _dataLoaded = false;
 
   private _seriesOffset: number[] = [];
-
-  private _seriesTimeDelta: number[] = [];
 
   private _updateDelay: number = DEFAULT_UPDATE_DELAY;
 
@@ -322,29 +311,6 @@ class ChartsCard extends LitElement {
           "update_interval",
         );
       }
-      if (configDup.graph_span) {
-        this._graphSpan = validateInterval(configDup.graph_span, "graph_span");
-      }
-      if (configDup.span?.offset) {
-        this._offset = validateOffset(configDup.span.offset, "span.offset");
-      }
-      if (configDup.span?.end && configDup.span?.start) {
-        throw new Error(`span: Only one of 'start' or 'end' is allowed.`);
-      }
-      configDup.series.forEach((serie, index) => {
-        if (serie.offset) {
-          this._seriesOffset[index] = validateOffset(
-            serie.offset,
-            `series[${index}].offset`,
-          );
-        }
-        if (serie.time_delta) {
-          this._seriesTimeDelta[index] = validateOffset(
-            serie.time_delta,
-            `series[${index}].time_delta`,
-          );
-        }
-      });
       if (configDup.update_delay) {
         this._updateDelay = validateInterval(
           configDup.update_delay,
@@ -354,7 +320,6 @@ class ChartsCard extends LitElement {
 
       this._config = mergeDeep(
         {
-          graph_span: DEFAULT_GRAPH_SPAN,
           useCompress: false,
           show: { loading: true },
         },
@@ -405,7 +370,7 @@ class ChartsCard extends LitElement {
         }
         this._graphs = this._config.series.map((serie, index) => {
           serie.index = index;
-          serie.ignore_history = !!(!serie.data_generator && !serie.offset);
+          serie.ignore_history = !serie.data_generator;
           if (!this._headerColors[index]) {
             this._headerColors[index] = defColors[index % defColors.length];
           }
@@ -424,7 +389,6 @@ class ChartsCard extends LitElement {
               in_header: DEFAULT_SHOW_IN_HEADER,
               in_chart: DEFAULT_SHOW_IN_CHART,
               name_in_header: DEFAULT_SHOW_NAME_IN_HEADER,
-              offset_in_name: DEFAULT_SHOW_OFFSET_IN_NAME,
             };
           } else {
             serie.show.legend_value =
@@ -447,10 +411,6 @@ class ChartsCard extends LitElement {
               serie.show.name_in_header === undefined
                 ? DEFAULT_SHOW_NAME_IN_HEADER
                 : serie.show.name_in_header;
-            serie.show.offset_in_name =
-              serie.show.offset_in_name === undefined
-                ? DEFAULT_SHOW_OFFSET_IN_NAME
-                : serie.show.offset_in_name;
           }
 
           if (serie.entity) {
@@ -840,9 +800,7 @@ class ChartsCard extends LitElement {
               return;
             }
             let data: EntityCachePoints = [];
-            const offset =
-              (this._seriesOffset[index] || 0) -
-              (this._seriesTimeDelta[index] || 0);
+            const offset = this._seriesOffset[index] || 0;
             if (offset) {
               data = offsetData(graph.history, offset);
             } else {
@@ -1321,21 +1279,6 @@ class ChartsCard extends LitElement {
       if (startM !== undefined && endM !== undefined) {
         start = startM.toDate();
         end = endM.toDate();
-      }
-    } else {
-      if (this._config?.span?.start) {
-        // Just Span
-        const startM = moment().startOf(this._config.span.start);
-        start = startM.toDate();
-        end = new Date(start.getTime() + this._graphSpan);
-      } else if (this._config?.span?.end) {
-        const endM = moment().endOf(this._config.span.end);
-        end = new Date(endM.toDate().getTime() + 1);
-        start = new Date(end.getTime() - this._graphSpan + 1);
-      }
-      if (this._offset) {
-        end.setTime(end.getTime() + this._offset);
-        start.setTime(start.getTime() + this._offset);
       }
     }
     return { start, end };
