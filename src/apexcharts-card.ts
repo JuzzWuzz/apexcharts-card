@@ -29,10 +29,6 @@ import {
   decompress,
   formatApexDate,
   formatValueAndUom,
-  getLang,
-  getPercentFromValue,
-  interpolateColor,
-  is12Hour,
   log,
   mergeConfigTemplates,
   mergeDeep,
@@ -51,14 +47,9 @@ import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
 import GraphEntry from "./graphEntry";
 import { createCheckers } from "ts-interface-checker";
-import {
-  ChartCardColorThreshold,
-  ChartCardExternalConfig,
-  ChartCardSeriesExternalConfig,
-} from "./types-config";
+import { ChartCardExternalConfig } from "./types-config";
 import exportedTypeSuite from "./types-config-ti";
 import {
-  DEFAULT_AREA_OPACITY,
   DEFAULT_FLOAT_PRECISION,
   DEFAULT_SHOW_IN_CHART,
   DEFAULT_SHOW_IN_HEADER,
@@ -69,7 +60,6 @@ import {
   DEFAULT_UPDATE_DELAY,
   moment,
   NO_VALUE,
-  PLAIN_COLOR_TYPES,
   TIMESERIES_TYPES,
 } from "./const";
 import {
@@ -220,20 +210,7 @@ class ChartsCard extends LitElement {
       return;
     this._dataLoaded = true;
     this._updating = true;
-    this._updateData().then(() => {
-      if (this._config?.experimental?.hidden_by_default) {
-        this._config.series_in_graph.forEach((serie, index) => {
-          if (serie.show.hidden_by_default) {
-            const name = computeName(
-              index,
-              this._config?.series_in_graph,
-              this._entities,
-            );
-            this._apexChart?.hideSeries(name);
-          }
-        });
-      }
-    });
+    this._updateData();
   }
 
   public set hass(hass: HomeAssistant) {
@@ -330,9 +307,7 @@ class ChartsCard extends LitElement {
     }
     try {
       const { ChartCardExternalConfig } = createCheckers(exportedTypeSuite);
-      if (!configDup.experimental?.disable_config_validation) {
-        ChartCardExternalConfig.strictCheck(configDup);
-      }
+      ChartCardExternalConfig.strictCheck(configDup);
       if (configDup.all_series_config) {
         configDup.series.forEach((serie, index) => {
           const allDup = JSON.parse(
@@ -430,16 +405,7 @@ class ChartsCard extends LitElement {
         }
         this._graphs = this._config.series.map((serie, index) => {
           serie.index = index;
-          serie.ignore_history = !!(
-            this._config?.chart_type &&
-            [
-              "donut",
-              "pie",
-              "radialBar",
-            ].includes(this._config?.chart_type) &&
-            !serie.data_generator &&
-            !serie.offset
-          );
+          serie.ignore_history = !!(!serie.data_generator && !serie.offset);
           if (!this._headerColors[index]) {
             this._headerColors[index] = defColors[index % defColors.length];
           }
@@ -486,13 +452,6 @@ class ChartsCard extends LitElement {
                 ? DEFAULT_SHOW_OFFSET_IN_NAME
                 : serie.show.offset_in_name;
           }
-          if (serie.color_threshold && serie.color_threshold.length > 0) {
-            const sorted: ChartCardColorThreshold[] = JSON.parse(
-              JSON.stringify(serie.color_threshold),
-            );
-            sorted.sort((a, b) => (a.value < b.value ? -1 : 1));
-            serie.color_threshold = sorted;
-          }
 
           if (serie.entity) {
             const graphEntry = new GraphEntry(
@@ -500,7 +459,6 @@ class ChartsCard extends LitElement {
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               this._graphSpan!,
               serie,
-              this._config?.span,
             );
             if (this._hass) graphEntry.hass = this._hass;
             return graphEntry;
@@ -766,7 +724,7 @@ class ChartsCard extends LitElement {
                 <div id="state__value">
                   <span
                     id="state"
-                    style="${this._computeHeaderStateColor(serie, valueRaw)}"
+                    style="${this._computeHeaderStateColor(serie)}"
                     >${valueRaw === 0
                       ? 0
                       : serie.show.as_duration
@@ -800,9 +758,7 @@ class ChartsCard extends LitElement {
   private _renderLastUpdated(): TemplateResult {
     if (this._config?.show?.last_updated) {
       return html`
-        <div id="last_updated">
-          ${formatApexDate(this._config, this._hass, this._lastUpdated, true)}
-        </div>
+        <div id="last_updated">${formatApexDate(this._lastUpdated)}</div>
       `;
     }
     return html``;
@@ -819,7 +775,7 @@ class ChartsCard extends LitElement {
     ) {
       this._loaded = true;
       const graph = this.shadowRoot.querySelector("#graph");
-      const layout = getLayoutConfig(this._config, this._hass, this._graphs);
+      const layout = getLayoutConfig(this._config, this._hass);
       this._apexChart = new ApexCharts(graph, layout);
       this._apexChart.render();
       this._firstDataLoad();
@@ -831,192 +787,138 @@ class ChartsCard extends LitElement {
 
     const now = new Date();
     this._lastUpdated = now;
-    try {
-      const { start, end } = await this._getSpanDates();
 
-      const promise = this._graphs.map((graph, index) => {
-        return graph?._updateHistory(
-          this._seriesOffset[index]
-            ? new Date(start.getTime() + this._seriesOffset[index])
-            : start,
-          this._seriesOffset[index]
-            ? new Date(end.getTime() + this._seriesOffset[index])
-            : end,
-        );
-      });
-      await Promise.all(promise);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let graphData: any = { series: [] };
-      if (TIMESERIES_TYPES.includes(this._config.chart_type)) {
-        this._graphs.forEach((graph, index) => {
-          if (!graph) return [];
-          const inHeader = this._config?.series[index].show.in_header;
-          if (inHeader && inHeader !== "raw") {
-            if (inHeader === "after_now" || inHeader === "before_now") {
-              // before_now / after_now
-              this._headerState[index] = graph.nowValue(
-                now.getTime() +
-                  (this._seriesOffset[index] ? this._seriesOffset[index] : 0),
-                inHeader === "before_now",
-              );
-            } else {
-              // not raw
-              if (this._config?.series[index].show.legend_function === "sum") {
-                this._headerState[index] = graph.sumStates;
-              } else {
-                this._headerState[index] = graph.lastState;
-              }
-            }
-          }
-          if (!this._config?.series[index].show.in_chart) {
-            return;
-          }
-          if (graph.history.length === 0) {
-            if (this._config?.series[index].show.in_chart)
-              graphData.series.push({ data: [] });
-            return;
-          }
-          let data: EntityCachePoints = [];
-          const offset =
-            (this._seriesOffset[index] || 0) -
-            (this._seriesTimeDelta[index] || 0);
-          if (offset) {
-            data = offsetData(graph.history, offset);
-          } else {
-            data = [...graph.history];
-          }
-          if (
-            this._config?.series[index].type !== "column" &&
-            this._config?.series[index].extend_to
-          ) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const lastPoint = data.slice(-1)[0]!;
-            if (
-              this._config?.series[index].extend_to === "end" &&
-              lastPoint[0] < end.getTime()
-            ) {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              data.push([
-                end.getTime(),
-                lastPoint[1],
-              ]);
-            } else if (
-              this._config?.series[index].extend_to === "now" &&
-              lastPoint[0] < now.getTime()
-            ) {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              data.push([
-                now.getTime(),
-                lastPoint[1],
-              ]);
-            }
-          }
-          const result = this._config?.series[index].invert
-            ? { data: this._invertData(data) }
-            : { data };
-          if (this._config?.series[index].show.in_chart)
-            graphData.series.push(result);
-          return;
-        });
-        graphData.annotations = this._computeAnnotations(start, end, now);
-        if (this._yAxisConfig) {
-          graphData.yaxis = this._computeYAxisAutoMinMax(start, end);
-        }
-        graphData.xaxis = {
-          min: start.getTime(),
-          max: end.getTime(),
-        };
+    try {
+      // eslint-disable-next-line no-constant-condition
+      if (now === new Date()) {
+        // TODO: Fill in
       } else {
-        // No timeline charts
-        graphData = {
-          series: this._graphs.flatMap((graph, index) => {
+        const { start, end } = await this._getSpanDates();
+
+        const promise = this._graphs.map((graph, index) => {
+          return graph?._updateHistory(
+            this._seriesOffset[index]
+              ? new Date(start.getTime() + this._seriesOffset[index])
+              : start,
+            this._seriesOffset[index]
+              ? new Date(end.getTime() + this._seriesOffset[index])
+              : end,
+          );
+        });
+        await Promise.all(promise);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let graphData: any = { series: [] };
+        if (TIMESERIES_TYPES.includes(this._config.chart_type)) {
+          this._graphs.forEach((graph, index) => {
             if (!graph) return [];
-            let data = 0;
-            if (graph.history.length === 0) {
-              if (this._config?.series[index].show.in_header !== "raw") {
-                this._headerState[index] = null;
-              }
-              data = 0;
-            } else {
-              const lastState = graph.lastState;
-              data = lastState || 0;
-              if (this._config?.series[index].show.in_header !== "raw") {
-                this._headerState[index] = lastState;
+            const inHeader = this._config?.series[index].show.in_header;
+            if (inHeader && inHeader !== "raw") {
+              if (inHeader === "after_now" || inHeader === "before_now") {
+                // before_now / after_now
+                this._headerState[index] = graph.nowValue(
+                  now.getTime() +
+                    (this._seriesOffset[index] ? this._seriesOffset[index] : 0),
+                  inHeader === "before_now",
+                );
+              } else {
+                // not raw
+                if (
+                  this._config?.series[index].show.legend_function === "sum"
+                ) {
+                  this._headerState[index] = graph.sumStates;
+                } else {
+                  this._headerState[index] = graph.lastState;
+                }
               }
             }
             if (!this._config?.series[index].show.in_chart) {
-              return [];
+              return;
             }
-            if (this._config?.chart_type === "radialBar") {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              return [
-                getPercentFromValue(
-                  data,
-                  this._config.series[index].min,
-                  this._config.series[index].max,
-                ),
-              ];
+            if (graph.history.length === 0) {
+              if (this._config?.series[index].show.in_chart)
+                graphData.series.push({ data: [] });
+              return;
+            }
+            let data: EntityCachePoints = [];
+            const offset =
+              (this._seriesOffset[index] || 0) -
+              (this._seriesTimeDelta[index] || 0);
+            if (offset) {
+              data = offsetData(graph.history, offset);
             } else {
-              return [data];
+              data = [...graph.history];
             }
-          }),
-        };
-      }
-      graphData.colors = this._computeChartColors();
-      if (
-        this._config.experimental?.color_threshold &&
-        this._config.series.some((serie) => serie.color_threshold)
-      ) {
-        graphData.markers = {
-          colors: computeColors(
-            this._config.series_in_graph.flatMap((serie, index) => {
-              if (serie.type === "column") return [];
-              return [this._colors[index]];
-            }),
-          ),
-        };
-        // graphData.fill = { colors: graphData.colors };
-        graphData.legend = {
-          markers: { fillColors: computeColors(this._colors) },
-        };
-        graphData.tooltip = {
-          marker: { fillColors: graphData.legend.markers.fillColors },
-        };
-        graphData.fill = {
-          gradient: {
-            type: "vertical",
-            colorStops: this._config.series_in_graph.map((serie, index) => {
+            if (
+              this._config?.series[index].type !== "column" &&
+              this._config?.series[index].extend_to
+            ) {
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              const lastPoint = data.slice(-1)[0]!;
               if (
-                !serie.color_threshold ||
-                ![
-                  undefined,
-                  "area",
-                  "line",
-                ].includes(serie.type)
-              )
+                this._config?.series[index].extend_to === "end" &&
+                lastPoint[0] < end.getTime()
+              ) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                data.push([
+                  end.getTime(),
+                  lastPoint[1],
+                ]);
+              } else if (
+                this._config?.series[index].extend_to === "now" &&
+                lastPoint[0] < now.getTime()
+              ) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                data.push([
+                  now.getTime(),
+                  lastPoint[1],
+                ]);
+              }
+            }
+            if (this._config?.series[index].show.in_chart)
+              graphData.series.push({ data });
+            return;
+          });
+          graphData.annotations = this._computeAnnotations(start, end, now);
+          if (this._yAxisConfig) {
+            graphData.yaxis = this._computeYAxisAutoMinMax(start, end);
+          }
+          graphData.xaxis = {
+            min: start.getTime(),
+            max: end.getTime(),
+          };
+        } else {
+          // No timeline charts
+          graphData = {
+            series: this._graphs.flatMap((graph, index) => {
+              if (!graph) return [];
+              let data = 0;
+              if (graph.history.length === 0) {
+                if (this._config?.series[index].show.in_header !== "raw") {
+                  this._headerState[index] = null;
+                }
+                data = 0;
+              } else {
+                const lastState = graph.lastState;
+                data = lastState || 0;
+                if (this._config?.series[index].show.in_header !== "raw") {
+                  this._headerState[index] = lastState;
+                }
+              }
+              if (!this._config?.series[index].show.in_chart) {
                 return [];
-              const min = this._graphs?.[serie.index]?.min;
-              const max = this._graphs?.[serie.index]?.max;
-              if (min === undefined || max === undefined) return [];
-              return (
-                this._computeFillColorStops(
-                  serie,
-                  min,
-                  max,
-                  computeColor(this._colors[index]),
-                  serie.invert,
-                ) || []
-              );
+              }
+              return [data];
             }),
-          },
-        };
+          };
+        }
+        graphData.colors = this._computeChartColors();
+        this._headerState = [...this._headerState];
+        this._apexChart?.updateOptions(
+          graphData,
+          false,
+          TIMESERIES_TYPES.includes(this._config.chart_type) ? false : true,
+        );
       }
-      this._headerState = [...this._headerState];
-      this._apexChart?.updateOptions(
-        graphData,
-        false,
-        TIMESERIES_TYPES.includes(this._config.chart_type) ? false : true,
-      );
     } catch (err) {
       log(err);
     }
@@ -1079,7 +981,6 @@ class ChartsCard extends LitElement {
                 txtColor,
                 serie,
                 index,
-                serie.invert,
                 sameDay,
                 withTime,
               ),
@@ -1105,7 +1006,6 @@ class ChartsCard extends LitElement {
                 txtColor,
                 serie,
                 index,
-                serie.invert,
                 sameDay,
                 withTime,
               ),
@@ -1126,7 +1026,6 @@ class ChartsCard extends LitElement {
     txtColor: string,
     serie: ChartCardSeriesConfig,
     index: number,
-    invert = false,
     sameDay: boolean,
     withTime: boolean,
   ) {
@@ -1138,7 +1037,7 @@ class ChartsCard extends LitElement {
       this._config.apex_config.yaxis.length > 1;
     points.push({
       x: offset ? value[0] - offset : value[0],
-      y: invert && value[1] ? -value[1] : value[1],
+      y: value[1],
       seriesIndex: index,
       yAxisIndex: multiYAxis ? index : 0,
       marker: {
@@ -1173,21 +1072,18 @@ class ChartsCard extends LitElement {
       }
       options = {
         ...options,
-        ...(is12Hour(this._config, this._hass)
-          ? { hour12: true }
-          : { hourCycle: "h23" }),
+        ...{ hourCycle: "h23" },
       };
-      const lang = getLang(this._hass);
       points.push({
         x: offset ? value[0] - offset : value[0],
-        y: invert && value[1] ? -value[1] : value[1],
+        y: value[1],
         seriesIndex: index,
         yAxisIndex: multiYAxis ? index : 0,
         marker: {
           size: 0,
         },
         label: {
-          text: `${Intl.DateTimeFormat(lang, options).format(value[0])}`,
+          text: `${Intl.DateTimeFormat("en", options).format(value[0])}`,
           borderColor: "var(--card-background-color)",
           offsetY: -22,
           borderWidth: 0,
@@ -1248,16 +1144,6 @@ class ChartsCard extends LitElement {
               : end.getTime(),
           );
           if (!lMinMax) return undefined;
-          if (this._config?.series[id].invert) {
-            const cmin = lMinMax.min[1];
-            const cmax = lMinMax.max[1];
-            if (cmin !== null) {
-              lMinMax.max[1] = -cmin;
-            }
-            if (cmax !== null) {
-              lMinMax.min[1] = -cmax;
-            }
-          }
           return lMinMax;
         });
         let min: number | null = null;
@@ -1387,183 +1273,15 @@ class ChartsCard extends LitElement {
     const defaultColors: (string | (({ value }) => string))[] = computeColors(
       this._colors,
     );
-    const series = this._config?.series_in_graph;
-    series?.forEach((serie, index) => {
-      if (
-        this._config?.experimental?.color_threshold &&
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        (PLAIN_COLOR_TYPES.includes(this._config!.chart_type!) ||
-          serie.type === "column") &&
-        serie.color_threshold &&
-        serie.color_threshold.length > 0
-      ) {
-        const colors = this._colors;
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        defaultColors[index] = function (
-          { value },
-          sortedL = serie.color_threshold!,
-          defColor = colors[index],
-        ) {
-          let returnValue = sortedL[0].color || defColor;
-          sortedL.forEach((color) => {
-            if (value > color.value) returnValue = color.color || defColor;
-          });
-          return computeColor(returnValue);
-        };
-      }
-    });
     return defaultColors.slice(0, this._config?.series_in_graph.length);
   }
 
-  private _computeFillColorStops(
-    serie: ChartCardSeriesConfig,
-    min: number,
-    max: number,
-    defColor: string,
-    invert = false,
-  ): { offset: number; color: string; opacity?: number }[] | undefined {
-    if (!serie.color_threshold) return undefined;
-    const scale = max - min;
-
-    const result = serie.color_threshold.flatMap((thres, index, arr) => {
-      if (
-        (thres.value > max && arr[index - 1] && arr[index - 1].value > max) ||
-        (thres.value < min && arr[index + 1] && arr[index + 1].value < min)
-      ) {
-        return [];
-      }
-      let color: string | undefined = undefined;
-      const defaultOp =
-        serie.opacity !== undefined
-          ? serie.opacity
-          : serie.type === "area"
-          ? DEFAULT_AREA_OPACITY
-          : 1;
-      let opacity = thres.opacity === undefined ? defaultOp : thres.opacity;
-      if (thres.value > max && arr[index - 1]) {
-        const factor =
-          (max - arr[index - 1].value) / (thres.value - arr[index - 1].value);
-        color = interpolateColor(
-          tinycolor(arr[index - 1].color || defColor).toHexString(),
-          tinycolor(thres.color || defColor).toHexString(),
-          factor,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const prevOp =
-          arr[index - 1].opacity === undefined
-            ? defaultOp
-            : arr[index - 1].opacity!;
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const curOp = thres.opacity === undefined ? defaultOp : thres.opacity!;
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        if (prevOp > curOp) {
-          opacity = (prevOp - curOp) * (1 - factor) + curOp;
-        } else {
-          opacity = (curOp - prevOp) * factor + prevOp;
-        }
-        opacity = opacity < 0 ? -opacity : opacity;
-      } else if (thres.value < min && arr[index + 1]) {
-        const factor =
-          (arr[index + 1].value - min) / (arr[index + 1].value - thres.value);
-        color = interpolateColor(
-          tinycolor(arr[index + 1].color || defColor).toHexString(),
-          tinycolor(thres.color || defColor).toHexString(),
-          factor,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const nextOp =
-          arr[index + 1].opacity === undefined
-            ? defaultOp
-            : arr[index + 1].opacity!;
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const curOp = thres.opacity === undefined ? defaultOp : thres.opacity!;
-        if (nextOp > curOp) {
-          opacity = (nextOp - curOp) * (1 - factor) + curOp;
-        } else {
-          opacity = (curOp - nextOp) * factor + nextOp;
-        }
-        opacity = opacity < 0 ? -opacity : opacity;
-      }
-      color = color || tinycolor(thres.color || defColor).toHexString();
-      if (
-        [
-          undefined,
-          "line",
-        ].includes(serie.type)
-      )
-        color = tinycolor(color).setAlpha(opacity).toHex8String();
-      return [
-        {
-          color: color || tinycolor(thres.color || defColor).toHexString(),
-          offset:
-            scale <= 0
-              ? 0
-              : invert
-              ? 100 - (max - thres.value) * (100 / scale)
-              : (max - thres.value) * (100 / scale),
-          opacity,
-        },
-      ];
-    });
-    return invert ? result : result.reverse();
-  }
-
-  private _computeHeaderStateColor(
-    serie: ChartCardSeriesConfig,
-    value: number | null,
-  ): string {
-    let color = "";
-    if (this._config?.header?.colorize_states) {
-      if (
-        this._config.experimental?.color_threshold &&
-        serie.show.header_color_threshold &&
-        serie.color_threshold &&
-        serie.color_threshold.length > 0 &&
-        value !== null
-      ) {
-        const index = serie.color_threshold.findIndex((thres) => {
-          return thres.value > value;
-        });
-        if (index < 0) {
-          color = computeColor(
-            serie.color_threshold[serie.color_threshold.length - 1].color ||
-              this._headerColors[serie.index],
-          );
-        } else if (index === 0) {
-          color = computeColor(
-            serie.color_threshold[0].color || this._headerColors[serie.index],
-          );
-        } else {
-          const prev = serie.color_threshold[index - 1];
-          const next = serie.color_threshold[index];
-          if (serie.type === "column") {
-            color = computeColor(prev.color || this._headerColors[serie.index]);
-          } else {
-            const factor = (value - prev.value) / (next.value - prev.value);
-            color = interpolateColor(
-              computeColor(prev.color || this._headerColors[serie.index]),
-              computeColor(next.color || this._headerColors[serie.index]),
-              factor,
-            );
-          }
-        }
-      } else {
-        return this._headerColors && this._headerColors.length > 0
-          ? `color: ${this._headerColors[serie.index]};`
-          : "";
-      }
-    }
-    return color ? `color: ${color};` : "";
-  }
-
-  private _invertData(data: EntityCachePoints): EntityCachePoints {
-    return data.map((item) => {
-      if (item[1] === null) return item;
-      return [
-        item[0],
-        -item[1],
-      ];
-    });
+  private _computeHeaderStateColor(serie: ChartCardSeriesConfig): string {
+    return this._config?.header?.colorize_states &&
+      this._headerColors &&
+      this._headerColors.length > 0
+      ? `color: ${this._headerColors[serie.index]};`
+      : "";
   }
 
   private async _getSpanDates(): Promise<{ start: Date; end: Date }> {
@@ -1647,133 +1365,6 @@ class ChartsCard extends LitElement {
 
   public getCardSize(): number {
     return 3;
-  }
-
-  static getStubConfig(
-    hass: HomeAssistant,
-    entities: string[],
-    entitiesFallback: string[],
-  ) {
-    const entityFilter = (stateObj: HassEntity): boolean => {
-      return !isNaN(Number(stateObj.state));
-    };
-    const _arrayFilter = (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      array: any[],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      conditions: Array<(value: any) => boolean>,
-      maxSize: number,
-    ) => {
-      if (!maxSize || maxSize > array.length) {
-        maxSize = array.length;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const filteredArray: any[] = [];
-
-      for (let i = 0; i < array.length && filteredArray.length < maxSize; i++) {
-        let meetsConditions = true;
-
-        for (const condition of conditions) {
-          if (!condition(array[i])) {
-            meetsConditions = false;
-            break;
-          }
-        }
-
-        if (meetsConditions) {
-          filteredArray.push(array[i]);
-        }
-      }
-
-      return filteredArray;
-    };
-    const _findEntities = (
-      hass: HomeAssistant,
-      maxEntities: number,
-      entities: string[],
-      entitiesFallback: string[],
-      includeDomains?: string[],
-      entityFilter?: (stateObj: HassEntity) => boolean,
-    ) => {
-      const conditions: Array<(value: string) => boolean> = [];
-
-      if (includeDomains?.length) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        conditions.push((eid) => includeDomains!.includes(eid.split(".")[0]));
-      }
-
-      if (entityFilter) {
-        conditions.push(
-          (eid) => hass.states[eid] && entityFilter(hass.states[eid]),
-        );
-      }
-
-      const entityIds = _arrayFilter(entities, conditions, maxEntities);
-
-      if (entityIds.length < maxEntities && entitiesFallback.length) {
-        const fallbackEntityIds = _findEntities(
-          hass,
-          maxEntities - entityIds.length,
-          entitiesFallback,
-          [],
-          includeDomains,
-          entityFilter,
-        );
-
-        entityIds.push(...fallbackEntityIds);
-      }
-
-      return entityIds;
-    };
-    const includeDomains = ["sensor"];
-    const maxEntities = 2;
-
-    const foundEntities = _findEntities(
-      hass,
-      maxEntities,
-      entities,
-      entitiesFallback,
-      includeDomains,
-      entityFilter,
-    );
-    const conf = {
-      header: {
-        show: true,
-        title: "ApexCharts-Card",
-        show_states: true,
-        colorize_states: true,
-      },
-      series: [] as ChartCardSeriesExternalConfig[],
-    };
-    if (foundEntities[0]) {
-      conf.series[0] = {
-        entity: foundEntities[0],
-        data_generator: `// REMOVE ME
-const now = new Date();
-const data = [];
-for(let i = 0; i <= 24; i++) {
-  data.push([now.getTime() - i * 1000 * 60 * 60, Math.floor((Math.random() * 10) + 1)])
-}
-return data.reverse();
-`,
-      };
-    }
-    if (foundEntities[1]) {
-      conf.series[1] = {
-        entity: foundEntities[1],
-        type: "column",
-        data_generator: `// REMOVE ME
-const now = new Date();
-const data = [];
-for(let i = 0; i <= 24; i++) {
-  data.push([now.getTime() - i * 1000 * 60 * 60, Math.floor((Math.random() * 10) + 1)])
-}
-return data.reverse();
-`,
-      };
-    }
-    return conf;
   }
 }
 

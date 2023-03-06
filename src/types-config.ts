@@ -2,12 +2,6 @@ export interface ChartCardExternalConfig {
   type: "custom:apexcharts-card-2";
   config_templates?: string[] | string;
   color_list?: string[];
-  experimental?: {
-    color_threshold?: boolean;
-    disable_config_validation?: boolean;
-    hidden_by_default?: boolean;
-  };
-  hours_12?: boolean;
   chart_type?: ChartCardChartType;
   update_interval?: string;
   update_delay?: string;
@@ -25,7 +19,6 @@ export interface ChartCardExternalConfig {
     loading?: boolean;
     last_updated?: boolean;
   };
-  cache?: boolean;
   stacked?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apex_config?: any;
@@ -33,21 +26,11 @@ export interface ChartCardExternalConfig {
   // Support to define style (card-mod/card-mod-v3.0 or picture-entity)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   style?: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  card_mod?: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  view_layout?: any;
   index?: number;
-  view_index?: number;
   yaxis?: ChartCardYAxisExternal[];
 }
 
-export type ChartCardChartType =
-  | "line"
-  | "scatter"
-  | "pie"
-  | "donut"
-  | "radialBar";
+export type ChartCardChartType = "line" | "scatter";
 
 export interface ChartCardSpanExtConfig {
   start?: ChartCardStartEnd;
@@ -79,7 +62,6 @@ export interface ChartCardAllSeriesExternalConfig {
   unit_step?: number;
   unit_array?: string[];
   unit_separator?: string;
-  invert?: boolean;
   data_generator?: string;
   float_precision?: number;
   min?: number;
@@ -87,7 +69,6 @@ export interface ChartCardAllSeriesExternalConfig {
   offset?: string;
   time_delta?: string;
   show?: ChartCardSeriesShowConfigExt;
-  color_threshold?: ChartCardColorThreshold[];
   yaxis_id?: string;
 }
 
@@ -97,10 +78,8 @@ export interface ChartCardSeriesShowConfigExt {
   legend_function?: "last" | "sum";
   in_header?: boolean | "raw" | "before_now" | "after_now";
   name_in_header?: boolean;
-  header_color_threshold?: boolean;
   in_chart?: boolean;
   datalabels?: boolean | "total" | "percent";
-  hidden_by_default?: boolean;
   extremas?: boolean | "time" | "min" | "max" | "min+time" | "max+time";
   offset_in_name?: boolean;
 }
@@ -129,12 +108,6 @@ export interface ChartCardHeaderExternalConfig {
   standard_format?: boolean;
 }
 
-export interface ChartCardColorThreshold {
-  value: number;
-  color?: string;
-  opacity?: number;
-}
-
 export interface ChartCardYAxisExternal {
   id?: string;
   show?: boolean;
@@ -146,16 +119,3 @@ export interface ChartCardYAxisExternal {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apex_config?: any;
 }
-
-export interface RestrictionConfig {
-  user: string;
-}
-
-export declare type HapticType =
-  | "success"
-  | "warning"
-  | "failure"
-  | "light"
-  | "medium"
-  | "heavy"
-  | "selection";

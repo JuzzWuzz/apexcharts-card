@@ -8,14 +8,6 @@ export const ChartCardExternalConfig = t.iface([], {
   type: t.lit("custom:apexcharts-card-2"),
   config_templates: t.opt(t.union(t.array("string"), "string")),
   color_list: t.opt(t.array("string")),
-  experimental: t.opt(
-    t.iface([], {
-      color_threshold: t.opt("boolean"),
-      disable_config_validation: t.opt("boolean"),
-      hidden_by_default: t.opt("boolean"),
-    }),
-  ),
-  hours_12: t.opt("boolean"),
   chart_type: t.opt("ChartCardChartType"),
   update_interval: t.opt("string"),
   update_delay: t.opt("string"),
@@ -37,25 +29,16 @@ export const ChartCardExternalConfig = t.iface([], {
       last_updated: t.opt("boolean"),
     }),
   ),
-  cache: t.opt("boolean"),
   stacked: t.opt("boolean"),
   apex_config: t.opt("any"),
   header: t.opt("ChartCardHeaderExternalConfig"),
   style: t.opt("any"),
-  card_mod: t.opt("any"),
   view_layout: t.opt("any"),
   index: t.opt("number"),
-  view_index: t.opt("number"),
   yaxis: t.opt(t.array("ChartCardYAxisExternal")),
 });
 
-export const ChartCardChartType = t.union(
-  t.lit("line"),
-  t.lit("scatter"),
-  t.lit("pie"),
-  t.lit("donut"),
-  t.lit("radialBar"),
-);
+export const ChartCardChartType = t.union(t.lit("line"), t.lit("scatter"));
 
 export const ChartCardSpanExtConfig = t.iface([], {
   start: t.opt("ChartCardStartEnd"),
@@ -88,7 +71,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   unit_step: t.opt("number"),
   unit_array: t.opt(t.array("string")),
   unit_separator: t.opt("string"),
-  invert: t.opt("boolean"),
   data_generator: t.opt("string"),
   float_precision: t.opt("number"),
   min: t.opt("number"),
@@ -96,7 +78,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   offset: t.opt("string"),
   time_delta: t.opt("string"),
   show: t.opt("ChartCardSeriesShowConfigExt"),
-  color_threshold: t.opt(t.array("ChartCardColorThreshold")),
   yaxis_id: t.opt("string"),
 });
 
@@ -108,10 +89,8 @@ export const ChartCardSeriesShowConfigExt = t.iface([], {
     t.union("boolean", t.lit("raw"), t.lit("before_now"), t.lit("after_now")),
   ),
   name_in_header: t.opt("boolean"),
-  header_color_threshold: t.opt("boolean"),
   in_chart: t.opt("boolean"),
   datalabels: t.opt(t.union("boolean", t.lit("total"), t.lit("percent"))),
-  hidden_by_default: t.opt("boolean"),
   extremas: t.opt(
     t.union(
       "boolean",
@@ -152,12 +131,6 @@ export const ChartCardHeaderExternalConfig = t.iface([], {
   standard_format: t.opt("boolean"),
 });
 
-export const ChartCardColorThreshold = t.iface([], {
-  value: "number",
-  color: t.opt("string"),
-  opacity: t.opt("number"),
-});
-
 export const ChartCardYAxisExternal = t.iface([], {
   id: t.opt("string"),
   show: t.opt("boolean"),
@@ -169,20 +142,6 @@ export const ChartCardYAxisExternal = t.iface([], {
   apex_config: t.opt("any"),
 });
 
-export const RestrictionConfig = t.iface([], {
-  user: "string",
-});
-
-export const HapticType = t.union(
-  t.lit("success"),
-  t.lit("warning"),
-  t.lit("failure"),
-  t.lit("light"),
-  t.lit("medium"),
-  t.lit("heavy"),
-  t.lit("selection"),
-);
-
 const exportedTypeSuite: t.ITypeSuite = {
   ChartCardExternalConfig,
   ChartCardChartType,
@@ -193,9 +152,6 @@ const exportedTypeSuite: t.ITypeSuite = {
   ChartCardSeriesExternalConfig,
   ChartCardPrettyTime,
   ChartCardHeaderExternalConfig,
-  ChartCardColorThreshold,
   ChartCardYAxisExternal,
-  RestrictionConfig,
-  HapticType,
 };
 export default exportedTypeSuite;

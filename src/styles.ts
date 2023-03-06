@@ -683,21 +683,12 @@ export const stylesApex: CSSResultGroup = css`
     opacity: 0;
   }
 
-  .apexcharts-pie-label,
   .apexcharts-datalabels,
   .apexcharts-datalabel,
   .apexcharts-datalabel-label,
   .apexcharts-datalabel-value {
     cursor: default;
     pointer-events: none;
-  }
-
-  .apexcharts-pie-label-delay {
-    opacity: 0;
-    animation-name: opaque;
-    animation-duration: 0.3s;
-    animation-fill-mode: forwards;
-    animation-timing-function: ease;
   }
 
   .apexcharts-canvas .apexcharts-element-hidden {

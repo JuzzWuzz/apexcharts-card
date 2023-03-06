@@ -7,8 +7,6 @@ import {
 } from "./types";
 import { HassEntity } from "home-assistant-js-websocket";
 import { moment } from "./const";
-import SparkMD5 from "spark-md5";
-import { ChartCardSpanExtConfig } from "./types-config";
 import * as pjson from "../package.json";
 
 export default class GraphEntry {
@@ -22,8 +20,6 @@ export default class GraphEntry {
 
   private _updating = false;
 
-  // private _hoursToShow: number;
-
   private _graphSpan: number;
 
   private _index: number;
@@ -34,25 +30,13 @@ export default class GraphEntry {
 
   private _realEnd: Date;
 
-  private _md5Config: string;
-
-  constructor(
-    index: number,
-    graphSpan: number,
-    config: ChartCardSeriesConfig,
-    span: ChartCardSpanExtConfig | undefined,
-  ) {
+  constructor(index: number, graphSpan: number, config: ChartCardSeriesConfig) {
     this._index = index;
     this._entityID = config.entity;
     this._graphSpan = graphSpan;
     this._config = config;
     this._realEnd = new Date();
     this._realStart = new Date();
-    this._md5Config = SparkMD5.hash(
-      `${this._graphSpan}${JSON.stringify(this._config)}${JSON.stringify(
-        span,
-      )}`,
-    );
   }
 
   set hass(hass: HomeAssistant) {
@@ -219,7 +203,7 @@ export default class GraphEntry {
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       async function () {},
     ).constructor;
-    let data;
+    let data, data2;
     try {
       const datafn = new AsyncFunction(
         "entity",
@@ -229,7 +213,9 @@ export default class GraphEntry {
         "moment",
         `'use strict'; ${this._config.data_generator}`,
       );
-      data = await datafn(this._entityState, start, end, this._hass, moment);
+      data2 = await datafn(this._entityState, start, end, this._hass, moment);
+      console.log(data2);
+      data = data2.data;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       const funcTrimmed =

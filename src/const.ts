@@ -40,12 +40,6 @@ export const TIMESERIES_TYPES = [
   "scatter",
   undefined,
 ];
-export const PLAIN_COLOR_TYPES = [
-  "scatter",
-  "radialBar",
-  "pie",
-  "donut",
-];
 
 export const DEFAULT_MIN = 0;
 export const DEFAULT_MAX = 100;

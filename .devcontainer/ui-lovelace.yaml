@@ -15,13 +15,13 @@ apexcharts_card_templates:
       show:
         legend_value: true
       data_generator: |
-        return entity.attributes.data;
+        return entity.attributes;
     apex_config:
       legend:
         showForSingleSeries: true
-      tooltip:
-        x:
-          format: dd MMM yyyy, HH:mm
+      # tooltip:
+      #   x:
+      #     format: dd MMM yyyy, HH:mm
       xaxis:
         axisBorder:
           show: false
@@ -168,3 +168,17 @@ views:
         series:
           - entity: button.graph_entities_server_rack_power_2
             name: Server Rack Power 2
+      - type: custom:apexcharts-card-2
+        config_templates: temp_default
+        header:
+          title: Server Rack Temperature 1
+        series:
+          - entity: button.graph_entities_server_rack_temperature
+          - entity: button.graph_entities_server_rack_humidity
+      - type: custom:apexcharts-card-2
+        config_templates: temp_default
+        header:
+          title: Server Rack Temperature 2
+        series:
+          - entity: button.graph_entities_server_rack_temperature_2
+          - entity: button.graph_entities_server_rack_humidity_2

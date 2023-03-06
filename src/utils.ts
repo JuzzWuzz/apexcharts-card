@@ -250,16 +250,6 @@ export function prettyPrintTime(
     .format("y[y] d[d] h[h] m[m] s[s] S[ms]", { trim: "both" });
 }
 
-export function getPercentFromValue(
-  value: number,
-  min: number | undefined,
-  max: number | undefined,
-): number {
-  const lMin = min === undefined ? DEFAULT_MIN : min;
-  const lMax = max === undefined ? DEFAULT_MAX : max;
-  return ((value - lMin) * 100) / (lMax - lMin);
-}
-
 export function getLovelace(): LovelaceConfig | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let root: any = document.querySelector("home-assistant");
@@ -277,24 +267,6 @@ export function getLovelace(): LovelaceConfig | null {
     return ll;
   }
   return null;
-}
-
-export function interpolateColor(a: string, b: string, factor: number): string {
-  const ah = +a.replace("#", "0x");
-  const ar = ah >> 16;
-  const ag = (ah >> 8) & 0xff;
-  const ab = ah & 0xff;
-  const bh = +b.replace("#", "0x");
-  const br = bh >> 16;
-  const bg = (bh >> 8) & 0xff;
-  const bb = bh & 0xff;
-  const rr = ar + factor * (br - ar);
-  const rg = ag + factor * (bg - ag);
-  const rb = ab + factor * (bb - ab);
-
-  return `#${(((1 << 24) + (rr << 16) + (rg << 8) + rb) | 0)
-    .toString(16)
-    .slice(1)}`;
 }
 
 export function mergeConfigTemplates(
@@ -349,72 +321,19 @@ export function mergeDeepConfig(target: any, source: any): any {
   return target;
 }
 
-export function is12HourFromLocale(locale: string): boolean {
-  return !(
-    new Date(2021, 1, 1, 15, 0, 0, 0).toLocaleTimeString(locale).indexOf("15") >
-    -1
-  );
-}
-
-export function is12Hour(
-  config: ChartCardConfig | undefined,
-  hass: HomeAssistant | undefined,
-): boolean {
-  if (config?.hours_12 !== undefined) {
-    return config.hours_12;
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hassLocale = (hass as any)?.locale;
-    if (hassLocale?.time_format) {
-      if (hassLocale.time_format === "language") {
-        return is12HourFromLocale(hassLocale.language);
-      } else if (hassLocale.time_format === "system") {
-        return is12HourFromLocale(navigator.language);
-      } else {
-        return hassLocale.time_format === "12";
-      }
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return is12HourFromLocale(getLang(hass));
-    }
-  }
-}
-
-export function formatApexDate(
-  config: ChartCardConfig,
-  hass: HomeAssistant | undefined,
-  value: Date,
-  withDate = true,
-): string {
+export function formatApexDate(value: Date): string {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hours12 = is12Hour(config, hass)
-    ? { hour12: true }
-    : { hourCycle: "h23" };
-  const lang = getLang(hass);
-  if (withDate) {
-    return new Intl.DateTimeFormat(lang, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      ...hours12,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any).format(value);
-  } else {
-    return new Intl.DateTimeFormat(lang, {
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      ...hours12,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any).format(value);
-  }
-}
-
-export function getLang(hass: HomeAssistant | undefined): string {
-  return hass?.language || "en";
+  const hours12 = { hourCycle: "h23" };
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    ...hours12,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any).format(value);
 }
 
 export function truncateFloat(

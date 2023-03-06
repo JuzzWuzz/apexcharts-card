@@ -6,7 +6,6 @@ import {
   DEFAULT_SERIE_TYPE,
   HOUR_24,
   NO_VALUE,
-  PLAIN_COLOR_TYPES,
   TIMESERIES_TYPES,
 } from "./const";
 import { ChartCardConfig } from "./types";
@@ -14,18 +13,15 @@ import {
   computeName,
   computeUom,
   formatValueAndUom,
-  is12Hour,
   mergeDeep,
   myFormatNumber,
   prettyPrintTime,
 } from "./utils";
 import { getDefaultLocale } from "./locales";
-import GraphEntry from "./graphEntry";
 
 export function getLayoutConfig(
   config: ChartCardConfig,
   hass: HomeAssistant | undefined = undefined,
-  graphs: (GraphEntry | undefined)[] | undefined,
 ): unknown {
   const def = {
     chart: {
@@ -51,11 +47,11 @@ export function getLayoutConfig(
     },
     series: getSeries(config, hass),
     labels: getLabels(config, hass),
-    xaxis: getXAxis(config, hass),
+    xaxis: getXAxis(config),
     yaxis: getYAxis(config),
     tooltip: {
       x: {
-        formatter: getXTooltipFormatter(config, hass),
+        formatter: getXTooltipFormatter(config),
       },
       y: {
         formatter: getYTooltipFormatter(config, hass),
@@ -64,10 +60,7 @@ export function getLayoutConfig(
     dataLabels: {
       enabled: getDataLabelsEnabled(config),
       enabledOnSeries: getDataLabels_enabledOnSeries(config),
-      formatter: getDataLabelsFormatter(config, graphs, hass),
-    },
-    plotOptions: {
-      radialBar: getPlotOptions_radialBar(config, hass),
+      formatter: getDataLabelsFormatter(config, hass),
     },
     legend: {
       position: "bottom",
@@ -76,11 +69,7 @@ export function getLayoutConfig(
     },
     stroke: {
       curve: getStrokeCurve(config),
-      lineCap: config.chart_type === "radialBar" ? "round" : "butt",
-      colors:
-        config.chart_type === "pie" || config.chart_type === "donut"
-          ? ["var(--card-background-color)"]
-          : undefined,
+      lineCap: "butt",
       width: getStrokeWidth(config),
     },
     markers: {
@@ -138,15 +127,14 @@ function getLabels(config: ChartCardConfig, hass: HomeAssistant | undefined) {
   }
 }
 
-function getXAxis(config: ChartCardConfig, hass: HomeAssistant | undefined) {
+function getXAxis(config: ChartCardConfig) {
   if (TIMESERIES_TYPES.includes(config.chart_type)) {
-    const hours12 = is12Hour(config, hass);
     return {
       type: "datetime",
       // range: getMilli(config.hours_to_show),
       labels: {
         datetimeUTC: false,
-        datetimeFormatter: getDateTimeFormatter(hours12),
+        datetimeFormatter: getDateTimeFormatter(),
       },
     };
   } else {
@@ -162,57 +150,58 @@ function getYAxis(config: ChartCardConfig) {
       };
 }
 
-function getDateTimeFormatter(hours12: boolean | undefined): unknown {
-  if (!hours12) {
-    return {
-      year: "yyyy",
-      month: "MMM 'yy",
-      day: "dd MMM",
-      hour: "HH:mm",
-      minute: "HH:mm:ss",
-    };
-  } else {
-    return {
-      year: "yyyy",
-      month: "MMM 'yy",
-      day: "dd MMM",
-      hour: "hh:mm tt",
-      minute: "hh:mm:ss tt",
-    };
-  }
+function getDateTimeFormatter(): unknown {
+  return {
+    year: "yyyy",
+    month: "MMM 'yy",
+    day: "dd MMM",
+    hour: "HH:mm",
+    minute: "HH:mm:ss",
+  };
 }
 
 function getXTooltipFormatter(
   config: ChartCardConfig,
-  hass: HomeAssistant | undefined,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): ((val: number, _a: any, _b: any) => string) | undefined {
+) {
+  //: ((val: number, _a: any, _b: any) => string) | undefined
   if (config.apex_config?.tooltip?.x?.format) return undefined;
+
+  // return function (value, opts, conf = config, hass2 = hass) {
+  //   console.log(opts);
+  //   console.log(conf);
+  //   console.log(hass2);
+  //   return `${value}`;
+  // };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let hours12: any = undefined;
-  const lang = hass?.language || "en";
-  hours12 = is12Hour(config, hass) ? { hour12: true } : { hourCycle: "h23" };
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return parse(config.graph_span)! < HOUR_24 && !config.span?.offset
-    ? function (val, _a, _b, hours_12 = hours12) {
-        return new Intl.DateTimeFormat(lang, {
+    ? function (val, _a, _b) {
+        console.log("Route A");
+        console.log(val);
+        console.log(_a);
+        console.log(_b);
+        return new Intl.DateTimeFormat("en", {
           hour: "numeric",
           minute: "numeric",
           second: "numeric",
-          ...hours_12,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any).format(val);
       }
-    : function (val, _a, _b, hours_12 = hours12) {
+    : function (val, _a, _b) {
+        console.log("Route B");
+        console.log(val);
+        console.log(_a);
+        console.log(_b);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return new Intl.DateTimeFormat(lang, {
+        return new Intl.DateTimeFormat("en", {
           year: "numeric",
           month: "short",
           day: "numeric",
           hour: "numeric",
           minute: "numeric",
           second: "numeric",
-          ...hours_12,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any).format(val);
       };
@@ -227,9 +216,6 @@ function getYTooltipFormatter(
     let uom: string | undefined = undefined;
     const unitSeparator =
       conf.series_in_graph[opts.seriesIndex].unit_separator ?? " ";
-    if (conf.series_in_graph[opts.seriesIndex]?.invert && lValue) {
-      lValue = -lValue;
-    }
     if (!conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
       const series = conf.series_in_graph[opts.seriesIndex];
       [
@@ -274,36 +260,8 @@ function getDataLabelsEnabled(config: ChartCardConfig): boolean {
 
 function getDataLabelsFormatter(
   config: ChartCardConfig,
-  graphs: (GraphEntry | undefined)[] | undefined,
   hass: HomeAssistant | undefined,
 ) {
-  if (config.chart_type === "pie" || config.chart_type === "donut") {
-    return function (
-      value,
-      opts,
-      lgraphs = graphs,
-      conf = config,
-      lHass = hass,
-    ) {
-      if (conf.series_in_graph[opts.seriesIndex].show.datalabels !== false) {
-        if (
-          conf.series_in_graph[opts.seriesIndex].show.datalabels === "percent"
-        ) {
-          return myFormatNumber(
-            value,
-            lHass?.locale,
-            conf.series_in_graph[opts.seriesIndex].float_precision,
-          );
-        }
-        return myFormatNumber(
-          lgraphs?.[conf.series_in_graph[opts.seriesIndex].index]?.lastState,
-          lHass?.locale,
-          conf.series_in_graph[opts.seriesIndex].float_precision,
-        );
-      }
-      return "";
-    };
-  }
   return function (value, opts, conf = config, lHass = hass) {
     if (conf.series_in_graph[opts.seriesIndex].show.datalabels === "total") {
       return myFormatNumber(
@@ -313,50 +271,12 @@ function getDataLabelsFormatter(
       );
     }
     if (value === null) return;
-    let lValue = value;
-    if (conf.series_in_graph[opts.seriesIndex]?.invert && lValue) {
-      lValue = -lValue;
-    }
     return myFormatNumber(
-      lValue,
+      value,
       lHass?.locale,
       conf.series_in_graph[opts.seriesIndex].float_precision,
     );
   };
-}
-
-function getPlotOptions_radialBar(
-  config: ChartCardConfig,
-  hass: HomeAssistant | undefined,
-) {
-  if (config.chart_type === "radialBar") {
-    return {
-      track: {
-        background: "rgba(128, 128, 128, 0.2)",
-      },
-      dataLabels: {
-        value: {
-          formatter: function (value, opts, conf = config, lHass = hass) {
-            const index = opts?.config?.series?.findIndex((x) => {
-              return parseFloat(value) === x;
-            });
-            if (index != -1) {
-              return (
-                myFormatNumber(
-                  value,
-                  lHass?.locale,
-                  conf.series_in_graph[index].float_precision,
-                ) + "%"
-              );
-            }
-            return value;
-          },
-        },
-      },
-    };
-  } else {
-    return {};
-  }
 }
 
 function getLegendFormatter(
@@ -391,9 +311,6 @@ function getLegendFormatter(
       let uom: string | undefined = undefined;
       const unitSeparator =
         conf.series_in_graph[opts.seriesIndex].unit_separator ?? " ";
-      if (conf.series_in_graph[opts.seriesIndex]?.invert && value) {
-        value = -value;
-      }
       if (!conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
         const series = conf.series_in_graph[opts.seriesIndex];
         [
@@ -415,7 +332,6 @@ function getLegendFormatter(
           hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
         );
       }
-      uom = config.chart_type === "radialBar" ? "%" : uom;
       let valueString = "";
       if (value === undefined || value === null) {
         valueString = `<strong>${NO_VALUE}${unitSeparator}${uom}</strong>`;
@@ -472,23 +388,7 @@ function getStrokeWidth(config: ChartCardConfig) {
 }
 
 function getFillType(config: ChartCardConfig) {
-  if (!config.experimental?.color_threshold) {
-    return config.apex_config?.fill?.type || "solid";
-  } else {
-    const series = config.series_in_graph;
-    return series.map((serie) => {
-      if (
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        !PLAIN_COLOR_TYPES.includes(config.chart_type!) &&
-        serie.type !== "column" &&
-        serie.color_threshold &&
-        serie.color_threshold.length > 0
-      ) {
-        return "gradient";
-      }
-      return "solid";
-    });
-  }
+  return config.apex_config?.fill?.type || "solid";
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
