@@ -30,7 +30,6 @@ export const ChartCardExternalConfig = t.iface([], {
   stacked: t.opt("boolean"),
   apex_config: t.opt("any"),
   header: t.opt("ChartCardHeaderExternalConfig"),
-  view_layout: t.opt("any"),
   yaxis: t.opt(t.array("ChartCardYAxisExternal")),
 });
 

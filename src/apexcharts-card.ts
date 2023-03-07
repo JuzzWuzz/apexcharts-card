@@ -31,7 +31,6 @@ import {
   mergeDeep,
   mergeDeepConfig,
   myFormatNumber,
-  offsetData,
   truncateFloat,
   validateInterval,
 } from "./utils";
@@ -99,8 +98,6 @@ class ChartsCard extends LitElement {
   @property({ attribute: false }) private _headerState: (number | null)[] = [];
 
   private _dataLoaded = false;
-
-  private _seriesOffset: number[] = [];
 
   private _updateDelay: number = DEFAULT_UPDATE_DELAY;
 
@@ -442,7 +439,8 @@ class ChartsCard extends LitElement {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         config.yaxis![idx].decimals === undefined
           ? DEFAULT_FLOAT_PRECISION
-          : config.yaxis![idx].decimals;
+          : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            config.yaxis![idx].decimals;
       if (this._yAxisConfig?.[idx].series_id) {
         this._yAxisConfig?.[idx].series_id?.push(serieIndex);
       } else {
@@ -462,9 +460,11 @@ class ChartsCard extends LitElement {
       } else {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         yAxisDup.show =
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           config.yaxis![idx].show === undefined
             ? true
-            : config.yaxis![idx].show;
+            : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              config.yaxis![idx].show;
         burned[idx] = true;
       }
       yAxisDup.labels = {
@@ -713,15 +713,8 @@ class ChartsCard extends LitElement {
       } else {
         const { start, end } = await this._getSpanDates();
 
-        const promise = this._graphs.map((graph, index) => {
-          return graph?._updateHistory(
-            this._seriesOffset[index]
-              ? new Date(start.getTime() + this._seriesOffset[index])
-              : start,
-            this._seriesOffset[index]
-              ? new Date(end.getTime() + this._seriesOffset[index])
-              : end,
-          );
+        const promise = this._graphs.map((graph) => {
+          return graph?._updateHistory(start, end);
         });
         await Promise.all(promise);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -734,8 +727,7 @@ class ChartsCard extends LitElement {
               if (inHeader === "after_now" || inHeader === "before_now") {
                 // before_now / after_now
                 this._headerState[index] = graph.nowValue(
-                  now.getTime() +
-                    (this._seriesOffset[index] ? this._seriesOffset[index] : 0),
+                  now.getTime(),
                   inHeader === "before_now",
                 );
               } else {
@@ -757,13 +749,7 @@ class ChartsCard extends LitElement {
                 graphData.series.push({ data: [] });
               return;
             }
-            let data: EntityCachePoints = [];
-            const offset = this._seriesOffset[index] || 0;
-            if (offset) {
-              data = offsetData(graph.history, offset);
-            } else {
-              data = [...graph.history];
-            }
+            const data: EntityCachePoints = [...graph.history];
             if (
               this._config?.series[index].type !== "column" &&
               this._config?.series[index].extend_to
@@ -857,12 +843,8 @@ class ChartsCard extends LitElement {
       points: this._config?.series_in_graph.flatMap((serie, index) => {
         if (serie.show.extremas) {
           const { min, max } = this._graphs?.[serie.index]?.minMaxWithTimestamp(
-            this._seriesOffset[index]
-              ? new Date(start.getTime() + this._seriesOffset[index]).getTime()
-              : start.getTime(),
-            this._seriesOffset[index]
-              ? new Date(end.getTime() + this._seriesOffset[index]).getTime()
-              : end.getTime(),
+            start.getTime(),
+            end.getTime(),
           ) || {
             min: [
               0,
@@ -892,7 +874,6 @@ class ChartsCard extends LitElement {
             extremas.push(
               ...this._getPointAnnotationStyle(
                 min,
-                this._seriesOffset[index],
                 bgColor,
                 txtColor,
                 serie,
@@ -917,7 +898,6 @@ class ChartsCard extends LitElement {
             extremas.push(
               ...this._getPointAnnotationStyle(
                 max,
-                this._seriesOffset[index],
                 bgColor,
                 txtColor,
                 serie,
@@ -937,7 +917,6 @@ class ChartsCard extends LitElement {
 
   private _getPointAnnotationStyle(
     value: HistoryPoint,
-    offset: number,
     bgColor: string,
     txtColor: string,
     serie: ChartCardSeriesConfig,
@@ -952,7 +931,7 @@ class ChartsCard extends LitElement {
       Array.isArray(this._config.apex_config.yaxis) &&
       this._config.apex_config.yaxis.length > 1;
     points.push({
-      x: offset ? value[0] - offset : value[0],
+      x: value[0],
       y: value[1],
       seriesIndex: index,
       yAxisIndex: multiYAxis ? index : 0,
@@ -991,7 +970,7 @@ class ChartsCard extends LitElement {
         ...{ hourCycle: "h23" },
       };
       points.push({
-        x: offset ? value[0] - offset : value[0],
+        x: value[0],
         y: value[1],
         seriesIndex: index,
         yAxisIndex: multiYAxis ? index : 0,
@@ -1052,12 +1031,8 @@ class ChartsCard extends LitElement {
         const minMax = yaxis.series_id?.map((id) => {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           const lMinMax = this._graphs![id]?.minMaxWithTimestampForYAxis(
-            this._seriesOffset[id]
-              ? new Date(start.getTime() + this._seriesOffset[id]).getTime()
-              : start.getTime(),
-            this._seriesOffset[id]
-              ? new Date(end.getTime() + this._seriesOffset[id]).getTime()
-              : end.getTime(),
+            start.getTime(),
+            end.getTime(),
           );
           if (!lMinMax) return undefined;
           return lMinMax;
