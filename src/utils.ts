@@ -1,35 +1,17 @@
 import { HassEntities, HassEntity } from "home-assistant-js-websocket";
-import {
-  compress as lzStringCompress,
-  decompress as lzStringDecompress,
-} from "lz-string";
 import { EntityCachePoints } from "./types";
 import { TinyColor } from "@ctrl/tinycolor";
 import parse from "parse-duration";
 import {
   ChartCardExternalConfig,
-  ChartCardPrettyTime,
   ChartCardSeriesExternalConfig,
 } from "./types-config";
-import { DEFAULT_FLOAT_PRECISION, moment, NO_VALUE } from "./const";
+import { DEFAULT_FLOAT_PRECISION } from "./const";
 import {
   formatNumber,
   FrontendLocaleData,
   LovelaceConfig,
 } from "custom-card-helpers";
-
-export function compress(data: unknown): string {
-  return lzStringCompress(JSON.stringify(data));
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function decompress(data: unknown | undefined): any | undefined {
-  if (data !== undefined && typeof data === "string") {
-    const dec = lzStringDecompress(data);
-    return dec && JSON.parse(dec);
-  }
-  return data;
-}
 
 export function getMilli(hours: number): number {
   return hours * 60 ** 2 * 10 ** 3;
@@ -146,25 +128,6 @@ export function formatValueAndUom(
   ];
 }
 
-export function computeUom(
-  index: number,
-  series: ChartCardSeriesExternalConfig[] | undefined,
-  entities: HassEntity[] | undefined[] | undefined = undefined,
-  entity: HassEntity | undefined = undefined,
-): string {
-  if (!series || (!entities && !entity)) return "";
-  if (entity) {
-    return series[index].unit || entity.attributes?.unit_of_measurement || "";
-  } else if (entities) {
-    return (
-      series[index].unit ||
-      entities[index]?.attributes?.unit_of_measurement ||
-      ""
-    );
-  }
-  return "";
-}
-
 export function computeColors(colors: string[] | undefined): string[] {
   if (!colors) return [];
   return colors.map((color) => {
@@ -226,16 +189,6 @@ export function offsetData(
     });
   }
   return data;
-}
-
-export function prettyPrintTime(
-  value: string | number | null,
-  unit: ChartCardPrettyTime,
-): string {
-  if (value === null) return NO_VALUE;
-  return moment
-    .duration(value, unit)
-    .format("y[y] d[d] h[h] m[m] s[s] S[ms]", { trim: "both" });
 }
 
 export function getLovelace(): LovelaceConfig | null {

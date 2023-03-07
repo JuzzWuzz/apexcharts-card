@@ -9,13 +9,10 @@ import {
 import { ChartCardConfig } from "./types";
 import {
   computeName,
-  computeUom,
   formatValueAndUom,
   mergeDeep,
   myFormatNumber,
-  prettyPrintTime,
 } from "./utils";
-import { getDefaultLocale } from "./locales";
 
 export function getLayoutConfig(
   config: ChartCardConfig,
@@ -23,8 +20,6 @@ export function getLayoutConfig(
 ): unknown {
   const def = {
     chart: {
-      locales: [getDefaultLocale()],
-      defaultLocale: "en",
       type: config.chart_type || DEFAULT_SERIE_TYPE,
       stacked: config?.stacked,
       foreColor: "var(--primary-text-color)",
@@ -52,7 +47,7 @@ export function getLayoutConfig(
         formatter: getXTooltipFormatter(config),
       },
       y: {
-        formatter: getYTooltipFormatter(config, hass),
+        formatter: getYTooltipFormatter(config),
       },
     },
     dataLabels: {
@@ -192,45 +187,25 @@ function getXTooltipFormatter(
   };
 }
 
-function getYTooltipFormatter(
-  config: ChartCardConfig,
-  hass: HomeAssistant | undefined,
-) {
-  return function (value, opts, conf = config, hass2 = hass) {
+function getYTooltipFormatter(config: ChartCardConfig) {
+  return function (value, opts, conf = config) {
     let lValue = value;
     let uom: string | undefined = undefined;
     const unitSeparator =
       conf.series_in_graph[opts.seriesIndex].unit_separator ?? " ";
-    if (!conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
-      const series = conf.series_in_graph[opts.seriesIndex];
-      [
-        lValue,
-        uom,
-      ] = formatValueAndUom(
-        lValue,
-        series.clamp_negative,
-        series.unit,
-        series.unit_step,
-        series.unit_array,
-        series.float_precision,
-      );
-    } else {
-      uom = computeUom(
-        opts.seriesIndex,
-        conf.series_in_graph,
-        undefined,
-        hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
-      );
-    }
-    return conf.series_in_graph[opts.seriesIndex]?.show.as_duration
-      ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        [
-          `<strong>${prettyPrintTime(
-            lValue,
-            conf.series_in_graph[opts.seriesIndex].show.as_duration!,
-          )}</strong>`,
-        ]
-      : [`<strong>${lValue}${unitSeparator}${uom}</strong>`];
+    const series = conf.series_in_graph[opts.seriesIndex];
+    [
+      lValue,
+      uom,
+    ] = formatValueAndUom(
+      lValue,
+      series.clamp_negative,
+      series.unit,
+      series.unit_step,
+      series.unit_array,
+      series.float_precision,
+    );
+    return [`<strong>${lValue}${unitSeparator}${uom}</strong>`];
   };
 }
 
@@ -296,40 +271,23 @@ function getLegendFormatter(
       let uom: string | undefined = undefined;
       const unitSeparator =
         conf.series_in_graph[opts.seriesIndex].unit_separator ?? " ";
-      if (!conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
-        const series = conf.series_in_graph[opts.seriesIndex];
-        [
-          value,
-          uom,
-        ] = formatValueAndUom(
-          value,
-          series.clamp_negative,
-          series.unit,
-          series.unit_step,
-          series.unit_array,
-          series.float_precision,
-        );
-      } else {
-        uom = computeUom(
-          opts.seriesIndex,
-          conf.series_in_graph,
-          undefined,
-          hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
-        );
-      }
+      const series = conf.series_in_graph[opts.seriesIndex];
+      [
+        value,
+        uom,
+      ] = formatValueAndUom(
+        value,
+        series.clamp_negative,
+        series.unit,
+        series.unit_step,
+        series.unit_array,
+        series.float_precision,
+      );
       let valueString = "";
       if (value === undefined || value === null) {
         valueString = `<strong>${NO_VALUE}${unitSeparator}${uom}</strong>`;
       } else {
-        if (conf.series_in_graph[opts.seriesIndex]?.show.as_duration) {
-          valueString = `<strong>${prettyPrintTime(
-            value,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            conf.series_in_graph[opts.seriesIndex].show.as_duration!,
-          )}</strong>`;
-        } else {
-          valueString = `<strong>${value}${unitSeparator}${uom}</strong>`;
-        }
+        valueString = `<strong>${value}${unitSeparator}${uom}</strong>`;
       }
       return [
         name + ":",

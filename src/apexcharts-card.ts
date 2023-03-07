@@ -14,19 +14,16 @@ import {
   ChartCardSeriesConfig,
   ChartCardYAxis,
   EntityCachePoints,
-  EntityEntryCache,
   HistoryPoint,
   minmax_type,
 } from "./types";
 import { getLovelace, HomeAssistant } from "custom-card-helpers";
-import localForage from "localforage";
 import * as pjson from "../package.json";
 import {
   computeColor,
   computeColors,
   computeName,
   computeTextColor,
-  decompress,
   formatApexDate,
   formatValueAndUom,
   log,
@@ -35,7 +32,6 @@ import {
   mergeDeepConfig,
   myFormatNumber,
   offsetData,
-  prettyPrintTime,
   truncateFloat,
   validateInterval,
 } from "./utils";
@@ -72,31 +68,6 @@ console.info(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).ApexCharts = ApexCharts;
-
-localForage.config({
-  name: "apexchart-card",
-  version: 1.0,
-  storeName: "entity_history_cache",
-  description: "ApexCharts-card uses caching for the entity history",
-});
-
-localForage
-  .iterate((data, key) => {
-    const value: EntityEntryCache = key.endsWith("-raw")
-      ? data
-      : decompress(data);
-    if (value.card_version !== pjson.version) {
-      localForage.removeItem(key);
-    }
-    const start = new Date();
-    start.setTime(start.getTime() - value.span);
-    if (new Date(value.last_fetched) < start) {
-      localForage.removeItem(key);
-    }
-  })
-  .catch((err) => {
-    console.warn("Purging has errored: ", err);
-  });
 
 @customElement("apexcharts-card-2")
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -158,9 +129,9 @@ class ChartsCard extends LitElement {
         this._updateOnInterval();
       });
       // Valid because setConfig has been done.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       this._intervalTimeout = setInterval(
         () => this._updateOnInterval(),
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         this._interval!,
       );
     }
@@ -414,12 +385,7 @@ class ChartsCard extends LitElement {
           }
 
           if (serie.entity) {
-            const graphEntry = new GraphEntry(
-              index,
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              this._graphSpan!,
-              serie,
-            );
+            const graphEntry = new GraphEntry(index, serie);
             if (this._hass) graphEntry.hass = this._hass;
             return graphEntry;
           }
@@ -642,19 +608,17 @@ class ChartsCard extends LitElement {
             const valueRaw = this._headerState?.[index];
             let value: string | number | null | undefined = valueRaw;
             let uom: string | undefined = undefined;
-            if (!serie.show.as_duration) {
-              [
-                value,
-                uom,
-              ] = formatValueAndUom(
-                value,
-                serie.clamp_negative,
-                serie.unit,
-                serie.unit_step,
-                serie.unit_array,
-                serie.float_precision,
-              );
-            }
+            [
+              value,
+              uom,
+            ] = formatValueAndUom(
+              value,
+              serie.clamp_negative,
+              serie.unit,
+              serie.unit_step,
+              serie.unit_array,
+              serie.float_precision,
+            );
             return html`
               <div
                 id="states__state"
@@ -685,15 +649,9 @@ class ChartsCard extends LitElement {
                   <span
                     id="state"
                     style="${this._computeHeaderStateColor(serie)}"
-                    >${valueRaw === 0
-                      ? 0
-                      : serie.show.as_duration
-                      ? prettyPrintTime(valueRaw, serie.show.as_duration)
-                      : value || NO_VALUE}</span
+                    >${valueRaw === 0 ? 0 : value || NO_VALUE}</span
                   >
-                  ${!serie.show.as_duration
-                    ? html`<span id="uom">${uom}</span>`
-                    : ""}
+                  <span id="uom">${uom}</span>
                 </div>
                 ${serie.show.name_in_header
                   ? html`<div id="state__name">

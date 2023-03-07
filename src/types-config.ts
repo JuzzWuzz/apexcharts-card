@@ -21,10 +21,6 @@ export interface ChartCardExternalConfig {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apex_config?: any;
   header?: ChartCardHeaderExternalConfig;
-  // Support to define style (card-mod/card-mod-v3.0 or picture-entity)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  style?: any;
-  index?: number;
   yaxis?: ChartCardYAxisExternal[];
 }
 
@@ -69,7 +65,6 @@ export interface ChartCardAllSeriesExternalConfig {
 }
 
 export interface ChartCardSeriesShowConfigExt {
-  as_duration?: ChartCardPrettyTime;
   legend_value?: boolean;
   legend_function?: "last" | "sum";
   in_header?: boolean | "raw" | "before_now" | "after_now";
@@ -83,16 +78,6 @@ export interface ChartCardSeriesExternalConfig
   extends ChartCardAllSeriesExternalConfig {
   entity: string;
 }
-
-export type ChartCardPrettyTime =
-  | "millisecond"
-  | "second"
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "month"
-  | "year";
 
 export interface ChartCardHeaderExternalConfig {
   show?: boolean;

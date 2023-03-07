@@ -20,8 +20,6 @@ export default class GraphEntry {
 
   private _updating = false;
 
-  private _graphSpan: number;
-
   private _index: number;
 
   private _config: ChartCardSeriesConfig;
@@ -30,10 +28,9 @@ export default class GraphEntry {
 
   private _realEnd: Date;
 
-  constructor(index: number, graphSpan: number, config: ChartCardSeriesConfig) {
+  constructor(index: number, config: ChartCardSeriesConfig) {
     this._index = index;
     this._entityID = config.entity;
-    this._graphSpan = graphSpan;
     this._config = config;
     this._realEnd = new Date();
     this._realStart = new Date();

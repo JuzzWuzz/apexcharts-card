@@ -30,9 +30,7 @@ export const ChartCardExternalConfig = t.iface([], {
   stacked: t.opt("boolean"),
   apex_config: t.opt("any"),
   header: t.opt("ChartCardHeaderExternalConfig"),
-  style: t.opt("any"),
   view_layout: t.opt("any"),
-  index: t.opt("number"),
   yaxis: t.opt(t.array("ChartCardYAxisExternal")),
 });
 
@@ -78,7 +76,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
 });
 
 export const ChartCardSeriesShowConfigExt = t.iface([], {
-  as_duration: t.opt("ChartCardPrettyTime"),
   legend_value: t.opt("boolean"),
   legend_function: t.opt(t.union(t.lit("last"), t.lit("sum"))),
   in_header: t.opt(
@@ -104,17 +101,6 @@ export const ChartCardSeriesExternalConfig = t.iface(
   {
     entity: "string",
   },
-);
-
-export const ChartCardPrettyTime = t.union(
-  t.lit("millisecond"),
-  t.lit("second"),
-  t.lit("minute"),
-  t.lit("hour"),
-  t.lit("day"),
-  t.lit("week"),
-  t.lit("month"),
-  t.lit("year"),
 );
 
 export const ChartCardHeaderExternalConfig = t.iface([], {
@@ -145,7 +131,6 @@ const exportedTypeSuite: t.ITypeSuite = {
   ChartCardAllSeriesExternalConfig,
   ChartCardSeriesShowConfigExt,
   ChartCardSeriesExternalConfig,
-  ChartCardPrettyTime,
   ChartCardHeaderExternalConfig,
   ChartCardYAxisExternal,
 };
