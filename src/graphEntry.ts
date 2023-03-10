@@ -24,16 +24,10 @@ export default class GraphEntry {
 
   private _config: ChartCardSeriesConfig;
 
-  private _realStart: Date;
-
-  private _realEnd: Date;
-
   constructor(index: number, config: ChartCardSeriesConfig) {
     this._index = index;
     this._entityID = config.entity;
     this._config = config;
-    this._realEnd = new Date();
-    this._realStart = new Date();
   }
 
   set hass(hass: HomeAssistant) {
@@ -47,14 +41,6 @@ export default class GraphEntry {
 
   get index(): number {
     return this._index;
-  }
-
-  get start(): Date {
-    return this._realStart;
-  }
-
-  get end(): Date {
-    return this._realEnd;
   }
 
   get lastState(): number | null {

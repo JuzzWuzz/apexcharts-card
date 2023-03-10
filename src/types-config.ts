@@ -1,12 +1,13 @@
 export interface ChartCardExternalConfig {
   type: "custom:apexcharts-card-2";
+  entity: string;
   config_templates?: string[] | string;
   color_list?: string[];
   chart_type?: ChartCardChartType;
   update_interval?: string;
   update_delay?: string;
   all_series_config?: ChartCardAllSeriesExternalConfig;
-  series: ChartCardSeriesExternalConfig[];
+  series?: ChartCardSeriesExternalConfig[];
   span_generator?: string;
   now?: {
     show?: boolean;

@@ -136,45 +136,56 @@ views:
     title: Home
     badges: []
     cards:
+      # - type: custom:apexcharts-card-2
+      #   config_templates: energy_base
+      #   header:
+      #     title: Server Rack Energy 1
+      #   entity: button.graph_entities_server_rack_energy
+      #   series:
+      #     - entity: button.graph_entities_server_rack_energy
+      #       name: Server Rack Energy 1
+      # - type: custom:apexcharts-card-2
+      #   config_templates: energy_base
+      #   header:
+      #     title: Server Rack Energy 2
+      #   entity: button.graph_entities_server_rack_energy_2
+      #   series:
+      #     - entity: button.graph_entities_server_rack_energy_2
+      #       name: Server Rack Energy 2
+      # - type: custom:apexcharts-card-2
+      #   config_templates: power_base
+      #   header:
+      #     title: Server Rack Power 1
+      #   entity: button.graph_entities_server_rack_power
+      #   series:
+      #     - entity: button.graph_entities_server_rack_power
+      #       name: Server Rack Power 1
+      # - type: custom:apexcharts-card-2
+      #   config_templates: power_base
+      #   header:
+      #     title: Server Rack Power 2
+      #   entity: button.graph_entities_server_rack_power_2
+      #   series:
+      #     - entity: button.graph_entities_server_rack_power_2
+      #       name: Server Rack Power 2
+      # - type: custom:apexcharts-card-2
+      #   config_templates: temp_default
+      #   header:
+      #     title: Server Rack Temperature 1
+      #   entity: button.graph_entities_server_rack_temperature
+      #   series:
+      #     - entity: button.graph_entities_server_rack_temperature
+      #     - entity: button.graph_entities_server_rack_humidity
+      # - type: custom:apexcharts-card-2
+      #   config_templates: temp_default
+      #   header:
+      #     title: Server Rack Temperature 2
+      #   entity: button.graph_entities_server_rack_temperature_2
+      #   series:
+      #     - entity: button.graph_entities_server_rack_temperature_2
+      #     - entity: button.graph_entities_server_rack_humidity_2
       - type: custom:apexcharts-card-2
         config_templates: energy_base
         header:
-          title: Server Rack Energy 1
-        series:
-          - entity: button.graph_entities_server_rack_energy
-            name: Server Rack Energy 1
-      - type: custom:apexcharts-card-2
-        config_templates: energy_base
-        header:
-          title: Server Rack Energy 2
-        series:
-          - entity: button.graph_entities_server_rack_energy_2
-            name: Server Rack Energy 2
-      - type: custom:apexcharts-card-2
-        config_templates: power_base
-        header:
-          title: Server Rack Power 1
-        series:
-          - entity: button.graph_entities_server_rack_power
-            name: Server Rack Power 1
-      - type: custom:apexcharts-card-2
-        config_templates: power_base
-        header:
-          title: Server Rack Power 2
-        series:
-          - entity: button.graph_entities_server_rack_power_2
-            name: Server Rack Power 2
-      - type: custom:apexcharts-card-2
-        config_templates: temp_default
-        header:
-          title: Server Rack Temperature 1
-        series:
-          - entity: button.graph_entities_server_rack_temperature
-          - entity: button.graph_entities_server_rack_humidity
-      - type: custom:apexcharts-card-2
-        config_templates: temp_default
-        header:
-          title: Server Rack Temperature 2
-        series:
-          - entity: button.graph_entities_server_rack_temperature_2
-          - entity: button.graph_entities_server_rack_humidity_2
+          title: Server Rack Energy x
+        entity: button.graph_entities_server_rack_energy

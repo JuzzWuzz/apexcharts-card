@@ -6,13 +6,14 @@ import * as t from "ts-interface-checker";
 
 export const ChartCardExternalConfig = t.iface([], {
   type: t.lit("custom:apexcharts-card-2"),
+  entity: "string",
   config_templates: t.opt(t.union(t.array("string"), "string")),
   color_list: t.opt(t.array("string")),
   chart_type: t.opt("ChartCardChartType"),
   update_interval: t.opt("string"),
   update_delay: t.opt("string"),
   all_series_config: t.opt("ChartCardAllSeriesExternalConfig"),
-  series: t.array("ChartCardSeriesExternalConfig"),
+  series: t.opt(t.array("ChartCardSeriesExternalConfig")),
   span_generator: t.opt("string"),
   now: t.opt(
     t.iface([], {

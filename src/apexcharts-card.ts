@@ -265,12 +265,13 @@ class ChartsCard extends LitElement {
     try {
       const { ChartCardExternalConfig } = createCheckers(exportedTypeSuite);
       ChartCardExternalConfig.strictCheck(configDup);
-      if (configDup.all_series_config) {
+      if (configDup.all_series_config && configDup.series) {
         configDup.series.forEach((serie, index) => {
           const allDup = JSON.parse(
             JSON.stringify(configDup.all_series_config),
           );
-          configDup.series[index] = mergeDeepConfig(allDup, serie);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          configDup.series![index] = mergeDeepConfig(allDup, serie);
         });
       }
       if (configDup.update_interval) {
@@ -285,7 +286,6 @@ class ChartsCard extends LitElement {
           `update_delay`,
         );
       }
-
       this._config = mergeDeep(
         {
           useCompress: false,
@@ -293,7 +293,6 @@ class ChartsCard extends LitElement {
         },
         configDup,
       );
-
       const defColors = this._config?.color_list || DEFAULT_COLORS;
       if (this._config) {
         if (this._config.yaxis && this._config.yaxis.length > 1) {
@@ -336,7 +335,7 @@ class ChartsCard extends LitElement {
             ] = this._getTypeOfMinMax(yaxis.max);
           });
         }
-        this._graphs = this._config.series.map((serie, index) => {
+        this._graphs = this._config.series?.map((serie, index) => {
           serie.index = index;
           serie.ignore_history = !serie.data_generator;
           if (!this._headerColors[index]) {
@@ -380,7 +379,6 @@ class ChartsCard extends LitElement {
                 ? DEFAULT_SHOW_NAME_IN_HEADER
                 : serie.show.name_in_header;
           }
-
           if (serie.entity) {
             const graphEntry = new GraphEntry(index, serie);
             if (this._hass) graphEntry.hass = this._hass;
@@ -389,7 +387,7 @@ class ChartsCard extends LitElement {
           return undefined;
         });
         this._config.series_in_graph = [];
-        this._config.series.forEach((serie, index) => {
+        this._config.series?.forEach((serie, index) => {
           if (serie.show.in_chart) {
             this._colors.push(this._headerColors[index]);
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -398,7 +396,7 @@ class ChartsCard extends LitElement {
         });
         this._headerColors = this._headerColors.slice(
           0,
-          this._config?.series.length,
+          this._config?.series?.length ?? 0,
         );
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -418,7 +416,7 @@ class ChartsCard extends LitElement {
     if (!config.yaxis) return undefined;
     const burned: boolean[] = [];
     this._yAxisConfig = JSON.parse(JSON.stringify(config.yaxis));
-    const yaxisConfig: ApexYAxis[] = config.series.map((serie, serieIndex) => {
+    const yaxisConfig: ApexYAxis[] = config.series?.map((serie, serieIndex) => {
       let idx = -1;
       if (config.yaxis?.length !== 1) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
