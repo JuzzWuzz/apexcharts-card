@@ -10,11 +10,7 @@ export const ChartCardExternalConfig = t.iface([], {
   config_templates: t.opt(t.union(t.array("string"), "string")),
   color_list: t.opt(t.array("string")),
   chart_type: t.opt("ChartCardChartType"),
-  update_interval: t.opt("string"),
-  update_delay: t.opt("string"),
   all_series_config: t.opt("ChartCardAllSeriesExternalConfig"),
-  series: t.opt(t.array("ChartCardSeriesExternalConfig")),
-  span_generator: t.opt("string"),
   now: t.opt(
     t.iface([], {
       show: t.opt("boolean"),
@@ -36,24 +32,7 @@ export const ChartCardExternalConfig = t.iface([], {
 
 export const ChartCardChartType = t.union(t.lit("line"), t.lit("scatter"));
 
-export const ChartCardSpanExtConfig = t.iface([], {
-  start: t.opt("ChartCardStartEnd"),
-  end: t.opt("ChartCardStartEnd"),
-  offset: t.opt("string"),
-});
-
-export const ChartCardStartEnd = t.union(
-  t.lit("minute"),
-  t.lit("hour"),
-  t.lit("day"),
-  t.lit("week"),
-  t.lit("month"),
-  t.lit("year"),
-  t.lit("isoWeek"),
-);
-
 export const ChartCardAllSeriesExternalConfig = t.iface([], {
-  entity: t.opt("string"),
   attribute: t.opt("string"),
   name: t.opt("string"),
   type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
@@ -67,7 +46,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   unit_step: t.opt("number"),
   unit_array: t.opt(t.array("string")),
   unit_separator: t.opt("string"),
-  data_generator: t.opt("string"),
   float_precision: t.opt("number"),
   min: t.opt("number"),
   max: t.opt("number"),
@@ -76,13 +54,11 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
 });
 
 export const ChartCardSeriesShowConfigExt = t.iface([], {
-  legend_value: t.opt("boolean"),
-  legend_function: t.opt(t.union(t.lit("last"), t.lit("sum"))),
-  in_header: t.opt(
-    t.union("boolean", t.lit("raw"), t.lit("before_now"), t.lit("after_now")),
-  ),
-  name_in_header: t.opt("boolean"),
   in_chart: t.opt("boolean"),
+  in_header: t.opt(t.union("boolean", t.lit("before_now"), t.lit("after_now"))),
+  legend_function: t.opt(t.union(t.lit("last"), t.lit("sum"))),
+  legend_value: t.opt("boolean"),
+  name_in_header: t.opt("boolean"),
   datalabels: t.opt(t.union("boolean", t.lit("total"), t.lit("percent"))),
   extremas: t.opt(
     t.union(
@@ -95,13 +71,6 @@ export const ChartCardSeriesShowConfigExt = t.iface([], {
     ),
   ),
 });
-
-export const ChartCardSeriesExternalConfig = t.iface(
-  ["ChartCardAllSeriesExternalConfig"],
-  {
-    entity: "string",
-  },
-);
 
 export const ChartCardHeaderExternalConfig = t.iface([], {
   show: t.opt("boolean"),
@@ -126,11 +95,8 @@ export const ChartCardYAxisExternal = t.iface([], {
 const exportedTypeSuite: t.ITypeSuite = {
   ChartCardExternalConfig,
   ChartCardChartType,
-  ChartCardSpanExtConfig,
-  ChartCardStartEnd,
   ChartCardAllSeriesExternalConfig,
   ChartCardSeriesShowConfigExt,
-  ChartCardSeriesExternalConfig,
   ChartCardHeaderExternalConfig,
   ChartCardYAxisExternal,
 };

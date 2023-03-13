@@ -1,49 +1,35 @@
 import { ApexOptions } from "apexcharts";
 import {
   ChartCardExternalConfig,
-  ChartCardSeriesExternalConfig,
+  ChartCardAllSeriesExternalConfig,
   ChartCardSeriesShowConfigExt,
   ChartCardYAxisExternal,
 } from "./types-config";
 
 export interface ChartCardConfig extends ChartCardExternalConfig {
-  series: ChartCardSeriesConfig[];
-  series_in_graph: ChartCardSeriesConfig[];
   useCompress: boolean;
   apex_config?: ApexOptions;
   yaxis?: ChartCardYAxis[];
 }
 
-export interface ChartCardSeriesConfig extends ChartCardSeriesExternalConfig {
+export interface ChartCardSeriesConfig
+  extends ChartCardAllSeriesExternalConfig {
   index: number;
   show: ChartCardSeriesShowConfig;
-  ignore_history: boolean;
 }
 
 export interface ChartCardSeriesShowConfig
   extends ChartCardSeriesShowConfigExt {
-  legend_value: boolean;
-  legend_function: "last" | "sum";
-  in_header: boolean | "raw" | "before_now" | "after_now";
-  name_in_header: boolean;
   in_chart: boolean;
-}
-
-export interface EntityEntryCache {
-  span: number;
-  card_version: string;
-  last_fetched: Date;
-  data: EntityCachePoints;
+  in_header: boolean | "before_now" | "after_now";
+  legend_function: "last" | "sum";
+  legend_value: boolean;
+  name_in_header: boolean;
 }
 
 export type EntityCachePoints = Array<HistoryPoint>;
 
 export type HistoryPoint = [number, number | null];
-
-export interface HistoryBucket {
-  timestamp: number;
-  data: EntityCachePoints;
-}
 
 export interface ChartCardYAxis extends ChartCardYAxisExternal {
   series_id?: number[];

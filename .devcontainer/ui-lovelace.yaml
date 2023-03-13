@@ -10,26 +10,18 @@ apexcharts_card_templates:
       last_updated: true
     now:
       show: true
+      label: Nows
     all_series_config:
       extend_to: now
       show:
         legend_value: true
-      data_generator: |
-        return entity.attributes;
-    span_generator: |
-      let start = moment(entities[0].attributes.start);
-      let end = moment(entities[0].attributes.end);
-      if (start.isValid() && end.isValid()) {
-        return [start, end];
-      } else {
-        return [undefined, undefined];
-      }
+        extremas: true
     apex_config:
       legend:
         showForSingleSeries: true
-      # tooltip:
-      #   x:
-      #     format: dd MMM yyyy, HH:mm
+      tooltip:
+        x:
+          format: dd MMM yyyy, HH:mm
       xaxis:
         axisBorder:
           show: false
@@ -59,36 +51,31 @@ apexcharts_card_templates:
     all_series_config:
       unit_separator: ""
       float_precision: 1
-      show:
-        legend_value: false
-    apex_config:
-      legend:
-        show: false
     yaxis:
-      - id: temperature
-        min: "|-10|"
+      # - id: temperature
+      - min: "|-10|"
         max: "|+10|"
         align_to: 1
         decimals: 0
         apex_config:
           tickAmount: 6
           showAlways: true
-      - id: humidity
-        min: "|-10|"
-        max: "|+10|"
-        align_to: 1
-        decimals: 0
-        apex_config:
-          tickAmount: 6
-          showAlways: true
-        opposite: true
-    series:
-      - yaxis_id: temperature
-        name: Temperature
-        unit: °C
-      - yaxis_id: humidity
-        name: Humidity
-        unit: "%"
+      # - id: humidity
+      #   min: "|-10|"
+      #   max: "|+10|"
+      #   align_to: 1
+      #   decimals: 0
+      #   apex_config:
+      #     tickAmount: 6
+      #     showAlways: true
+      #   opposite: true
+    # series:
+    #   - yaxis_id: temperature
+    #     name: Temperature
+    #     unit: °C
+    #   - yaxis_id: humidity
+    #     name: Humidity
+    #     unit: "%"
   power_energy_base:
     config_templates: default
     all_series_config:
@@ -102,18 +89,12 @@ apexcharts_card_templates:
     config_templates: power_energy_base
     header:
       title: Power
-      show_states: false
     all_series_config:
       unit_array:
         - W
         - kW
         - MW
         - GW
-      show:
-        legend_value: false
-    apex_config:
-      legend:
-        showForSingleSeries: false
   energy_base:
     config_templates: power_energy_base
     header:
@@ -127,63 +108,42 @@ apexcharts_card_templates:
       type: column
       show:
         legend_function: sum
-    apex_config:
-      legend:
-        show: false
 title: Home
 views:
   - path: default_view
     title: Home
     badges: []
     cards:
-      # - type: custom:apexcharts-card-2
-      #   config_templates: energy_base
-      #   header:
-      #     title: Server Rack Energy 1
-      #   entity: button.graph_entities_server_rack_energy
-      #   series:
-      #     - entity: button.graph_entities_server_rack_energy
-      #       name: Server Rack Energy 1
-      # - type: custom:apexcharts-card-2
-      #   config_templates: energy_base
-      #   header:
-      #     title: Server Rack Energy 2
-      #   entity: button.graph_entities_server_rack_energy_2
-      #   series:
-      #     - entity: button.graph_entities_server_rack_energy_2
-      #       name: Server Rack Energy 2
-      # - type: custom:apexcharts-card-2
-      #   config_templates: power_base
-      #   header:
-      #     title: Server Rack Power 1
-      #   entity: button.graph_entities_server_rack_power
-      #   series:
-      #     - entity: button.graph_entities_server_rack_power
-      #       name: Server Rack Power 1
-      # - type: custom:apexcharts-card-2
-      #   config_templates: power_base
-      #   header:
-      #     title: Server Rack Power 2
-      #   entity: button.graph_entities_server_rack_power_2
-      #   series:
-      #     - entity: button.graph_entities_server_rack_power_2
-      #       name: Server Rack Power 2
-      # - type: custom:apexcharts-card-2
-      #   config_templates: temp_default
-      #   header:
-      #     title: Server Rack Temperature 1
-      #   entity: button.graph_entities_server_rack_temperature
-      #   series:
-      #     - entity: button.graph_entities_server_rack_temperature
-      #     - entity: button.graph_entities_server_rack_humidity
-      # - type: custom:apexcharts-card-2
-      #   config_templates: temp_default
-      #   header:
-      #     title: Server Rack Temperature 2
-      #   entity: button.graph_entities_server_rack_temperature_2
-      #   series:
-      #     - entity: button.graph_entities_server_rack_temperature_2
-      #     - entity: button.graph_entities_server_rack_humidity_2
+      - type: custom:apexcharts-card-2
+        config_templates: energy_base
+        header:
+          title: Server Rack Energy 1
+        entity: button.graph_entities_server_rack_energy
+      - type: custom:apexcharts-card-2
+        config_templates: energy_base
+        header:
+          title: Server Rack Energy 2
+        entity: button.graph_entities_server_rack_energy_2
+      - type: custom:apexcharts-card-2
+        config_templates: power_base
+        header:
+          title: Server Rack Power 1
+        entity: button.graph_entities_server_rack_power
+      - type: custom:apexcharts-card-2
+        config_templates: power_base
+        header:
+          title: Server Rack Power 2
+        entity: button.graph_entities_server_rack_power_2
+      - type: custom:apexcharts-card-2
+        config_templates: temp_default
+        header:
+          title: Server Rack Temperature 1
+        entity: button.graph_entities_server_rack_temperature
+      - type: custom:apexcharts-card-2
+        config_templates: temp_default
+        header:
+          title: Server Rack Temperature 2
+        entity: button.graph_entities_server_rack_temperature_2
       - type: custom:apexcharts-card-2
         config_templates: energy_base
         header:

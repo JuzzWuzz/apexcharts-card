@@ -1,22 +1,12 @@
-import { HomeAssistant } from "custom-card-helpers";
+import { HassEntity } from "home-assistant-js-websocket";
 import {
   ChartCardSeriesConfig,
   EntityCachePoints,
-  EntityEntryCache,
   HistoryPoint,
 } from "./types";
-import { HassEntity } from "home-assistant-js-websocket";
-import { moment } from "./const";
-import * as pjson from "../package.json";
 
 export default class GraphEntry {
   private _computedHistory?: EntityCachePoints;
-
-  private _hass?: HomeAssistant;
-
-  private _entityID: string;
-
-  private _entityState?: HassEntity;
 
   private _updating = false;
 
@@ -26,13 +16,7 @@ export default class GraphEntry {
 
   constructor(index: number, config: ChartCardSeriesConfig) {
     this._index = index;
-    this._entityID = config.entity;
     this._config = config;
-  }
-
-  set hass(hass: HomeAssistant) {
-    this._hass = hass;
-    this._entityState = this._hass.states[this._entityID];
   }
 
   get history(): EntityCachePoints {
@@ -141,83 +125,19 @@ export default class GraphEntry {
     return this.minMaxWithTimestamp(lastTimestampBeforeStart, end);
   }
 
-  public async _updateHistory(start: Date, end: Date): Promise<boolean> {
-    if (!this._entityState || this._updating) return false;
+  public _updateData(entity: HassEntity | undefined): boolean {
+    if (this._updating || !entity) return false;
     this._updating = true;
 
-    if (this._config.ignore_history) {
-      let currentState: null | number | string = null;
-      if (this._config.attribute) {
-        currentState = this._entityState.attributes?.[this._config.attribute];
-      } else {
-        currentState = this._entityState.state;
-      }
-      let stateParsed: number | null = parseFloat(currentState as string);
-      stateParsed = !Number.isNaN(stateParsed) ? stateParsed : null;
-      this._computedHistory = [
-        [
-          new Date(this._entityState.last_updated).getTime(),
-          stateParsed,
-        ],
-      ];
-      this._updating = false;
-      return true;
-    }
-
-    let history: EntityEntryCache | undefined = undefined;
-
-    history = await this._generateData(start, end);
-
-    if (!history || history.data.length === 0) {
+    const history: EntityCachePoints = entity.attributes.data;
+    if (!history || history.length === 0) {
       this._updating = false;
       this._computedHistory = undefined;
       return false;
     }
-    this._computedHistory = history.data;
+    this._computedHistory = history;
     this._updating = false;
     return true;
-  }
-
-  private async _generateData(
-    start: Date,
-    end: Date,
-  ): Promise<EntityEntryCache> {
-    const AsyncFunction = Object.getPrototypeOf(
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      async function () {},
-    ).constructor;
-    let data, data2;
-    try {
-      const datafn = new AsyncFunction(
-        "entity",
-        "start",
-        "end",
-        "hass",
-        "moment",
-        `'use strict'; ${this._config.data_generator}`,
-      );
-      data2 = await datafn(this._entityState, start, end, this._hass, moment);
-      console.log(data2);
-      data = data2.data;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      const funcTrimmed =
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        this._config.data_generator!.length <= 100
-          ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            this._config.data_generator!.trim()
-          : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            `${this._config.data_generator!.trim().substring(0, 98)}...`;
-      e.message = `${e.name}: ${e.message} in '${funcTrimmed}'`;
-      e.name = "Error";
-      throw e;
-    }
-    return {
-      span: 0,
-      card_version: pjson.version,
-      last_fetched: new Date(),
-      data,
-    };
   }
 
   private _sum(items: EntityCachePoints): number {

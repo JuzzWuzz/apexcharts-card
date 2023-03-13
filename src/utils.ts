@@ -1,9 +1,7 @@
-import { HassEntities, HassEntity } from "home-assistant-js-websocket";
 import { TinyColor } from "@ctrl/tinycolor";
-import parse from "parse-duration";
 import {
   ChartCardExternalConfig,
-  ChartCardSeriesExternalConfig,
+  ChartCardAllSeriesExternalConfig,
 } from "./types-config";
 import { DEFAULT_FLOAT_PRECISION } from "./const";
 import {
@@ -53,26 +51,9 @@ export function mergeDeep(target: any, source: any): any {
 
 export function computeName(
   index: number,
-  series: ChartCardSeriesExternalConfig[] | undefined,
-  entities: (HassEntity | undefined)[] | HassEntities | undefined = undefined,
-  entity: HassEntity | undefined = undefined,
+  series: ChartCardAllSeriesExternalConfig[],
 ): string {
-  if (!series || (!entities && !entity)) return "";
-  let name = "";
-  if (entity) {
-    name =
-      series[index].name ||
-      entity.attributes?.friendly_name ||
-      entity.entity_id ||
-      "";
-  } else if (entities) {
-    name =
-      series[index].name ||
-      entities[index]?.attributes?.friendly_name ||
-      entities[index]?.entity_id ||
-      "";
-  }
-  return name;
+  return series[index].name ?? "";
 }
 
 export function formatValueAndUom(
@@ -158,23 +139,6 @@ export function computeTextColor(backgroundColor: string): string {
   }
 }
 
-export function validateInterval(interval: string, prefix: string): number {
-  const parsed = parse(interval);
-  if (parsed === null) {
-    throw new Error(`'${prefix}: ${interval}' is not a valid range of time`);
-  }
-  return parsed;
-}
-
-export function validateOffset(interval: string, prefix: string): number {
-  if (interval[0] !== "+" && interval[0] !== "-") {
-    throw new Error(
-      `'${prefix}: ${interval}' should start with a '+' or a '-'`,
-    );
-  }
-  return validateInterval(interval, prefix);
-}
-
 export function getLovelace(): LovelaceConfig | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let root: any = document.querySelector("home-assistant");
@@ -247,8 +211,9 @@ export function mergeDeepConfig(target: any, source: any): any {
 }
 
 export function formatApexDate(value: Date): string {
+  const old = true;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hours12 = { hourCycle: "h23" };
+  const hours12 = old ? { hour12: true } : { hourCycle: "h23" };
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",
@@ -259,30 +224,6 @@ export function formatApexDate(value: Date): string {
     ...hours12,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any).format(value);
-}
-
-export function truncateFloat(
-  value: string | number | null | undefined,
-  precision: number | undefined,
-): string | number | null {
-  let lValue: string | number | null | undefined = value;
-  if (lValue === undefined) return null;
-  if (typeof lValue === "string") {
-    lValue = parseFloat(lValue);
-    if (Number.isNaN(lValue)) {
-      return lValue;
-    }
-  }
-  if (
-    lValue !== null &&
-    typeof lValue === "number" &&
-    !Number.isInteger(lValue)
-  ) {
-    lValue = (lValue as number).toFixed(
-      precision === undefined ? DEFAULT_FLOAT_PRECISION : precision,
-    );
-  }
-  return lValue;
 }
 
 export function myFormatNumber(

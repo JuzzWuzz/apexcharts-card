@@ -4,11 +4,7 @@ export interface ChartCardExternalConfig {
   config_templates?: string[] | string;
   color_list?: string[];
   chart_type?: ChartCardChartType;
-  update_interval?: string;
-  update_delay?: string;
   all_series_config?: ChartCardAllSeriesExternalConfig;
-  series?: ChartCardSeriesExternalConfig[];
-  span_generator?: string;
   now?: {
     show?: boolean;
     color?: string;
@@ -27,23 +23,7 @@ export interface ChartCardExternalConfig {
 
 export type ChartCardChartType = "line" | "scatter";
 
-export interface ChartCardSpanExtConfig {
-  start?: ChartCardStartEnd;
-  end?: ChartCardStartEnd;
-  offset?: string;
-}
-
-export type ChartCardStartEnd =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "month"
-  | "year"
-  | "isoWeek";
-
 export interface ChartCardAllSeriesExternalConfig {
-  entity?: string;
   attribute?: string;
   name?: string;
   type?: "line" | "column" | "area";
@@ -57,27 +37,19 @@ export interface ChartCardAllSeriesExternalConfig {
   unit_step?: number;
   unit_array?: string[];
   unit_separator?: string;
-  data_generator?: string;
   float_precision?: number;
-  min?: number;
-  max?: number;
   show?: ChartCardSeriesShowConfigExt;
   yaxis_id?: string;
 }
 
 export interface ChartCardSeriesShowConfigExt {
-  legend_value?: boolean;
-  legend_function?: "last" | "sum";
-  in_header?: boolean | "raw" | "before_now" | "after_now";
-  name_in_header?: boolean;
   in_chart?: boolean;
+  in_header?: boolean | "before_now" | "after_now";
+  legend_function?: "last" | "sum";
+  legend_value?: boolean;
+  name_in_header?: boolean;
   datalabels?: boolean | "total" | "percent";
   extremas?: boolean | "time" | "min" | "max" | "min+time" | "max+time";
-}
-
-export interface ChartCardSeriesExternalConfig
-  extends ChartCardAllSeriesExternalConfig {
-  entity: string;
 }
 
 export interface ChartCardHeaderExternalConfig {

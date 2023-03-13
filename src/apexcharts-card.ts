@@ -31,8 +31,6 @@ import {
   mergeDeep,
   mergeDeepConfig,
   myFormatNumber,
-  truncateFloat,
-  validateInterval,
 } from "./utils";
 import ApexCharts from "apexcharts";
 import { Ripple } from "@material/mwc-ripple";
@@ -41,7 +39,10 @@ import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
 import GraphEntry from "./graphEntry";
 import { createCheckers } from "ts-interface-checker";
-import { ChartCardExternalConfig } from "./types-config";
+import {
+  ChartCardExternalConfig,
+  ChartCardAllSeriesExternalConfig,
+} from "./types-config";
 import exportedTypeSuite from "./types-config-ti";
 import {
   DEFAULT_FLOAT_PRECISION,
@@ -51,11 +52,10 @@ import {
   DEFAULT_SHOW_LEGEND_FUNCTION,
   DEFAULT_SHOW_NAME_IN_HEADER,
   DEFAULT_UPDATE_DELAY,
-  moment,
   NO_VALUE,
   TIMESERIES_TYPES,
 } from "./const";
-import { DEFAULT_COLORS, DEFAULT_SERIE_TYPE, HOUR_24 } from "./const";
+import { DEFAULT_COLORS, DEFAULT_SERIE_TYPE } from "./const";
 import tinycolor from "@ctrl/tinycolor";
 
 /* eslint no-console: 0 */
@@ -79,21 +79,16 @@ class ChartsCard extends LitElement {
 
   @property({ type: Boolean }) private _updating = false;
 
-  private _graphs: (GraphEntry | undefined)[] | undefined;
-
   @property({ attribute: false }) private _config?: ChartCardConfig;
 
-  private _entities: HassEntity[] = [];
+  @property({ attribute: false })
+  private _seriesConfig: ChartCardSeriesConfig[] = [];
 
-  private _interval?: number;
+  private _graphs: GraphEntry[] = [];
 
-  private _intervalTimeout?: NodeJS.Timeout;
+  private _entity?: HassEntity;
 
   private _colors: string[] = [];
-
-  private _headerColors: string[] = [];
-
-  private _graphSpan: number = HOUR_24;
 
   @property({ attribute: false }) private _headerState: (number | null)[] = [];
 
@@ -111,33 +106,14 @@ class ChartsCard extends LitElement {
     super.connectedCallback();
     if (this._config && this._hass && !this._loaded) {
       this._initialLoad();
-    } else if (
-      this._config &&
-      this._hass &&
-      this._apexChart &&
-      !this._config.update_interval
-    ) {
+    } else if (this._config && this._hass && this._apexChart) {
       window.requestAnimationFrame(() => {
         this._updateOnInterval();
       });
-    }
-    if (this._config?.update_interval) {
-      window.requestAnimationFrame(() => {
-        this._updateOnInterval();
-      });
-      // Valid because setConfig has been done.
-      this._intervalTimeout = setInterval(
-        () => this._updateOnInterval(),
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        this._interval!,
-      );
     }
   }
 
   disconnectedCallback() {
-    if (this._intervalTimeout) {
-      clearInterval(this._intervalTimeout);
-    }
     this._updating = false;
     super.disconnectedCallback();
   }
@@ -172,53 +148,20 @@ class ChartsCard extends LitElement {
 
   public set hass(hass: HomeAssistant) {
     this._hass = hass;
-    if (!this._config || !this._graphs || !hass) return;
+    if (!this._config || !hass) return;
 
-    this._graphs.map((graph) => {
-      if (graph) graph.hass = hass;
-    });
-
-    let updated = false;
-    let rawHeaderStatesUpdated = false;
-    this._config.series.forEach((serie, index) => {
-      const entityState = (hass && hass.states[serie.entity]) || undefined;
-      if (!entityState) {
-        this._entities[index] = entityState;
-      } else if (entityState && this._entities[index] !== entityState) {
-        this._entities[index] = entityState;
-        updated = true;
-        if (this._graphs && this._graphs[index]) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          this._graphs[index]!.hass = this._hass!;
-        }
-        if (serie.show.in_header === "raw") {
-          this._headerState[index] = truncateFloat(
-            serie.attribute
-              ? entityState.attributes[serie.attribute]
-              : entityState.state,
-            serie.float_precision,
-          ) as number;
-          rawHeaderStatesUpdated = true;
-        }
-      }
-    });
-    if (rawHeaderStatesUpdated) {
-      this._headerState = [...this._headerState];
-    }
-    if (
-      this._config.series.some(
-        (_, index) => this._entities[index] === undefined,
-      )
-    ) {
+    const entityState = hass.states[this._config.entity];
+    if (entityState === undefined) {
       this._warning = true;
       return;
     } else if (this._warning) {
       this._warning = false;
       this._reset();
     }
-    if (updated) {
-      this._entities = [...this._entities];
-      if (!this._updating && !this._config.update_interval) {
+    if (this._entity !== entityState) {
+      this._entity = entityState;
+      this.lolConfig();
+      if (!this._updating) {
         if (!this._dataLoaded) {
           this._firstDataLoad();
         } else {
@@ -247,14 +190,6 @@ class ChartsCard extends LitElement {
 
   public setConfig(config: ChartCardExternalConfig) {
     let configDup: ChartCardExternalConfig = JSON.parse(JSON.stringify(config));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((configDup as any).entities) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      configDup.series = (configDup as any).entities;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (configDup as any).entities;
-    }
-    configDup = configDup as ChartCardExternalConfig;
     if (configDup.config_templates) {
       configDup.config_templates =
         configDup.config_templates && Array.isArray(configDup.config_templates)
@@ -265,27 +200,7 @@ class ChartsCard extends LitElement {
     try {
       const { ChartCardExternalConfig } = createCheckers(exportedTypeSuite);
       ChartCardExternalConfig.strictCheck(configDup);
-      if (configDup.all_series_config && configDup.series) {
-        configDup.series.forEach((serie, index) => {
-          const allDup = JSON.parse(
-            JSON.stringify(configDup.all_series_config),
-          );
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          configDup.series![index] = mergeDeepConfig(allDup, serie);
-        });
-      }
-      if (configDup.update_interval) {
-        this._interval = validateInterval(
-          configDup.update_interval,
-          "update_interval",
-        );
-      }
-      if (configDup.update_delay) {
-        this._updateDelay = validateInterval(
-          configDup.update_delay,
-          `update_delay`,
-        );
-      }
+
       this._config = mergeDeep(
         {
           useCompress: false,
@@ -293,111 +208,79 @@ class ChartsCard extends LitElement {
         },
         configDup,
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      throw new Error(
+        `/// apexcharts-card version ${pjson.version} /// ${e.message}`,
+      );
+    }
+    // Full reset only happens in editor mode
+    this._reset();
+  }
+
+  private lolConfig() {
+    if (!this._config || !this._entity) return;
+
+    try {
+      const index = 0;
+      const seriesConfig = this._entity.attributes
+        .config as ChartCardAllSeriesExternalConfig;
+
+      // Start with a basic config and merge in the "All Series Config"
+      let mergedSeriesConfig: ChartCardSeriesConfig = mergeDeepConfig(
+        {
+          index: index,
+          extend_to: "end",
+          show: {
+            legend_value: DEFAULT_SHOW_LEGEND_VALUE,
+            legend_function: DEFAULT_SHOW_LEGEND_FUNCTION,
+            in_chart: DEFAULT_SHOW_IN_CHART,
+            in_header: DEFAULT_SHOW_IN_HEADER,
+            name_in_header: DEFAULT_SHOW_NAME_IN_HEADER,
+          },
+        },
+        this._config.all_series_config,
+      );
+      // Merge in the overrides for this series
+      mergedSeriesConfig = mergeDeepConfig(mergedSeriesConfig, seriesConfig);
+
+      mergedSeriesConfig.type = this._config?.chart_type
+        ? undefined
+        : mergedSeriesConfig.type || DEFAULT_SERIE_TYPE;
+
+      console.log("##########");
+      console.log("CONFIG:");
+      console.log(mergedSeriesConfig);
+      console.log("##########");
+      console.log();
+
+      this._seriesConfig = [mergedSeriesConfig];
+      this._graphs = [new GraphEntry(index, mergedSeriesConfig)];
+
       const defColors = this._config?.color_list || DEFAULT_COLORS;
-      if (this._config) {
-        if (this._config.yaxis && this._config.yaxis.length > 1) {
-          if (
-            this._config.series.some((serie) => {
-              return !serie.yaxis_id;
-            })
-          ) {
-            throw new Error(
-              `Multiple yaxis detected: Some series are missing the 'yaxis_id' configuration.`,
-            );
-          }
-          if (
-            this._config.yaxis.some((yaxis) => {
-              return !yaxis.id;
-            })
-          ) {
-            throw new Error(
-              `Multiple yaxis detected: Some yaxis are missing an 'id'.`,
-            );
-          }
+      this._colors[index] =
+        mergedSeriesConfig.color ?? defColors[index % defColors.length];
+      this._colors = this._colors.slice(0, this._seriesConfig.length ?? 0);
+
+      if (this._config.yaxis) {
+        const yAxisConfig = this._generateYAxisConfig(this._config);
+        if (this._config.apex_config) {
+          this._config.apex_config.yaxis = yAxisConfig;
+        } else {
+          this._config.apex_config = {
+            yaxis: yAxisConfig,
+          };
         }
-        if (this._config.yaxis) {
-          const yAxisConfig = this._generateYAxisConfig(this._config);
-          if (this._config.apex_config) {
-            this._config.apex_config.yaxis = yAxisConfig;
-          } else {
-            this._config.apex_config = {
-              yaxis: yAxisConfig,
-            };
-          }
-          this._yAxisConfig?.forEach((yaxis) => {
-            [
-              yaxis.min,
-              yaxis.min_type,
-            ] = this._getTypeOfMinMax(yaxis.min);
-            [
-              yaxis.max,
-              yaxis.max_type,
-            ] = this._getTypeOfMinMax(yaxis.max);
-          });
-        }
-        this._graphs = this._config.series?.map((serie, index) => {
-          serie.index = index;
-          serie.ignore_history = !serie.data_generator;
-          if (!this._headerColors[index]) {
-            this._headerColors[index] = defColors[index % defColors.length];
-          }
-          if (serie.color) {
-            this._headerColors[index] = serie.color;
-          }
-          serie.extend_to =
-            serie.extend_to !== undefined ? serie.extend_to : "end";
-          serie.type = this._config?.chart_type
-            ? undefined
-            : serie.type || DEFAULT_SERIE_TYPE;
-          if (!serie.show) {
-            serie.show = {
-              legend_value: DEFAULT_SHOW_LEGEND_VALUE,
-              legend_function: DEFAULT_SHOW_LEGEND_FUNCTION,
-              in_header: DEFAULT_SHOW_IN_HEADER,
-              in_chart: DEFAULT_SHOW_IN_CHART,
-              name_in_header: DEFAULT_SHOW_NAME_IN_HEADER,
-            };
-          } else {
-            serie.show.legend_value =
-              serie.show.legend_value === undefined
-                ? DEFAULT_SHOW_LEGEND_VALUE
-                : serie.show.legend_value;
-            serie.show.legend_function =
-              serie.show.legend_function === undefined
-                ? DEFAULT_SHOW_LEGEND_FUNCTION
-                : serie.show.legend_function;
-            serie.show.in_chart =
-              serie.show.in_chart === undefined
-                ? DEFAULT_SHOW_IN_CHART
-                : serie.show.in_chart;
-            serie.show.in_header =
-              serie.show.in_header === undefined
-                ? DEFAULT_SHOW_IN_HEADER
-                : serie.show.in_header;
-            serie.show.name_in_header =
-              serie.show.name_in_header === undefined
-                ? DEFAULT_SHOW_NAME_IN_HEADER
-                : serie.show.name_in_header;
-          }
-          if (serie.entity) {
-            const graphEntry = new GraphEntry(index, serie);
-            if (this._hass) graphEntry.hass = this._hass;
-            return graphEntry;
-          }
-          return undefined;
+        this._yAxisConfig?.forEach((yaxis) => {
+          [
+            yaxis.min,
+            yaxis.min_type,
+          ] = this._getTypeOfMinMax(yaxis.min);
+          [
+            yaxis.max,
+            yaxis.max_type,
+          ] = this._getTypeOfMinMax(yaxis.max);
         });
-        this._config.series_in_graph = [];
-        this._config.series?.forEach((serie, index) => {
-          if (serie.show.in_chart) {
-            this._colors.push(this._headerColors[index]);
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            this._config!.series_in_graph.push(serie);
-          }
-        });
-        this._headerColors = this._headerColors.slice(
-          0,
-          this._config?.series?.length ?? 0,
-        );
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
@@ -416,69 +299,71 @@ class ChartsCard extends LitElement {
     if (!config.yaxis) return undefined;
     const burned: boolean[] = [];
     this._yAxisConfig = JSON.parse(JSON.stringify(config.yaxis));
-    const yaxisConfig: ApexYAxis[] = config.series?.map((serie, serieIndex) => {
-      let idx = -1;
-      if (config.yaxis?.length !== 1) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        idx = config.yaxis!.findIndex((yaxis) => {
-          return yaxis.id === serie.yaxis_id;
-        });
-      } else {
-        idx = 0;
-      }
-      if (idx < 0) {
-        throw new Error(`yaxis_id: ${serie.yaxis_id} doesn't exist.`);
-      }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-explicit-any
-      let yAxisDup: any = JSON.parse(JSON.stringify(config.yaxis![idx]));
-      delete yAxisDup.apex_config;
-      delete yAxisDup.decimals;
-      yAxisDup.decimalsInFloat =
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        config.yaxis![idx].decimals === undefined
-          ? DEFAULT_FLOAT_PRECISION
-          : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            config.yaxis![idx].decimals;
-      if (this._yAxisConfig?.[idx].series_id) {
-        this._yAxisConfig?.[idx].series_id?.push(serieIndex);
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        this._yAxisConfig![idx].series_id! = [serieIndex];
-      }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      if (config.yaxis![idx].apex_config) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        yAxisDup = mergeDeep(yAxisDup, config.yaxis![idx].apex_config);
-        delete yAxisDup.apex_config;
-      }
-      if (typeof yAxisDup.min !== "number") delete yAxisDup.min;
-      if (typeof yAxisDup.max !== "number") delete yAxisDup.max;
-      if (burned[idx]) {
-        yAxisDup.show = false;
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        yAxisDup.show =
+    const yaxisConfig: ApexYAxis[] = this._seriesConfig.map(
+      (series, serieIndex) => {
+        let idx = -1;
+        if (config.yaxis?.length !== 1) {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          config.yaxis![idx].show === undefined
-            ? true
+          idx = config.yaxis!.findIndex((yaxis) => {
+            return yaxis.id === series.yaxis_id;
+          });
+        } else {
+          idx = 0;
+        }
+        if (idx < 0) {
+          throw new Error(`yaxis_id: ${series.yaxis_id} doesn't exist.`);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-explicit-any
+        let yAxisDup: any = JSON.parse(JSON.stringify(config.yaxis![idx]));
+        delete yAxisDup.apex_config;
+        delete yAxisDup.decimals;
+        yAxisDup.decimalsInFloat =
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          config.yaxis![idx].decimals === undefined
+            ? DEFAULT_FLOAT_PRECISION
             : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              config.yaxis![idx].show;
-        burned[idx] = true;
-      }
-      yAxisDup.labels = {
-        formatter: function (value) {
-          return formatValueAndUom(
-            value,
-            serie.clamp_negative,
-            serie.unit,
-            serie.unit_step,
-            serie.unit_array,
-            yAxisDup.decimalsInFloat,
-          ).join(serie.unit_separator ?? " ");
-        },
-      };
-      return yAxisDup;
-    });
+              config.yaxis![idx].decimals;
+        if (this._yAxisConfig?.[idx].series_id) {
+          this._yAxisConfig?.[idx].series_id?.push(serieIndex);
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          this._yAxisConfig![idx].series_id! = [serieIndex];
+        }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (config.yaxis![idx].apex_config) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          yAxisDup = mergeDeep(yAxisDup, config.yaxis![idx].apex_config);
+          delete yAxisDup.apex_config;
+        }
+        if (typeof yAxisDup.min !== "number") delete yAxisDup.min;
+        if (typeof yAxisDup.max !== "number") delete yAxisDup.max;
+        if (burned[idx]) {
+          yAxisDup.show = false;
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          yAxisDup.show =
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            config.yaxis![idx].show === undefined
+              ? true
+              : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                config.yaxis![idx].show;
+          burned[idx] = true;
+        }
+        yAxisDup.labels = {
+          formatter: function (value) {
+            return formatValueAndUom(
+              value,
+              series.clamp_negative,
+              series.unit,
+              series.unit_step,
+              series.unit_array,
+              yAxisDup.decimalsInFloat,
+            ).join(series.unit_separator ?? " ");
+          },
+        };
+        return yAxisDup;
+      },
+    );
     return yaxisConfig;
   }
 
@@ -488,12 +373,7 @@ class ChartsCard extends LitElement {
 
   protected render(): TemplateResult {
     if (!this._config || !this._hass) return html``;
-    if (
-      this._warning ||
-      this._config.series.some(
-        (_, index) => this._entities[index] === undefined,
-      )
-    ) {
+    if (this._warning || this._entity === undefined) {
       return this._renderWarnings();
     }
 
@@ -539,15 +419,9 @@ class ChartsCard extends LitElement {
       <ha-card class="warning">
         <hui-warning>
           <div style="font-weight: bold;">apexcharts-card</div>
-          ${this._config?.series.map((_, index) =>
-            !this._entities[index]
-              ? html`
-                  <div>
-                    Entity not available: ${this._config?.series[index].entity}
-                  </div>
-                `
-              : html``,
-          )}
+          ${!this._entity
+            ? html` <div>Entity not available: ${this._config?.entity}</div> `
+            : html``}
         </hui-warning>
       </ha-card>
     `;
@@ -601,8 +475,8 @@ class ChartsCard extends LitElement {
   private _renderStates(): TemplateResult {
     return html`
       <div id="header__states">
-        ${this._config?.series.map((serie, index) => {
-          if (serie.show.in_header) {
+        ${this._seriesConfig.map((series, index) => {
+          if (series.show.in_header) {
             const valueRaw = this._headerState?.[index];
             let value: string | number | null | undefined = valueRaw;
             let uom: string | undefined = undefined;
@@ -611,11 +485,11 @@ class ChartsCard extends LitElement {
               uom,
             ] = formatValueAndUom(
               value,
-              serie.clamp_negative,
-              serie.unit,
-              serie.unit_step,
-              serie.unit_array,
-              serie.float_precision,
+              series.clamp_negative,
+              series.unit,
+              series.unit_step,
+              series.unit_array,
+              series.float_precision,
             );
             return html`
               <div
@@ -646,18 +520,14 @@ class ChartsCard extends LitElement {
                 <div id="state__value">
                   <span
                     id="state"
-                    style="${this._computeHeaderStateColor(serie)}"
+                    style="${this._computeHeaderStateColor(series)}"
                     >${valueRaw === 0 ? 0 : value || NO_VALUE}</span
                   >
                   <span id="uom">${uom}</span>
                 </div>
-                ${serie.show.name_in_header
+                ${series.show.name_in_header
                   ? html`<div id="state__name">
-                      ${computeName(
-                        index,
-                        this._config?.series,
-                        this._entities,
-                      )}
+                      ${computeName(index, this._seriesConfig)}
                     </div>`
                   : ""}
                 <mwc-ripple unbounded id="ripple-${index}"></mwc-ripple>
@@ -691,7 +561,11 @@ class ChartsCard extends LitElement {
     ) {
       this._loaded = true;
       const graph = this.shadowRoot.querySelector("#graph");
-      const layout = getLayoutConfig(this._config, this._hass);
+      const layout = getLayoutConfig(
+        this._config,
+        this._seriesConfig,
+        this._hass,
+      );
       this._apexChart = new ApexCharts(graph, layout);
       this._apexChart.render();
       this._firstDataLoad();
@@ -699,126 +573,93 @@ class ChartsCard extends LitElement {
   }
 
   private async _updateData() {
-    if (!this._config || !this._apexChart || !this._graphs) return;
+    if (!this._config || !this._apexChart || !this._graphs || !this._entity)
+      return;
 
     const now = new Date();
     this._lastUpdated = now;
 
     try {
-      // eslint-disable-next-line no-constant-condition
-      if (now === new Date()) {
-        // TODO: Fill in
-      } else {
-        const { start, end } = await this._getSpanDates();
+      const start = new Date(this._entity.attributes.start);
+      const end = new Date(this._entity.attributes.end);
 
-        const promise = this._graphs.map((graph) => {
-          return graph?._updateHistory(start, end);
-        });
-        await Promise.all(promise);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let graphData: any = { series: [] };
-        if (TIMESERIES_TYPES.includes(this._config.chart_type)) {
-          this._graphs.forEach((graph, index) => {
-            if (!graph) return [];
-            const inHeader = this._config?.series[index].show.in_header;
-            if (inHeader && inHeader !== "raw") {
-              if (inHeader === "after_now" || inHeader === "before_now") {
-                // before_now / after_now
-                this._headerState[index] = graph.nowValue(
-                  now.getTime(),
-                  inHeader === "before_now",
-                );
-              } else {
-                // not raw
-                if (
-                  this._config?.series[index].show.legend_function === "sum"
-                ) {
-                  this._headerState[index] = graph.sumStates;
-                } else {
-                  this._headerState[index] = graph.lastState;
-                }
-              }
+      // Update the actual graphs data
+      this._graphs.map((graph) => {
+        graph._updateData(this._entity);
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const graphData: any = { series: [] };
+      this._graphs.forEach((graph, index) => {
+        if (!graph) return [];
+        const inHeader = this._seriesConfig[index].show.in_header;
+        if (inHeader) {
+          if (inHeader === "after_now" || inHeader === "before_now") {
+            // before_now / after_now
+            this._headerState[index] = graph.nowValue(
+              now.getTime(),
+              inHeader === "before_now",
+            );
+          } else {
+            if (this._seriesConfig[index].show.legend_function === "sum") {
+              this._headerState[index] = graph.sumStates;
+            } else {
+              this._headerState[index] = graph.lastState;
             }
-            if (!this._config?.series[index].show.in_chart) {
-              return;
-            }
-            if (graph.history.length === 0) {
-              if (this._config?.series[index].show.in_chart)
-                graphData.series.push({ data: [] });
-              return;
-            }
-            const data: EntityCachePoints = [...graph.history];
-            if (
-              this._config?.series[index].type !== "column" &&
-              this._config?.series[index].extend_to
-            ) {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              const lastPoint = data.slice(-1)[0]!;
-              if (
-                this._config?.series[index].extend_to === "end" &&
-                lastPoint[0] < end.getTime()
-              ) {
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                data.push([
-                  end.getTime(),
-                  lastPoint[1],
-                ]);
-              } else if (
-                this._config?.series[index].extend_to === "now" &&
-                lastPoint[0] < now.getTime()
-              ) {
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                data.push([
-                  now.getTime(),
-                  lastPoint[1],
-                ]);
-              }
-            }
-            if (this._config?.series[index].show.in_chart)
-              graphData.series.push({ data });
-            return;
-          });
-          graphData.annotations = this._computeAnnotations(start, end, now);
-          if (this._yAxisConfig) {
-            graphData.yaxis = this._computeYAxisAutoMinMax(start, end);
           }
-          graphData.xaxis = {
-            min: start.getTime(),
-            max: end.getTime(),
-          };
-        } else {
-          // No timeline charts
-          graphData = {
-            series: this._graphs.flatMap((graph, index) => {
-              if (!graph) return [];
-              let data = 0;
-              if (graph.history.length === 0) {
-                if (this._config?.series[index].show.in_header !== "raw") {
-                  this._headerState[index] = null;
-                }
-                data = 0;
-              } else {
-                const lastState = graph.lastState;
-                data = lastState || 0;
-                if (this._config?.series[index].show.in_header !== "raw") {
-                  this._headerState[index] = lastState;
-                }
-              }
-              if (!this._config?.series[index].show.in_chart) {
-                return [];
-              }
-              return [data];
-            }),
-          };
         }
-        graphData.colors = this._computeChartColors();
-        this._headerState = [...this._headerState];
-        this._apexChart?.updateOptions(
-          graphData,
-          false,
-          TIMESERIES_TYPES.includes(this._config.chart_type) ? false : true,
-        );
+        if (!this._seriesConfig[index].show.in_chart) {
+          return;
+        }
+        if (graph.history.length === 0) {
+          graphData.series.push({ data: [] });
+          return;
+        }
+        const data: EntityCachePoints = [...graph.history];
+        if (
+          this._seriesConfig[index].type !== "column" &&
+          this._seriesConfig[index].extend_to
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          const lastPoint = data.slice(-1)[0]!;
+          if (
+            this._seriesConfig[index].extend_to === "end" &&
+            lastPoint[0] < end.getTime()
+          ) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            data.push([
+              end.getTime(),
+              lastPoint[1],
+            ]);
+          } else if (
+            this._seriesConfig[index].extend_to === "now" &&
+            lastPoint[0] < now.getTime()
+          ) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            data.push([
+              now.getTime(),
+              lastPoint[1],
+            ]);
+          }
+        }
+        graphData.series.push({ data });
+        return;
+      });
+      graphData.annotations = this._computeAnnotations(start, end, now);
+      if (this._yAxisConfig) {
+        graphData.yaxis = this._computeYAxisAutoMinMax(start, end);
       }
+      graphData.xaxis = {
+        min: start.getTime(),
+        max: end.getTime(),
+      };
+      graphData.colors = this._computeChartColors();
+      this._headerState = [...this._headerState];
+      this._apexChart?.updateOptions(
+        graphData,
+        false,
+        TIMESERIES_TYPES.includes(this._config.chart_type) ? false : true,
+      );
     } catch (err) {
       log(err);
     }
@@ -838,9 +679,9 @@ class ChartsCard extends LitElement {
       start.getMonth() === end.getMonth() &&
       start.getDate() === end.getDate();
     return {
-      points: this._config?.series_in_graph.flatMap((serie, index) => {
-        if (serie.show.extremas) {
-          const { min, max } = this._graphs?.[serie.index]?.minMaxWithTimestamp(
+      points: this._seriesConfig.flatMap((series, index) => {
+        if (series.show.extremas) {
+          const { min, max } = this._graphs[series.index]?.minMaxWithTimestamp(
             start.getTime(),
             end.getTime(),
           ) || {
@@ -864,17 +705,17 @@ class ChartsCard extends LitElement {
               "min+time",
               true,
               "time",
-            ].includes(serie.show.extremas)
+            ].includes(series.show.extremas)
           ) {
             const withTime =
-              serie.show.extremas === "time" ||
-              serie.show.extremas === "min+time";
+              series.show.extremas === "time" ||
+              series.show.extremas === "min+time";
             extremas.push(
               ...this._getPointAnnotationStyle(
                 min,
                 bgColor,
                 txtColor,
-                serie,
+                series,
                 index,
                 sameDay,
                 withTime,
@@ -888,17 +729,17 @@ class ChartsCard extends LitElement {
               "max+time",
               true,
               "time",
-            ].includes(serie.show.extremas)
+            ].includes(series.show.extremas)
           ) {
             const withTime =
-              serie.show.extremas === "time" ||
-              serie.show.extremas === "max+time";
+              series.show.extremas === "time" ||
+              series.show.extremas === "max+time";
             extremas.push(
               ...this._getPointAnnotationStyle(
                 max,
                 bgColor,
                 txtColor,
-                serie,
+                series,
                 index,
                 sameDay,
                 withTime,
@@ -917,7 +758,7 @@ class ChartsCard extends LitElement {
     value: HistoryPoint,
     bgColor: string,
     txtColor: string,
-    serie: ChartCardSeriesConfig,
+    series: ChartCardSeriesConfig,
     index: number,
     sameDay: boolean,
     withTime: boolean,
@@ -941,7 +782,7 @@ class ChartsCard extends LitElement {
         text: myFormatNumber(
           value[1],
           this._hass?.locale,
-          serie.float_precision,
+          series.float_precision,
         ),
         borderColor: "var(--card-background-color)",
         borderWidth: 2,
@@ -1162,57 +1003,15 @@ class ChartsCard extends LitElement {
     const defaultColors: (string | (({ value }) => string))[] = computeColors(
       this._colors,
     );
-    return defaultColors.slice(0, this._config?.series_in_graph.length);
+    return defaultColors.slice(0, this._seriesConfig.length);
   }
 
-  private _computeHeaderStateColor(serie: ChartCardSeriesConfig): string {
+  private _computeHeaderStateColor(series: ChartCardSeriesConfig): string {
     return this._config?.header?.colorize_states &&
-      this._headerColors &&
-      this._headerColors.length > 0
-      ? `color: ${this._headerColors[serie.index]};`
+      this._colors &&
+      this._colors.length > 0
+      ? `color: ${this._colors[series.index]};`
       : "";
-  }
-
-  private async _getSpanDates(): Promise<{ start: Date; end: Date }> {
-    let end = new Date();
-    let start = new Date(end.getTime() - this._graphSpan + 1);
-    // Span
-    if (this._config?.span_generator) {
-      const AsyncFunction = Object.getPrototypeOf(
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        async function () {},
-      ).constructor;
-      let startM, endM;
-      try {
-        const datafn = new AsyncFunction(
-          "entities",
-          "hass",
-          "moment",
-          `'use strict'; ${this._config.span_generator}`,
-        );
-        [
-          startM,
-          endM,
-        ] = await datafn(this._entities, this._hass, moment);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (e: any) {
-        const funcTrimmed =
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          this._config.span_generator!.length <= 100
-            ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              this._config.span_generator!.trim()
-            : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              `${this._config.span_generator!.trim().substring(0, 98)}...`;
-        e.message = `${e.name}: ${e.message} in '${funcTrimmed}'`;
-        e.name = "Error";
-        throw e;
-      }
-      if (startM !== undefined && endM !== undefined) {
-        start = startM.toDate();
-        end = endM.toDate();
-      }
-    }
-    return { start, end };
   }
 
   // backward compatibility

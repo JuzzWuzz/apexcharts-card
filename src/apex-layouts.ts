@@ -4,9 +4,8 @@ import {
   DEFAULT_FLOAT_PRECISION,
   DEFAULT_SERIE_TYPE,
   NO_VALUE,
-  TIMESERIES_TYPES,
 } from "./const";
-import { ChartCardConfig } from "./types";
+import { ChartCardConfig, ChartCardSeriesConfig } from "./types";
 import {
   computeName,
   formatValueAndUom,
@@ -16,6 +15,7 @@ import {
 
 export function getLayoutConfig(
   config: ChartCardConfig,
+  seriesConfig: ChartCardSeriesConfig[],
   hass: HomeAssistant | undefined = undefined,
 ): unknown {
   const def = {
@@ -35,35 +35,34 @@ export function getLayoutConfig(
       strokeDashArray: 3,
     },
     fill: {
-      opacity: getFillOpacity(config),
+      opacity: getFillOpacity(seriesConfig),
       type: getFillType(config),
     },
-    series: getSeries(config, hass),
-    labels: getLabels(config, hass),
-    xaxis: getXAxis(config),
+    series: getSeries(seriesConfig),
+    xaxis: getXAxis(),
     yaxis: getYAxis(config),
     tooltip: {
       x: {
         formatter: getXTooltipFormatter(config),
       },
       y: {
-        formatter: getYTooltipFormatter(config),
+        formatter: getYTooltipFormatter(seriesConfig),
       },
     },
     dataLabels: {
-      enabled: getDataLabelsEnabled(config),
-      enabledOnSeries: getDataLabels_enabledOnSeries(config),
-      formatter: getDataLabelsFormatter(config, hass),
+      enabled: getDataLabelsEnabled(seriesConfig),
+      enabledOnSeries: getDataLabels_enabledOnSeries(seriesConfig),
+      formatter: getDataLabelsFormatter(seriesConfig, hass),
     },
     legend: {
       position: "bottom",
       show: true,
-      formatter: getLegendFormatter(config, hass),
+      formatter: getLegendFormatter(seriesConfig),
     },
     stroke: {
-      curve: getStrokeCurve(config),
+      curve: getStrokeCurve(seriesConfig),
       lineCap: "butt",
-      width: getStrokeWidth(config),
+      width: getStrokeWidth(config, seriesConfig),
     },
     markers: {
       showNullDataPoints: false,
@@ -73,66 +72,45 @@ export function getLayoutConfig(
     },
   };
 
-  const conf = {};
-  return config.apex_config
-    ? mergeDeep(mergeDeep(def, conf), evalApexConfig(config.apex_config))
-    : mergeDeep(def, conf);
+  console.log(JSON.stringify(def));
+
+  const xx = config.apex_config
+    ? mergeDeep(def, evalApexConfig(config.apex_config))
+    : def;
+
+  console.log(JSON.stringify(xx));
+  return xx;
 }
 
-function getFillOpacity(config: ChartCardConfig): number[] {
-  const series = config.series_in_graph;
-  return series.map((serie) => {
-    return serie.opacity !== undefined
-      ? serie.opacity
-      : serie.type === "area"
+function getFillOpacity(seriesConfig: ChartCardSeriesConfig[]): number[] {
+  return seriesConfig.map((series) => {
+    return series.opacity !== undefined
+      ? series.opacity
+      : series.type === "area"
       ? DEFAULT_AREA_OPACITY
       : 1;
   });
 }
 
-function getSeries(config: ChartCardConfig, hass: HomeAssistant | undefined) {
-  const series = config.series_in_graph;
-  if (TIMESERIES_TYPES.includes(config.chart_type)) {
-    return series.map((serie, index) => {
-      return {
-        name: computeName(index, series, undefined, hass?.states[serie.entity]),
-        type: serie.type,
-        data: [],
-      };
-    });
-  } else {
-    return [];
-  }
-}
-
-function getLabels(config: ChartCardConfig, hass: HomeAssistant | undefined) {
-  if (TIMESERIES_TYPES.includes(config.chart_type)) {
-    return [];
-  } else {
-    return config.series_in_graph.map((serie, index) => {
-      return computeName(
-        index,
-        config.series_in_graph,
-        undefined,
-        hass?.states[serie.entity],
-      );
-    });
-  }
-}
-
-function getXAxis(config: ChartCardConfig) {
-  if (TIMESERIES_TYPES.includes(config.chart_type)) {
+function getSeries(seriesConfig: ChartCardSeriesConfig[]) {
+  return seriesConfig.map((series, index) => {
     return {
-      type: "datetime",
-      // range: getMilli(config.hours_to_show),
-      labels: {
-        datetimeUTC: false,
-        datetimeFormatter: getDateTimeFormatter(),
-      },
+      name: computeName(index, seriesConfig),
+      type: series.type,
+      data: [],
     };
-  } else {
-    return {};
-  }
+  });
+}
+
+function getXAxis() {
+  return {
+    type: "datetime",
+    // range: getMilli(config.hours_to_show),
+    labels: {
+      datetimeUTC: false,
+      datetimeFormatter: getDateTimeFormatter(),
+    },
+  };
 }
 
 function getYAxis(config: ChartCardConfig) {
@@ -144,13 +122,24 @@ function getYAxis(config: ChartCardConfig) {
 }
 
 function getDateTimeFormatter(): unknown {
-  return {
-    year: "yyyy",
-    month: "MMM 'yy",
-    day: "dd MMM",
-    hour: "HH:mm",
-    minute: "HH:mm:ss",
-  };
+  // eslint-disable-next-line no-constant-condition
+  if (false) {
+    return {
+      year: "yyyy",
+      month: "MMM 'yy",
+      day: "dd MMM",
+      hour: "HH:mm",
+      minute: "HH:mm:ss",
+    };
+  } else {
+    return {
+      year: "yyyy",
+      month: "MMM 'yy",
+      day: "dd MMM",
+      hour: "hh:mm tt",
+      minute: "hh:mm:ss tt",
+    };
+  }
 }
 
 function getXTooltipFormatter(
@@ -159,13 +148,6 @@ function getXTooltipFormatter(
 ) {
   //: ((val: number, _a: any, _b: any) => string) | undefined
   if (config.apex_config?.tooltip?.x?.format) return undefined;
-
-  // return function (value, opts, conf = config, hass2 = hass) {
-  //   console.log(opts);
-  //   console.log(conf);
-  //   console.log(hass2);
-  //   return `${value}`;
-  // };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -187,13 +169,12 @@ function getXTooltipFormatter(
   };
 }
 
-function getYTooltipFormatter(config: ChartCardConfig) {
-  return function (value, opts, conf = config) {
+function getYTooltipFormatter(seriesConfig: ChartCardSeriesConfig[]) {
+  return function (value, opts, seriesConf = seriesConfig) {
     let lValue = value;
     let uom: string | undefined = undefined;
-    const unitSeparator =
-      conf.series_in_graph[opts.seriesIndex].unit_separator ?? " ";
-    const series = conf.series_in_graph[opts.seriesIndex];
+    const unitSeparator = seriesConf[opts.seriesIndex].unit_separator ?? " ";
+    const series = seriesConf[opts.seriesIndex];
     [
       lValue,
       uom,
@@ -209,69 +190,53 @@ function getYTooltipFormatter(config: ChartCardConfig) {
   };
 }
 
-function getDataLabelsEnabled(config: ChartCardConfig): boolean {
-  return (
-    !TIMESERIES_TYPES.includes(config.chart_type) ||
-    config.series_in_graph.some((serie) => {
-      return serie.show.datalabels;
-    })
-  );
+function getDataLabelsEnabled(seriesConfig: ChartCardSeriesConfig[]): boolean {
+  return seriesConfig.some((series) => {
+    return series.show.datalabels;
+  });
 }
 
 function getDataLabelsFormatter(
-  config: ChartCardConfig,
+  seriesConfig: ChartCardSeriesConfig[],
   hass: HomeAssistant | undefined,
 ) {
-  return function (value, opts, conf = config, lHass = hass) {
-    if (conf.series_in_graph[opts.seriesIndex].show.datalabels === "total") {
+  return function (value, opts, seriesConf = seriesConfig, lHass = hass) {
+    if (seriesConf[opts.seriesIndex].show.datalabels === "total") {
       return myFormatNumber(
         opts.w.globals.stackedSeriesTotals[opts.dataPointIndex],
         lHass?.locale,
-        conf.series_in_graph[opts.seriesIndex].float_precision,
+        seriesConf[opts.seriesIndex].float_precision,
       );
     }
     if (value === null) return;
     return myFormatNumber(
       value,
       lHass?.locale,
-      conf.series_in_graph[opts.seriesIndex].float_precision,
+      seriesConf[opts.seriesIndex].float_precision,
     );
   };
 }
 
-function getLegendFormatter(
-  config: ChartCardConfig,
-  hass: HomeAssistant | undefined,
-) {
-  return function (_, opts, conf = config, hass2 = hass) {
-    const name = computeName(
-      opts.seriesIndex,
-      conf.series_in_graph,
-      undefined,
-      hass2?.states[conf.series_in_graph[opts.seriesIndex].entity],
-    );
-    if (!conf.series_in_graph[opts.seriesIndex].show.legend_value) {
+function getLegendFormatter(seriesConfig: ChartCardSeriesConfig[]) {
+  return function (_, opts, seriesConf = seriesConfig) {
+    const name = computeName(opts.seriesIndex, seriesConf);
+    if (!seriesConf[opts.seriesIndex].show.legend_value) {
       return [name];
     } else {
-      let value;
-      if (TIMESERIES_TYPES.includes(config.chart_type)) {
-        const legend_function =
-          conf.series_in_graph[opts.seriesIndex].show.legend_function;
-        if (legend_function === "sum") {
-          value = opts.w.globals.series[opts.seriesIndex].reduce(
-            (a, b) => a + b,
-            0,
-          );
-        } else {
-          value = opts.w.globals.series[opts.seriesIndex].slice(-1)[0];
-        }
-      } else {
-        value = opts.w.globals.series[opts.seriesIndex];
-      }
       let uom: string | undefined = undefined;
-      const unitSeparator =
-        conf.series_in_graph[opts.seriesIndex].unit_separator ?? " ";
-      const series = conf.series_in_graph[opts.seriesIndex];
+      const unitSeparator = seriesConf[opts.seriesIndex].unit_separator ?? " ";
+      const series = seriesConf[opts.seriesIndex];
+
+      let value;
+      const legend_function = series.show.legend_function;
+      if (legend_function === "sum") {
+        value = opts.w.globals.series[opts.seriesIndex].reduce(
+          (a, b) => a + b,
+          0,
+        );
+      } else {
+        value = opts.w.globals.series[opts.seriesIndex].slice(-1)[0];
+      }
       [
         value,
         uom,
@@ -297,34 +262,35 @@ function getLegendFormatter(
   };
 }
 
-function getStrokeCurve(config: ChartCardConfig) {
-  const series = config.series_in_graph;
-  return series.map((serie) => {
-    return serie.curve || "smooth";
+function getStrokeCurve(seriesConfig: ChartCardSeriesConfig[]) {
+  return seriesConfig.map((series) => {
+    return series.curve || "smooth";
   });
 }
 
-function getDataLabels_enabledOnSeries(config: ChartCardConfig) {
-  return config.series_in_graph.flatMap((serie, index) => {
-    return serie.show.datalabels ? [index] : [];
+function getDataLabels_enabledOnSeries(seriesConfig: ChartCardSeriesConfig[]) {
+  return seriesConfig.flatMap((series, index) => {
+    return series.show.datalabels ? [index] : [];
   });
 }
 
-function getStrokeWidth(config: ChartCardConfig) {
+function getStrokeWidth(
+  config: ChartCardConfig,
+  seriesConfig: ChartCardSeriesConfig[],
+) {
   if (config.chart_type !== undefined && config.chart_type !== "line")
     return config.apex_config?.stroke?.width === undefined
       ? 3
       : config.apex_config?.stroke?.width;
-  const series = config.series_in_graph;
-  return series.map((serie) => {
-    if (serie.stroke_width !== undefined) {
-      return serie.stroke_width;
+  return seriesConfig.map((series) => {
+    if (series.stroke_width !== undefined) {
+      return series.stroke_width;
     }
     return [
       undefined,
       "line",
       "area",
-    ].includes(serie.type)
+    ].includes(series.type)
       ? 5
       : 0;
   });
