@@ -1,4 +1,4 @@
-import { HomeAssistant } from "custom-card-helpers";
+import { HomeAssistant } from "juzz-ha-helper";
 import {
   DEFAULT_AREA_OPACITY,
   DEFAULT_FLOAT_PRECISION,
@@ -72,13 +72,13 @@ export function getLayoutConfig(
     },
   };
 
-  console.log(JSON.stringify(def));
+  //console.log(JSON.stringify(def));
 
   const xx = config.apex_config
     ? mergeDeep(def, evalApexConfig(config.apex_config))
     : def;
 
-  console.log(JSON.stringify(xx));
+  //console.log(JSON.stringify(xx));
   return xx;
 }
 

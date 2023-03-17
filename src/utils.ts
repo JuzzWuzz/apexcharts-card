@@ -5,10 +5,10 @@ import {
 } from "./types-config";
 import { DEFAULT_FLOAT_PRECISION } from "./const";
 import {
-  formatNumber,
   FrontendLocaleData,
   LovelaceConfig,
-} from "custom-card-helpers";
+  formatNumber,
+} from "juzz-ha-helper";
 
 export function getMilli(hours: number): number {
   return hours * 60 ** 2 * 10 ** 3;
@@ -17,36 +17,6 @@ export function getMilli(hours: number): number {
 export function log(message: unknown): void {
   // eslint-disable-next-line no-console
   console.warn("apexcharts-card: ", message);
-}
-
-/**
- * Performs a deep merge of `source` into `target`.
- * Mutates `target` only but not its objects and arrays.
- *
- * @author inspired by [jhildenbiddle](https://stackoverflow.com/a/48218209).
- */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
-export function mergeDeep(target: any, source: any): any {
-  const isObject = (obj) => obj && typeof obj === "object";
-
-  if (!isObject(target) || !isObject(source)) {
-    return source;
-  }
-
-  Object.keys(source).forEach((key) => {
-    const targetValue = target[key];
-    const sourceValue = source[key];
-
-    if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
-      target[key] = targetValue.concat(sourceValue);
-    } else if (isObject(targetValue) && isObject(sourceValue)) {
-      target[key] = mergeDeep(Object.assign({}, targetValue), sourceValue);
-    } else {
-      target[key] = sourceValue;
-    }
-  });
-
-  return target;
 }
 
 export function computeName(
@@ -177,37 +147,42 @@ export function mergeConfigTemplates(
       ll,
       JSON.parse(JSON.stringify(ll.config.apexcharts_card_templates[template])),
     );
-    result = mergeDeepConfig(result, res);
+    result = mergeDeep(result, res);
   });
-  result = mergeDeepConfig(result, config);
+  result = mergeDeep(result, config);
   return result as ChartCardExternalConfig;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
-export function mergeDeepConfig(target: any, source: any): any {
+/**
+ * Performs a deep merge of objects and returns new object. Does not modify
+ * objects (immutable) and merges arrays via concatenation.
+ *
+ * @param {...object} objects - Objects to merge
+ * @returns {object} New object with merged key/values
+ */
+export function mergeDeep(...objects) {
   const isObject = (obj) => obj && typeof obj === "object";
+  const merge = (target, source) => {
+    if (isObject(source)) {
+      Object.keys(source).forEach((key) => {
+        const tVal = target[key];
+        const sVal = source[key];
 
-  if (!isObject(target) || !isObject(source)) {
-    return source;
-  }
-
-  Object.keys(source).forEach((key) => {
-    const targetValue = target[key];
-    const sourceValue = source[key];
-
-    if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
-      target[key] = mergeDeepConfig(targetValue, sourceValue);
-    } else if (isObject(targetValue) && isObject(sourceValue)) {
-      target[key] = mergeDeepConfig(
-        Object.assign({}, targetValue),
-        sourceValue,
-      );
-    } else {
-      target[key] = sourceValue;
+        if (Array.isArray(tVal) && Array.isArray(sVal)) {
+          target[key] = merge(tVal, sVal);
+        } else if (isObject(tVal) && isObject(sVal)) {
+          target[key] = merge(tVal, sVal);
+        } else {
+          target[key] = sVal;
+        }
+      });
     }
-  });
+    return target;
+  };
 
-  return target;
+  return objects.reduce((prev, obj) => {
+    return merge(prev, obj);
+  }, {});
 }
 
 export function formatApexDate(value: Date): string {

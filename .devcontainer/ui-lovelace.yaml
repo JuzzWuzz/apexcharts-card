@@ -114,36 +114,36 @@ views:
     title: Home
     badges: []
     cards:
-      - type: custom:apexcharts-card-2
-        config_templates: energy_base
-        header:
-          title: Server Rack Energy 1
-        entity: button.graph_entities_server_rack_energy
-      - type: custom:apexcharts-card-2
-        config_templates: energy_base
-        header:
-          title: Server Rack Energy 2
-        entity: button.graph_entities_server_rack_energy_2
-      - type: custom:apexcharts-card-2
-        config_templates: power_base
-        header:
-          title: Server Rack Power 1
-        entity: button.graph_entities_server_rack_power
-      - type: custom:apexcharts-card-2
-        config_templates: power_base
-        header:
-          title: Server Rack Power 2
-        entity: button.graph_entities_server_rack_power_2
-      - type: custom:apexcharts-card-2
-        config_templates: temp_default
-        header:
-          title: Server Rack Temperature 1
-        entity: button.graph_entities_server_rack_temperature
-      - type: custom:apexcharts-card-2
-        config_templates: temp_default
-        header:
-          title: Server Rack Temperature 2
-        entity: button.graph_entities_server_rack_temperature_2
+      # - type: custom:apexcharts-card-2
+      #   config_templates: energy_base
+      #   header:
+      #     title: Server Rack Energy 1
+      #   entity: button.graph_entities_server_rack_energy
+      # - type: custom:apexcharts-card-2
+      #   config_templates: energy_base
+      #   header:
+      #     title: Server Rack Energy 2
+      #   entity: button.graph_entities_server_rack_energy_2
+      # - type: custom:apexcharts-card-2
+      #   config_templates: power_base
+      #   header:
+      #     title: Server Rack Power 1
+      #   entity: button.graph_entities_server_rack_power
+      # - type: custom:apexcharts-card-2
+      #   config_templates: power_base
+      #   header:
+      #     title: Server Rack Power 2
+      #   entity: button.graph_entities_server_rack_power_2
+      # - type: custom:apexcharts-card-2
+      #   config_templates: temp_default
+      #   header:
+      #     title: Server Rack Temperature 1
+      #   entity: button.graph_entities_server_rack_temperature
+      # - type: custom:apexcharts-card-2
+      #   config_templates: temp_default
+      #   header:
+      #     title: Server Rack Temperature 2
+      #   entity: button.graph_entities_server_rack_temperature_2
       - type: custom:apexcharts-card-2
         config_templates: energy_base
         header:

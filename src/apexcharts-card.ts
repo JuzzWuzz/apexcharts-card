@@ -1,4 +1,3 @@
-import "array-flat-polyfill";
 import {
   LitElement,
   html,
@@ -17,7 +16,6 @@ import {
   HistoryPoint,
   minmax_type,
 } from "./types";
-import { getLovelace, HomeAssistant } from "custom-card-helpers";
 import * as pjson from "../package.json";
 import {
   computeColor,
@@ -26,10 +24,10 @@ import {
   computeTextColor,
   formatApexDate,
   formatValueAndUom,
+  getLovelace,
   log,
   mergeConfigTemplates,
   mergeDeep,
-  mergeDeepConfig,
   myFormatNumber,
 } from "./utils";
 import ApexCharts from "apexcharts";
@@ -46,17 +44,12 @@ import {
 import exportedTypeSuite from "./types-config-ti";
 import {
   DEFAULT_FLOAT_PRECISION,
-  DEFAULT_SHOW_IN_CHART,
-  DEFAULT_SHOW_IN_HEADER,
-  DEFAULT_SHOW_LEGEND_VALUE,
-  DEFAULT_SHOW_LEGEND_FUNCTION,
-  DEFAULT_SHOW_NAME_IN_HEADER,
   DEFAULT_UPDATE_DELAY,
   NO_VALUE,
-  TIMESERIES_TYPES,
 } from "./const";
 import { DEFAULT_COLORS, DEFAULT_SERIE_TYPE } from "./const";
 import tinycolor from "@ctrl/tinycolor";
+import { HomeAssistant } from "juzz-ha-helper";
 
 /* eslint no-console: 0 */
 console.info(
@@ -196,6 +189,7 @@ class ChartsCard extends LitElement {
           ? configDup.config_templates
           : [configDup.config_templates];
       configDup = mergeConfigTemplates(getLovelace(), configDup);
+      console.log(JSON.stringify(configDup));
     }
     try {
       const { ChartCardExternalConfig } = createCheckers(exportedTypeSuite);
@@ -208,6 +202,13 @@ class ChartsCard extends LitElement {
         },
         configDup,
       );
+
+      console.log("##########");
+      console.log("CONFIG:");
+      console.log(this._config);
+      console.log(JSON.stringify(this._config));
+      console.log("##########");
+      console.log();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       throw new Error(
@@ -226,30 +227,35 @@ class ChartsCard extends LitElement {
       const seriesConfig = this._entity.attributes
         .config as ChartCardAllSeriesExternalConfig;
 
-      // Start with a basic config and merge in the "All Series Config"
-      let mergedSeriesConfig: ChartCardSeriesConfig = mergeDeepConfig(
+      // Create a combined config
+      let mergedSeriesConfig: ChartCardSeriesConfig = mergeDeep(
         {
           index: index,
           extend_to: "end",
           show: {
-            legend_value: DEFAULT_SHOW_LEGEND_VALUE,
-            legend_function: DEFAULT_SHOW_LEGEND_FUNCTION,
-            in_chart: DEFAULT_SHOW_IN_CHART,
-            in_header: DEFAULT_SHOW_IN_HEADER,
-            name_in_header: DEFAULT_SHOW_NAME_IN_HEADER,
+            legend_value: true,
+            legend_function: "last",
+            in_chart: true,
+            in_header: true,
+            name_in_header: true,
           },
         },
         this._config.all_series_config,
       );
-      // Merge in the overrides for this series
-      mergedSeriesConfig = mergeDeepConfig(mergedSeriesConfig, seriesConfig);
+      console.log("$$$$$$$$$$$$$$$$$$$$$$$$$");
+      console.log(mergeDeep(mergedSeriesConfig));
+      mergedSeriesConfig = mergeDeep(mergedSeriesConfig, seriesConfig);
+      console.log("----------------------");
+      console.log(mergeDeep(mergedSeriesConfig));
+      console.log("$$$$$$$$$$$$$$$$$$$$$$$$$");
 
+      console.log(this._config?.chart_type);
       mergedSeriesConfig.type = this._config?.chart_type
         ? undefined
         : mergedSeriesConfig.type || DEFAULT_SERIE_TYPE;
 
       console.log("##########");
-      console.log("CONFIG:");
+      console.log("Series CONFIG:");
       console.log(mergedSeriesConfig);
       console.log("##########");
       console.log();
@@ -655,11 +661,7 @@ class ChartsCard extends LitElement {
       };
       graphData.colors = this._computeChartColors();
       this._headerState = [...this._headerState];
-      this._apexChart?.updateOptions(
-        graphData,
-        false,
-        TIMESERIES_TYPES.includes(this._config.chart_type) ? false : true,
-      );
+      this._apexChart?.updateOptions(graphData, false, false);
     } catch (err) {
       log(err);
     }

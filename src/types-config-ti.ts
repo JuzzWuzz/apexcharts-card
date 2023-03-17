@@ -47,8 +47,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   unit_array: t.opt(t.array("string")),
   unit_separator: t.opt("string"),
   float_precision: t.opt("number"),
-  min: t.opt("number"),
-  max: t.opt("number"),
   show: t.opt("ChartCardSeriesShowConfigExt"),
   yaxis_id: t.opt("string"),
 });
