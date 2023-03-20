@@ -5,7 +5,11 @@ import {
   DEFAULT_SERIE_TYPE,
   NO_VALUE,
 } from "./const";
-import { ChartCardConfig, ChartCardSeriesConfig } from "./types";
+import {
+  ChartCardConfig,
+  ChartCardSeriesConfig,
+  ChartCardYAxis,
+} from "./types";
 import {
   computeName,
   formatValueAndUom,
@@ -16,6 +20,7 @@ import {
 export function getLayoutConfig(
   config: ChartCardConfig,
   seriesConfig: ChartCardSeriesConfig[],
+  yAxisConfig: ChartCardYAxis[],
   hass: HomeAssistant | undefined = undefined,
 ): unknown {
   const def = {
@@ -40,7 +45,7 @@ export function getLayoutConfig(
     },
     series: getSeries(seriesConfig),
     xaxis: getXAxis(),
-    yaxis: getYAxis(config),
+    yaxis: getYAxis(yAxisConfig),
     tooltip: {
       x: {
         formatter: getXTooltipFormatter(config),
@@ -78,7 +83,8 @@ export function getLayoutConfig(
     ? mergeDeep(def, evalApexConfig(config.apex_config))
     : def;
 
-  //console.log(JSON.stringify(xx));
+  console.log(JSON.stringify(xx));
+  console.log(xx);
   return xx;
 }
 
@@ -108,38 +114,46 @@ function getXAxis() {
     // range: getMilli(config.hours_to_show),
     labels: {
       datetimeUTC: false,
-      datetimeFormatter: getDateTimeFormatter(),
+      datetimeFormatter: {
+        year: "yyyy",
+        month: "MMM 'yy",
+        day: "dd MMM",
+        hour: "hh:mm tt",
+        minute: "hh:mm:ss tt",
+      },
     },
   };
 }
 
-function getYAxis(config: ChartCardConfig) {
-  return Array.isArray(config.apex_config?.yaxis) || config.yaxis
-    ? undefined
-    : {
-        decimalsInFloat: DEFAULT_FLOAT_PRECISION,
-      };
-}
+function getYAxis(config: ChartCardYAxis[]): ApexYAxis[] {
+  return config.map((yAxis) => {
+    // Construct the ApexConfig and remove items not permitted
+    const apexConfig = mergeDeep(yAxis.apex_config);
+    delete apexConfig.min;
+    delete apexConfig.max;
+    delete apexConfig.decimalsInFloat;
 
-function getDateTimeFormatter(): unknown {
-  // eslint-disable-next-line no-constant-condition
-  if (false) {
-    return {
-      year: "yyyy",
-      month: "MMM 'yy",
-      day: "dd MMM",
-      hour: "HH:mm",
-      minute: "HH:mm:ss",
-    };
-  } else {
-    return {
-      year: "yyyy",
-      month: "MMM 'yy",
-      day: "dd MMM",
-      hour: "hh:mm tt",
-      minute: "hh:mm:ss tt",
-    };
-  }
+    const mergedConfig = mergeDeep(
+      {
+        decimalsInFloat: yAxis?.decimals ?? DEFAULT_FLOAT_PRECISION,
+        labels: {
+          formatter: yAxis.label_formatter,
+        },
+      },
+      yAxis,
+      apexConfig,
+    );
+    delete mergedConfig.align_to;
+    delete mergedConfig.apex_config;
+    delete mergedConfig.decimals;
+    delete mergedConfig.min;
+    delete mergedConfig.max;
+    delete mergedConfig.min_type;
+    delete mergedConfig.max_type;
+    delete mergedConfig.label_formatter;
+
+    return mergedConfig as ApexYAxis;
+  });
 }
 
 function getXTooltipFormatter(

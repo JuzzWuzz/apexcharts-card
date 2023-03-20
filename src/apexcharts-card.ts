@@ -44,6 +44,7 @@ import {
 import exportedTypeSuite from "./types-config-ti";
 import {
   DEFAULT_FLOAT_PRECISION,
+  // DEFAULT_FLOAT_PRECISION,
   DEFAULT_UPDATE_DELAY,
   NO_VALUE,
 } from "./const";
@@ -77,6 +78,9 @@ class ChartsCard extends LitElement {
   @property({ attribute: false })
   private _seriesConfig: ChartCardSeriesConfig[] = [];
 
+  @property({ attribute: false })
+  private _yAxisConfig: ChartCardYAxis[] = [];
+
   private _graphs: GraphEntry[] = [];
 
   private _entity?: HassEntity;
@@ -88,8 +92,6 @@ class ChartsCard extends LitElement {
   private _dataLoaded = false;
 
   private _updateDelay: number = DEFAULT_UPDATE_DELAY;
-
-  private _yAxisConfig?: ChartCardYAxis[];
 
   @property({ attribute: false }) _lastUpdated: Date = new Date();
 
@@ -261,33 +263,16 @@ class ChartsCard extends LitElement {
       console.log();
 
       this._seriesConfig = [mergedSeriesConfig];
-      this._graphs = [new GraphEntry(index, mergedSeriesConfig)];
+      this._graphs = [new GraphEntry(index)];
 
       const defColors = this._config?.color_list || DEFAULT_COLORS;
       this._colors[index] =
         mergedSeriesConfig.color ?? defColors[index % defColors.length];
       this._colors = this._colors.slice(0, this._seriesConfig.length ?? 0);
 
-      if (this._config.yaxis) {
-        const yAxisConfig = this._generateYAxisConfig(this._config);
-        if (this._config.apex_config) {
-          this._config.apex_config.yaxis = yAxisConfig;
-        } else {
-          this._config.apex_config = {
-            yaxis: yAxisConfig,
-          };
-        }
-        this._yAxisConfig?.forEach((yaxis) => {
-          [
-            yaxis.min,
-            yaxis.min_type,
-          ] = this._getTypeOfMinMax(yaxis.min);
-          [
-            yaxis.max,
-            yaxis.max_type,
-          ] = this._getTypeOfMinMax(yaxis.max);
-        });
-      }
+      this._yAxisConfig = [this._generateYAxisConfig(mergedSeriesConfig)];
+      console.log("YAxis Config");
+      console.log(mergeDeep(this._yAxisConfig));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       throw new Error(
@@ -298,79 +283,32 @@ class ChartsCard extends LitElement {
     this._reset();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private _generateYAxisConfig(
-    config: ChartCardConfig,
-  ): ApexYAxis[] | undefined {
-    if (!config.yaxis) return undefined;
-    const burned: boolean[] = [];
-    this._yAxisConfig = JSON.parse(JSON.stringify(config.yaxis));
-    const yaxisConfig: ApexYAxis[] = this._seriesConfig.map(
-      (series, serieIndex) => {
-        let idx = -1;
-        if (config.yaxis?.length !== 1) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          idx = config.yaxis!.findIndex((yaxis) => {
-            return yaxis.id === series.yaxis_id;
-          });
-        } else {
-          idx = 0;
-        }
-        if (idx < 0) {
-          throw new Error(`yaxis_id: ${series.yaxis_id} doesn't exist.`);
-        }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-explicit-any
-        let yAxisDup: any = JSON.parse(JSON.stringify(config.yaxis![idx]));
-        delete yAxisDup.apex_config;
-        delete yAxisDup.decimals;
-        yAxisDup.decimalsInFloat =
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          config.yaxis![idx].decimals === undefined
-            ? DEFAULT_FLOAT_PRECISION
-            : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              config.yaxis![idx].decimals;
-        if (this._yAxisConfig?.[idx].series_id) {
-          this._yAxisConfig?.[idx].series_id?.push(serieIndex);
-        } else {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          this._yAxisConfig![idx].series_id! = [serieIndex];
-        }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        if (config.yaxis![idx].apex_config) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          yAxisDup = mergeDeep(yAxisDup, config.yaxis![idx].apex_config);
-          delete yAxisDup.apex_config;
-        }
-        if (typeof yAxisDup.min !== "number") delete yAxisDup.min;
-        if (typeof yAxisDup.max !== "number") delete yAxisDup.max;
-        if (burned[idx]) {
-          yAxisDup.show = false;
-        } else {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          yAxisDup.show =
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            config.yaxis![idx].show === undefined
-              ? true
-              : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                config.yaxis![idx].show;
-          burned[idx] = true;
-        }
-        yAxisDup.labels = {
-          formatter: function (value) {
-            return formatValueAndUom(
-              value,
-              series.clamp_negative,
-              series.unit,
-              series.unit_step,
-              series.unit_array,
-              yAxisDup.decimalsInFloat,
-            ).join(series.unit_separator ?? " ");
-          },
-        };
-        return yAxisDup;
-      },
-    );
-    return yaxisConfig;
+  private _generateYAxisConfig(config: ChartCardSeriesConfig): ChartCardYAxis {
+    const yAxis = mergeDeep(config.yaxis);
+
+    // Set Min/Max values
+    [
+      yAxis.min,
+      yAxis.min_type,
+    ] = this._getTypeOfMinMax(yAxis.min);
+    [
+      yAxis.max,
+      yAxis.max_type,
+    ] = this._getTypeOfMinMax(yAxis.max);
+
+    // Set the formatter
+    yAxis.labels_formatter = function (value) {
+      return formatValueAndUom(
+        value,
+        config.clamp_negative,
+        config.unit,
+        config.unit_step,
+        config.unit_array,
+        yAxis.decimalsInFloat,
+      ).join(config.unit_separator ?? " ");
+    };
+
+    return yAxis;
   }
 
   static get styles(): CSSResultGroup {
@@ -570,6 +508,7 @@ class ChartsCard extends LitElement {
       const layout = getLayoutConfig(
         this._config,
         this._seriesConfig,
+        this._yAxisConfig,
         this._hass,
       );
       this._apexChart = new ApexCharts(graph, layout);
@@ -654,6 +593,8 @@ class ChartsCard extends LitElement {
       graphData.annotations = this._computeAnnotations(start, end, now);
       if (this._yAxisConfig) {
         graphData.yaxis = this._computeYAxisAutoMinMax(start, end);
+        console.log("Graph Data.YAxis");
+        console.log(graphData.yaxis);
       }
       graphData.xaxis = {
         min: start.getTime(),
@@ -767,10 +708,7 @@ class ChartsCard extends LitElement {
   ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const points: any = [];
-    const multiYAxis =
-      this._config?.apex_config?.yaxis &&
-      Array.isArray(this._config.apex_config.yaxis) &&
-      this._config.apex_config.yaxis.length > 1;
+    const multiYAxis = this._yAxisConfig.length > 1;
     points.push({
       x: value[0],
       y: value[1],
@@ -862,20 +800,20 @@ class ChartsCard extends LitElement {
     return {};
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private _computeYAxisAutoMinMax(start: Date, end: Date) {
-    if (!this._config) return;
-    this._yAxisConfig?.map((yaxis) => {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
+    this._yAxisConfig.map((yaxis) => {
       if (
         yaxis.min_type !== minmax_type.FIXED ||
         yaxis.max_type !== minmax_type.FIXED
       ) {
-        const minMax = yaxis.series_id?.map((id) => {
+        const minMax = this._graphs.map((graph) => {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          const lMinMax = this._graphs![id]?.minMaxWithTimestampForYAxis(
+          const lMinMax = graph.minMaxWithTimestampForYAxis(
             start.getTime(),
             end.getTime(),
           );
-          if (!lMinMax) return undefined;
           return lMinMax;
         });
         let min: number | null = null;
@@ -911,33 +849,52 @@ class ChartsCard extends LitElement {
             }
           }
         }
-        yaxis.series_id?.forEach((id) => {
-          if (min !== null && yaxis.min_type !== minmax_type.FIXED) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            this._config!.apex_config!.yaxis![id].min =
-              this._getMinMaxBasedOnType(
-                true,
-                min,
-                yaxis.min as number,
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                yaxis.min_type!,
-              );
-          }
-          if (max !== null && yaxis.max_type !== minmax_type.FIXED) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            this._config!.apex_config!.yaxis![id].max =
-              this._getMinMaxBasedOnType(
-                false,
-                max,
-                yaxis.max as number,
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                yaxis.max_type!,
-              );
-          }
-        });
+
+        if (min !== null && yaxis.min_type !== minmax_type.FIXED) {
+          yaxis.min = this._getMinMaxBasedOnType(
+            true,
+            min,
+            yaxis.min as number,
+            yaxis.min_type,
+          );
+        }
+        if (max !== null && yaxis.max_type !== minmax_type.FIXED) {
+          yaxis.max = this._getMinMaxBasedOnType(
+            false,
+            max,
+            yaxis.max as number,
+            yaxis.max_type,
+          );
+        }
       }
     });
-    return this._config?.apex_config?.yaxis;
+
+    return this._yAxisConfig.map((yAxis) => {
+      // Construct the ApexConfig and remove items not permitted
+      const apexConfig = mergeDeep(yAxis.apex_config);
+      delete apexConfig.min;
+      delete apexConfig.max;
+      delete apexConfig.decimalsInFloat;
+
+      const mergedConfig = mergeDeep(
+        {
+          decimalsInFloat: yAxis?.decimals ?? DEFAULT_FLOAT_PRECISION,
+          labels: {
+            formatter: yAxis.label_formatter,
+          },
+        },
+        yAxis,
+        apexConfig,
+      );
+      delete mergedConfig.align_to;
+      delete mergedConfig.apex_config;
+      delete mergedConfig.decimals;
+      delete mergedConfig.min_type;
+      delete mergedConfig.max_type;
+      delete mergedConfig.label_formatter;
+
+      return mergedConfig as ApexYAxis;
+    });
   }
 
   private _getMinMaxBasedOnType(

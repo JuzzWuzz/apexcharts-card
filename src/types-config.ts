@@ -39,7 +39,7 @@ export interface ChartCardAllSeriesExternalConfig {
   unit_separator?: string;
   float_precision?: number;
   show?: ChartCardSeriesShowConfigExt;
-  yaxis_id?: string;
+  yaxis?: ChartCardYAxisExternal;
 }
 
 export interface ChartCardSeriesShowConfigExt {
@@ -62,13 +62,12 @@ export interface ChartCardHeaderExternalConfig {
 }
 
 export interface ChartCardYAxisExternal {
-  id?: string;
+  align_to?: number;
+  decimals?: number;
   show?: boolean;
   opposite?: boolean;
   min?: "auto" | number | string;
   max?: "auto" | number | string;
-  align_to?: number;
-  decimals?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apex_config?: any;
 }

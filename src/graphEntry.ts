@@ -1,9 +1,5 @@
 import { HassEntity } from "home-assistant-js-websocket";
-import {
-  ChartCardSeriesConfig,
-  EntityCachePoints,
-  HistoryPoint,
-} from "./types";
+import { EntityCachePoints, HistoryPoint } from "./types";
 
 export default class GraphEntry {
   private _computedHistory?: EntityCachePoints;
@@ -12,11 +8,8 @@ export default class GraphEntry {
 
   private _index: number;
 
-  private _config: ChartCardSeriesConfig;
-
-  constructor(index: number, config: ChartCardSeriesConfig) {
+  constructor(index: number) {
     this._index = index;
-    this._config = config;
   }
 
   get history(): EntityCachePoints {

@@ -43,6 +43,8 @@ lovelace:
   resources:
     - url: http://127.0.0.1:5001/apexcharts-card.js
       type: module
+    - url: http://127.0.0.1:5001/apexcharts-card-orig.js
+      type: module
 
 mqtt:
 

@@ -16,6 +16,8 @@ apexcharts_card_templates:
       show:
         legend_value: true
         extremas: true
+      data_generator: |
+        return entity.attributes.querydata;
     apex_config:
       legend:
         showForSingleSeries: true
@@ -48,42 +50,140 @@ apexcharts_card_templates:
     config_templates: default
     header:
       title: Temperature
+    graph_span: 2 day
+    span:
+      start: day
+      offset: "-1d"
     all_series_config:
       unit_separator: ""
       float_precision: 1
     yaxis:
-      # - id: temperature
-      - min: "|-10|"
+      - id: temperature
+        min: "|-10|"
         max: "|+10|"
         align_to: 1
         decimals: 0
         apex_config:
           tickAmount: 6
           showAlways: true
-      # - id: humidity
-      #   min: "|-10|"
-      #   max: "|+10|"
-      #   align_to: 1
-      #   decimals: 0
-      #   apex_config:
-      #     tickAmount: 6
-      #     showAlways: true
-      #   opposite: true
-    # series:
-    #   - yaxis_id: temperature
-    #     name: Temperature
-    #     unit: °C
-    #   - yaxis_id: humidity
-    #     name: Humidity
-    #     unit: "%"
+      - id: humidity
+        min: "|-10|"
+        max: "|+10|"
+        align_to: 1
+        decimals: 0
+        apex_config:
+          tickAmount: 6
+          showAlways: true
+        opposite: true
+    series:
+      - yaxis_id: temperature
+        name: Temperature
+        unit: °C
+      - yaxis_id: humidity
+        name: Humidity
+        unit: "%"
   power_energy_base:
     config_templates: default
+    span_generator: |
+      let start = moment(entities[0].attributes.start);
+      let end = moment(entities[0].attributes.end);
+      if (start.isValid() && end.isValid()) {
+        return [start, end];
+      } else {
+        return [undefined, undefined];
+      }
     all_series_config:
       unit_step: 1000
       float_precision: 2
       clamp_negative: true
     yaxis:
       - align_to: 10
+        decimals: 2
+  power_base:
+    config_templates: power_energy_base
+    header:
+      title: Power
+    all_series_config:
+      unit_array:
+        - W
+        - kW
+        - MW
+        - GW
+  energy_base:
+    config_templates: power_energy_base
+    header:
+      title: Energy
+    all_series_config:
+      unit_array:
+        - Wh
+        - kWh
+        - MWh
+        - GWh
+      type: column
+      show:
+        legend_function: sum
+
+apexcharts_card_templates_2:
+  default:
+    header:
+      show: true
+      title: My Title
+      show_states: true
+      colorize_states: true
+    show:
+      loading: true
+      last_updated: true
+    now:
+      show: true
+      label: Nows
+    all_series_config:
+      extend_to: now
+      show:
+        legend_value: true
+        extremas: true
+      yaxis:
+        min: "|-10|"
+        max: "|+10|"
+        align_to: 1
+        decimals: 0
+        apex_config:
+          tickAmount: 6
+          showAlways: true
+    apex_config:
+      legend:
+        showForSingleSeries: true
+      tooltip:
+        x:
+          format: dd MMM yyyy, HH:mm
+      xaxis:
+        axisBorder:
+          show: false
+        axisTicks:
+          show: false
+        tooltip:
+          enabled: false
+        crosshairs:
+          show: false
+        labels:
+          show: true
+          datetimeFormatter:
+            day: dd MMM
+            hour: HH:mm
+  temp_default:
+    config_templates: default
+    header:
+      title: Temperature
+    all_series_config:
+      unit_separator: ""
+      float_precision: 1
+  power_energy_base:
+    config_templates: default
+    all_series_config:
+      unit_step: 1000
+      float_precision: 2
+      clamp_negative: true
+      yaxis:
+        align_to: 10
         decimals: 2
   power_base:
     config_templates: power_energy_base
@@ -149,3 +249,10 @@ views:
         header:
           title: Server Rack Energy x
         entity: button.graph_entities_server_rack_energy
+
+      - type: custom:apexcharts-card
+        config_templates: energy_base
+        header:
+          title: Server Rack Energy x
+        series:
+          - entity: button.graph_entities_server_rack_energy

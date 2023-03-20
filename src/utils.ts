@@ -139,13 +139,15 @@ export function mergeConfigTemplates(
   let result: any = {};
   const tpls = tpl && Array.isArray(tpl) ? tpl : [tpl];
   tpls?.forEach((template) => {
-    if (!ll.config.apexcharts_card_templates?.[template])
+    if (!ll.config.apexcharts_card_templates_2?.[template])
       throw new Error(
         `apexchart-card template '${template}' is missing from your config!`,
       );
     const res = mergeConfigTemplates(
       ll,
-      JSON.parse(JSON.stringify(ll.config.apexcharts_card_templates[template])),
+      JSON.parse(
+        JSON.stringify(ll.config.apexcharts_card_templates_2[template]),
+      ),
     );
     result = mergeDeep(result, res);
   });

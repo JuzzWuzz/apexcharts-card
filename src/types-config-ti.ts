@@ -48,7 +48,7 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   unit_separator: t.opt("string"),
   float_precision: t.opt("number"),
   show: t.opt("ChartCardSeriesShowConfigExt"),
-  yaxis_id: t.opt("string"),
+  yaxis: t.opt("ChartCardYAxisExternal"),
 });
 
 export const ChartCardSeriesShowConfigExt = t.iface([], {
@@ -80,13 +80,12 @@ export const ChartCardHeaderExternalConfig = t.iface([], {
 });
 
 export const ChartCardYAxisExternal = t.iface([], {
-  id: t.opt("string"),
+  align_to: t.opt("number"),
+  decimals: t.opt("number"),
   show: t.opt("boolean"),
   opposite: t.opt("boolean"),
   min: t.opt(t.union(t.lit("auto"), "number", "string")),
   max: t.opt(t.union(t.lit("auto"), "number", "string")),
-  align_to: t.opt("number"),
-  decimals: t.opt("number"),
   apex_config: t.opt("any"),
 });
 
