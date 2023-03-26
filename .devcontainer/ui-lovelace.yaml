@@ -12,7 +12,6 @@ apexcharts_card_templates:
       show: true
       label: Nows
     all_series_config:
-      extend_to: now
       show:
         legend_value: true
         extremas: true
@@ -137,15 +136,13 @@ apexcharts_card_templates_2:
       show: true
       label: Nows
     all_series_config:
-      extend_to: now
       show:
         legend_value: true
-        extremas: true
+        extremas: min+max
       yaxis:
-        min: "|-10|"
-        max: "|+10|"
+        min_value: "|-10|"
+        max_value: "|+10|"
         align_to: 1
-        decimals: 0
         apex_config:
           tickAmount: 6
           showAlways: true
@@ -184,7 +181,6 @@ apexcharts_card_templates_2:
       clamp_negative: true
       yaxis:
         align_to: 10
-        decimals: 2
   power_base:
     config_templates: power_energy_base
     header:
@@ -249,10 +245,19 @@ views:
         header:
           title: Server Rack Energy x
         entity: button.graph_entities_server_rack_energy
-
       - type: custom:apexcharts-card
         config_templates: energy_base
         header:
           title: Server Rack Energy x
         series:
           - entity: button.graph_entities_server_rack_energy
+  - path: panel
+    title: Panel
+    badges: []
+    panel: true
+    cards:
+      - type: custom:apexcharts-card-2
+        config_templates: energy_base
+        header:
+          title: Server Rack Energy x
+        entity: button.graph_entities_server_rack_energy

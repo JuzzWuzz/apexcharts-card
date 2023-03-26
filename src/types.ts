@@ -21,21 +21,29 @@ export interface ChartCardSeriesConfig
 export interface ChartCardSeriesShowConfig
   extends ChartCardSeriesShowConfigExt {
   in_chart: boolean;
-  in_header: boolean | "before_now" | "after_now";
+  in_header: boolean;
   legend_function: "last" | "sum";
   legend_value: boolean;
   name_in_header: boolean;
 }
 
-export type EntityCachePoints = Array<HistoryPoint>;
-
 export type HistoryPoint = [number, number | null];
 
 export interface ChartCardYAxis extends ChartCardYAxisExternal {
+  min?: number;
+  max?: number;
   min_type: minmax_type;
   max_type: minmax_type;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  label_formatter?(val: number, opts?: any): string | string[];
+}
+
+export interface ChartCardSeries {
+  config: ChartCardSeriesConfig;
+  data: Array<HistoryPoint>;
+  minPoint: HistoryPoint;
+  maxPoint: HistoryPoint;
+  headerValue: number | null;
+  color: string;
+  yAxis: ChartCardYAxis;
 }
 
 export enum minmax_type {
@@ -43,4 +51,11 @@ export enum minmax_type {
   FIXED,
   SOFT,
   ABSOLUTE,
+}
+
+export interface FormattedValue {
+  value: string;
+  unitSeparator: string;
+  unitOfMeasurement: string;
+  formatted(): string;
 }

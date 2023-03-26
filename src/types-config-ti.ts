@@ -24,7 +24,6 @@ export const ChartCardExternalConfig = t.iface([], {
       last_updated: t.opt("boolean"),
     }),
   ),
-  stacked: t.opt("boolean"),
   apex_config: t.opt("any"),
   header: t.opt("ChartCardHeaderExternalConfig"),
   yaxis: t.opt(t.array("ChartCardYAxisExternal")),
@@ -40,7 +39,6 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
   opacity: t.opt("number"),
   curve: t.opt(t.union(t.lit("smooth"), t.lit("straight"), t.lit("stepline"))),
   stroke_width: t.opt("number"),
-  extend_to: t.opt(t.union(t.lit(false), t.lit("end"), t.lit("now"))),
   clamp_negative: t.opt("boolean"),
   unit: t.opt("string"),
   unit_step: t.opt("number"),
@@ -53,21 +51,12 @@ export const ChartCardAllSeriesExternalConfig = t.iface([], {
 
 export const ChartCardSeriesShowConfigExt = t.iface([], {
   in_chart: t.opt("boolean"),
-  in_header: t.opt(t.union("boolean", t.lit("before_now"), t.lit("after_now"))),
+  in_header: t.opt("boolean"),
   legend_function: t.opt(t.union(t.lit("last"), t.lit("sum"))),
   legend_value: t.opt("boolean"),
   name_in_header: t.opt("boolean"),
   datalabels: t.opt(t.union("boolean", t.lit("total"), t.lit("percent"))),
-  extremas: t.opt(
-    t.union(
-      "boolean",
-      t.lit("time"),
-      t.lit("min"),
-      t.lit("max"),
-      t.lit("min+time"),
-      t.lit("max+time"),
-    ),
-  ),
+  extremas: t.opt(t.union(t.lit("min+max"), t.lit("min"), t.lit("max"))),
 });
 
 export const ChartCardHeaderExternalConfig = t.iface([], {
@@ -81,11 +70,10 @@ export const ChartCardHeaderExternalConfig = t.iface([], {
 
 export const ChartCardYAxisExternal = t.iface([], {
   align_to: t.opt("number"),
-  decimals: t.opt("number"),
   show: t.opt("boolean"),
   opposite: t.opt("boolean"),
-  min: t.opt(t.union(t.lit("auto"), "number", "string")),
-  max: t.opt(t.union(t.lit("auto"), "number", "string")),
+  min_value: t.opt(t.union(t.lit("auto"), "number", "string")),
+  max_value: t.opt(t.union(t.lit("auto"), "number", "string")),
   apex_config: t.opt("any"),
 });
 

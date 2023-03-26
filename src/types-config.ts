@@ -14,7 +14,6 @@ export interface ChartCardExternalConfig {
     loading?: boolean;
     last_updated?: boolean;
   };
-  stacked?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apex_config?: any;
   header?: ChartCardHeaderExternalConfig;
@@ -31,7 +30,6 @@ export interface ChartCardAllSeriesExternalConfig {
   opacity?: number;
   curve?: "smooth" | "straight" | "stepline";
   stroke_width?: number;
-  extend_to?: false | "end" | "now";
   clamp_negative?: boolean;
   unit?: string;
   unit_step?: number;
@@ -44,12 +42,12 @@ export interface ChartCardAllSeriesExternalConfig {
 
 export interface ChartCardSeriesShowConfigExt {
   in_chart?: boolean;
-  in_header?: boolean | "before_now" | "after_now";
+  in_header?: boolean;
   legend_function?: "last" | "sum";
   legend_value?: boolean;
   name_in_header?: boolean;
   datalabels?: boolean | "total" | "percent";
-  extremas?: boolean | "time" | "min" | "max" | "min+time" | "max+time";
+  extremas?: "min+max" | "min" | "max";
 }
 
 export interface ChartCardHeaderExternalConfig {
@@ -63,11 +61,10 @@ export interface ChartCardHeaderExternalConfig {
 
 export interface ChartCardYAxisExternal {
   align_to?: number;
-  decimals?: number;
   show?: boolean;
   opposite?: boolean;
-  min?: "auto" | number | string;
-  max?: "auto" | number | string;
+  min_value?: "auto" | number | string;
+  max_value?: "auto" | number | string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apex_config?: any;
 }

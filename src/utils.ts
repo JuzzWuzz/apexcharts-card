@@ -1,41 +1,21 @@
 import { TinyColor } from "@ctrl/tinycolor";
-import {
-  ChartCardExternalConfig,
-  ChartCardAllSeriesExternalConfig,
-} from "./types-config";
-import { DEFAULT_FLOAT_PRECISION } from "./const";
-import {
-  FrontendLocaleData,
-  LovelaceConfig,
-  formatNumber,
-} from "juzz-ha-helper";
-
-export function getMilli(hours: number): number {
-  return hours * 60 ** 2 * 10 ** 3;
-}
+import { ChartCardExternalConfig } from "./types-config";
+import { DEFAULT_FLOAT_PRECISION, NO_VALUE } from "./const";
+import { LovelaceConfig } from "juzz-ha-helper";
+import { ChartCardSeriesConfig, FormattedValue } from "./types";
 
 export function log(message: unknown): void {
   // eslint-disable-next-line no-console
   console.warn("apexcharts-card: ", message);
 }
 
-export function computeName(
-  index: number,
-  series: ChartCardAllSeriesExternalConfig[],
-): string {
-  return series[index].name ?? "";
-}
-
 export function formatValueAndUom(
   value: string | number | null | undefined,
-  clamp_negative: boolean | undefined,
-  unit: string | undefined,
-  unit_step: number | undefined,
-  unit_array: string[] | undefined,
-  precision: number | undefined,
-): [string | null, string] {
+  seriesConf: ChartCardSeriesConfig,
+): FormattedValue {
   let lValue: string | number | null | undefined = value;
-  let lPrecision: number | undefined = precision;
+  let lPrecision: number =
+    seriesConf.float_precision ?? DEFAULT_FLOAT_PRECISION;
   if (lValue === undefined || lValue === null) {
     lValue = null;
   } else {
@@ -49,22 +29,24 @@ export function formatValueAndUom(
   }
   let uom: string | undefined = undefined;
   if (typeof lValue === "number") {
-    if ((clamp_negative ?? false) && lValue < 0) {
+    if ((seriesConf.clamp_negative ?? false) && lValue < 0) {
       lValue = 0;
     }
-    if (unit_step && unit_array) {
+    if (seriesConf.unit_step && seriesConf.unit_array) {
       let i = 0;
       if (lValue !== 0) {
         i = Math.min(
           Math.max(
-            Math.floor(Math.log(Math.abs(lValue)) / Math.log(unit_step)),
+            Math.floor(
+              Math.log(Math.abs(lValue)) / Math.log(seriesConf.unit_step),
+            ),
             0,
           ),
-          unit_array.length - 1,
+          seriesConf.unit_array.length - 1,
         );
-        lValue = lValue / Math.pow(unit_step, i);
+        lValue = lValue / Math.pow(seriesConf.unit_step, i);
       }
-      uom = unit_array[i];
+      uom = seriesConf.unit_array[i];
       if (i === 0) {
         lPrecision = 0;
       }
@@ -72,17 +54,19 @@ export function formatValueAndUom(
     lValue = lValue.toFixed(lPrecision);
   }
 
-  return [
-    lValue,
-    uom || unit || "",
-  ];
-}
-
-export function computeColors(colors: string[] | undefined): string[] {
-  if (!colors) return [];
-  return colors.map((color) => {
-    return computeColor(color);
-  });
+  return {
+    value: lValue ?? NO_VALUE,
+    unitSeparator: seriesConf.unit_separator ?? " ",
+    unitOfMeasurement: uom ?? seriesConf.unit ?? "",
+    formatted() {
+      return [
+        this.value,
+        this.unitOfMeasurement,
+      ]
+        .filter((s) => (s ?? "").trim().length > 0)
+        .join(this.unitSeparator);
+    },
+  };
 }
 
 export function computeColor(color: string): string {
@@ -201,23 +185,4 @@ export function formatApexDate(value: Date): string {
     ...hours12,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any).format(value);
-}
-
-export function myFormatNumber(
-  num: string | number | null | undefined,
-  localeOptions?: FrontendLocaleData,
-  precision?: number | undefined,
-): string | null {
-  let lValue: string | number | null | undefined = num;
-  if (lValue === undefined || lValue === null) return null;
-  if (typeof lValue === "string") {
-    lValue = parseFloat(lValue);
-    if (Number.isNaN(lValue)) {
-      return num as string;
-    }
-  }
-  return formatNumber(lValue, localeOptions, {
-    maximumFractionDigits:
-      precision === undefined ? DEFAULT_FLOAT_PRECISION : precision,
-  });
 }
