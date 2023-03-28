@@ -265,11 +265,18 @@ function getAnnotations(
   const getMinMaxPoints = (): PointAnnotations[] => {
     const points: PointAnnotations[] = [];
     series.map((s) => {
-      const extremas = s.config.show.extremas?.toString();
+      const extremas = s.config.show.extremas;
+      console.log("Extremas");
+      console.log(extremas);
+      console.log(extremas?.toString());
       if (extremas !== undefined) {
         [
-          extremas.includes("min") ? s.minPoint : null,
-          extremas.includes("max") ? s.maxPoint : null,
+          extremas === true || extremas.toString().includes("min")
+            ? s.minPoint
+            : null,
+          extremas === true || extremas.toString().includes("max")
+            ? s.maxPoint
+            : null,
         ].map((p) => {
           if (p === null) return;
           const bgColor = computeColor(s.color);

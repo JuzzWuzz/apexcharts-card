@@ -138,7 +138,7 @@ apexcharts_card_templates_2:
     all_series_config:
       show:
         legend_value: true
-        extremas: min+max
+        extremas: true
       yaxis:
         min_value: "|-10|"
         max_value: "|+10|"

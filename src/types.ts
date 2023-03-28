@@ -1,25 +1,23 @@
 import { ApexOptions } from "apexcharts";
 import {
-  ChartCardExternalConfig,
-  ChartCardAllSeriesExternalConfig,
-  ChartCardSeriesShowConfigExt,
-  ChartCardYAxisExternal,
+  ChartCardConfigExternal,
+  ChartCardSeriesConfigExternal,
+  ChartCardSeriesShowConfigExternal,
+  ChartCardSeriesYAxisConfigExternal,
 } from "./types-config";
 
-export interface ChartCardConfig extends ChartCardExternalConfig {
-  useCompress: boolean;
+export interface ChartCardConfig extends ChartCardConfigExternal {
   apex_config?: ApexOptions;
 }
 
-export interface ChartCardSeriesConfig
-  extends ChartCardAllSeriesExternalConfig {
+export interface ChartCardSeriesConfig extends ChartCardSeriesConfigExternal {
   index: number;
   show: ChartCardSeriesShowConfig;
-  yaxis?: ChartCardYAxis;
+  yaxis?: ChartCardSeriesYAxisConfig;
 }
 
 export interface ChartCardSeriesShowConfig
-  extends ChartCardSeriesShowConfigExt {
+  extends ChartCardSeriesShowConfigExternal {
   in_chart: boolean;
   in_header: boolean;
   legend_function: "last" | "sum";
@@ -27,30 +25,31 @@ export interface ChartCardSeriesShowConfig
   name_in_header: boolean;
 }
 
-export type HistoryPoint = [number, number | null];
-
-export interface ChartCardYAxis extends ChartCardYAxisExternal {
+export interface ChartCardSeriesYAxisConfig
+  extends ChartCardSeriesYAxisConfigExternal {
   min?: number;
   max?: number;
-  min_type: minmax_type;
-  max_type: minmax_type;
+  min_type: MinMaxType;
+  max_type: MinMaxType;
 }
 
-export interface ChartCardSeries {
-  config: ChartCardSeriesConfig;
-  data: Array<HistoryPoint>;
-  minPoint: HistoryPoint;
-  maxPoint: HistoryPoint;
-  headerValue: number | null;
-  color: string;
-  yAxis: ChartCardYAxis;
-}
+export type DataPoint = [number, number | null];
 
-export enum minmax_type {
+export enum MinMaxType {
   AUTO,
   FIXED,
   SOFT,
   ABSOLUTE,
+}
+
+export interface ChartCardSeries {
+  config: ChartCardSeriesConfig;
+  data: Array<DataPoint>;
+  minPoint: DataPoint;
+  maxPoint: DataPoint;
+  headerValue: number | null;
+  color: string;
+  yAxis: ChartCardSeriesYAxisConfig;
 }
 
 export interface FormattedValue {

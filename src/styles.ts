@@ -679,18 +679,6 @@ export const stylesApex: CSSResultGroup = css`
     }
   }
 
-  .apexcharts-datalabel.apexcharts-element-hidden {
-    opacity: 0;
-  }
-
-  .apexcharts-datalabels,
-  .apexcharts-datalabel,
-  .apexcharts-datalabel-label,
-  .apexcharts-datalabel-value {
-    cursor: default;
-    pointer-events: none;
-  }
-
   .apexcharts-canvas .apexcharts-element-hidden {
     opacity: 0;
   }

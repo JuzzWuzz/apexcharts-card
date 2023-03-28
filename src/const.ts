@@ -1,4 +1,4 @@
-import { HistoryPoint } from "./types";
+import { DataPoint } from "./types";
 
 export const DEFAULT_SERIE_TYPE = "line";
 
@@ -25,12 +25,12 @@ export const NO_VALUE = "N/A";
 export const DEFAULT_UPDATE_DELAY = 1500;
 export const DEFAULT_AREA_OPACITY = 0.7;
 
-export const DEFAULT_DATA: Array<HistoryPoint> = [];
-export const DEFAULT_MIN_POINT: HistoryPoint = [
+export const DEFAULT_DATA: Array<DataPoint> = [];
+export const DEFAULT_MIN_POINT: DataPoint = [
   0,
   null,
 ];
-export const DEFAULT_MAX_POINT: HistoryPoint = [
+export const DEFAULT_MAX_POINT: DataPoint = [
   0,
   null,
 ];

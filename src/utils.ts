@@ -1,5 +1,5 @@
 import { TinyColor } from "@ctrl/tinycolor";
-import { ChartCardExternalConfig } from "./types-config";
+import { ChartCardConfigExternal } from "./types-config";
 import { DEFAULT_FLOAT_PRECISION, NO_VALUE } from "./const";
 import { LovelaceConfig } from "juzz-ha-helper";
 import { ChartCardSeriesConfig, FormattedValue } from "./types";
@@ -115,8 +115,8 @@ export function getLovelace(): LovelaceConfig | null {
 export function mergeConfigTemplates(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ll: any,
-  config: ChartCardExternalConfig,
-): ChartCardExternalConfig {
+  config: ChartCardConfigExternal,
+): ChartCardConfigExternal {
   const tpl = config.config_templates;
   if (!tpl) return config;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,7 +136,7 @@ export function mergeConfigTemplates(
     result = mergeDeep(result, res);
   });
   result = mergeDeep(result, config);
-  return result as ChartCardExternalConfig;
+  return result as ChartCardConfigExternal;
 }
 
 /**

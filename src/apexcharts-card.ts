@@ -13,8 +13,9 @@ import {
   ChartCardConfig,
   ChartCardSeries,
   ChartCardSeriesConfig,
-  HistoryPoint,
-  minmax_type,
+  ChartCardSeriesYAxisConfig,
+  DataPoint,
+  MinMaxType,
 } from "./types";
 import * as pjson from "../package.json";
 import {
@@ -30,7 +31,7 @@ import { stylesApex } from "./styles";
 import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
 import { createCheckers } from "ts-interface-checker";
-import { ChartCardExternalConfig } from "./types-config";
+import { ChartCardConfigExternal } from "./types-config";
 import exportedTypeSuite from "./types-config-ti";
 import {
   DEFAULT_DATA,
@@ -120,8 +121,8 @@ class ChartsCard extends LitElement {
     }
   }
 
-  public setConfig(config: ChartCardExternalConfig) {
-    let configDup: ChartCardExternalConfig = JSON.parse(JSON.stringify(config));
+  public setConfig(config: ChartCardConfigExternal) {
+    let configDup: ChartCardConfigExternal = JSON.parse(JSON.stringify(config));
     if (configDup.config_templates) {
       configDup.config_templates =
         configDup.config_templates && Array.isArray(configDup.config_templates)
@@ -130,12 +131,11 @@ class ChartsCard extends LitElement {
       configDup = mergeConfigTemplates(getLovelace(), configDup);
     }
     try {
-      const { ChartCardExternalConfig } = createCheckers(exportedTypeSuite);
-      ChartCardExternalConfig.strictCheck(configDup);
+      const { ChartCardConfigExternal } = createCheckers(exportedTypeSuite);
+      ChartCardConfigExternal.strictCheck(configDup);
 
       this._config = mergeDeep(
         {
-          useCompress: false,
           show: { loading: true },
         },
         configDup,
@@ -175,6 +175,13 @@ class ChartsCard extends LitElement {
         (series, index) => {
           try {
             /**
+             * Check the config to ensure  valid options are being supplied
+             */
+            const { ChartCardSeriesConfigExternal } =
+              createCheckers(exportedTypeSuite);
+            ChartCardSeriesConfigExternal.strictCheck(series.config);
+
+            /**
              * Load the series config
              */
             const seriesConfig: ChartCardSeriesConfig = mergeDeep(
@@ -203,7 +210,7 @@ class ChartsCard extends LitElement {
             /**
              * Load the series data
              */
-            const seriesData: Array<HistoryPoint> = series.data ?? DEFAULT_DATA;
+            const seriesData: Array<DataPoint> = series.data ?? DEFAULT_DATA;
             const seriesMinPoint = seriesData.reduce((prev, cur) => {
               if (cur[1] !== null && (prev[1] === null || cur[1] < prev[1]))
                 return cur;
@@ -416,88 +423,88 @@ class ChartsCard extends LitElement {
     }
   }
 
-  // private _computeYAxisAutoMinMax(yAxis: ChartCardYAxis) {
-  //   if (
-  //     yAxis.min_type !== minmax_type.FIXED ||
-  //     yAxis.max_type !== minmax_type.FIXED
-  //   ) {
-  //     const minMax = this._graphs
-  //       .map((graph) => {
-  //         return {
-  //           min: graph.min[1],
-  //           max: graph.max[1],
-  //         };
-  //       })
-  //       .reduce(
-  //         (
-  //           acc: { min: number | null; max: number | null },
-  //           cur: { min: number | null; max: number | null },
-  //         ) => {
-  //           if (cur.min !== null && (acc.min === null || cur.min < acc.min)) {
-  //             acc.min = cur.min;
-  //           }
-  //           if (cur.max !== null && (acc.max === null || cur.max > acc.max)) {
-  //             acc.max = cur.max;
-  //           }
-  //           return acc;
-  //         },
-  //         {
-  //           min: null,
-  //           max: null,
-  //         },
-  //       );
-  //     if (yAxis.align_to !== undefined) {
-  //       if (minMax.min !== null && yAxis.min_type !== minmax_type.FIXED) {
-  //         if (minMax.min % yAxis.align_to !== 0) {
-  //           minMax.min =
-  //             minMax.min >= 0
-  //               ? minMax.min - (minMax.min % yAxis.align_to)
-  //               : -(
-  //                   yAxis.align_to +
-  //                   (minMax.min % yAxis.align_to) -
-  //                   minMax.min
-  //                 );
-  //         }
-  //       }
-  //       if (minMax.max !== null && yAxis.max_type !== minmax_type.FIXED) {
-  //         if (minMax.max % yAxis.align_to !== 0) {
-  //           minMax.max =
-  //             minMax.max >= 0
-  //               ? yAxis.align_to - (minMax.max % yAxis.align_to) + minMax.max
-  //               : (minMax.max % yAxis.align_to) - minMax.max;
-  //         }
-  //       }
-  //     }
+  private _computeYAxisAutoMinMax(yAxis: ChartCardSeriesYAxisConfig) {
+    if (
+      yAxis.min_type !== MinMaxType.FIXED ||
+      yAxis.max_type !== MinMaxType.FIXED
+    ) {
+      const minMax = this._series
+        .map((s) => {
+          return {
+            min: s.minPoint[1],
+            max: s.maxPoint[1],
+          };
+        })
+        .reduce(
+          (
+            acc: { min: number | null; max: number | null },
+            cur: { min: number | null; max: number | null },
+          ) => {
+            if (cur.min !== null && (acc.min === null || cur.min < acc.min)) {
+              acc.min = cur.min;
+            }
+            if (cur.max !== null && (acc.max === null || cur.max > acc.max)) {
+              acc.max = cur.max;
+            }
+            return acc;
+          },
+          {
+            min: null,
+            max: null,
+          },
+        );
+      if (yAxis.align_to !== undefined) {
+        if (minMax.min !== null && yAxis.min_type !== MinMaxType.FIXED) {
+          if (minMax.min % yAxis.align_to !== 0) {
+            minMax.min =
+              minMax.min >= 0
+                ? minMax.min - (minMax.min % yAxis.align_to)
+                : -(
+                    yAxis.align_to +
+                    (minMax.min % yAxis.align_to) -
+                    minMax.min
+                  );
+          }
+        }
+        if (minMax.max !== null && yAxis.max_type !== MinMaxType.FIXED) {
+          if (minMax.max % yAxis.align_to !== 0) {
+            minMax.max =
+              minMax.max >= 0
+                ? yAxis.align_to - (minMax.max % yAxis.align_to) + minMax.max
+                : (minMax.max % yAxis.align_to) - minMax.max;
+          }
+        }
+      }
 
-  //     if (minMax.min !== null && yAxis.min_type !== minmax_type.FIXED) {
-  //       yAxis.min = this._getMinMaxBasedOnType(
-  //         true,
-  //         minMax.min,
-  //         yAxis.min_value as number,
-  //         yAxis.min_type,
-  //       );
-  //     }
-  //     if (minMax.max !== null && yAxis.max_type !== minmax_type.FIXED) {
-  //       yAxis.max = this._getMinMaxBasedOnType(
-  //         false,
-  //         minMax.max,
-  //         yAxis.max_value as number,
-  //         yAxis.max_type,
-  //       );
-  //     }
-  //   }
-  // }
+      if (minMax.min !== null && yAxis.min_type !== MinMaxType.FIXED) {
+        yAxis.min = this._getMinMaxBasedOnType(
+          true,
+          minMax.min,
+          yAxis.min_value as number,
+          yAxis.min_type,
+        );
+      }
+      if (minMax.max !== null && yAxis.max_type !== MinMaxType.FIXED) {
+        yAxis.max = this._getMinMaxBasedOnType(
+          false,
+          minMax.max,
+          yAxis.max_value as number,
+          yAxis.max_type,
+        );
+      }
+    }
+  }
 
   private _getMinMaxBasedOnType(
     isMin: boolean,
     value: number,
     configMinMax: number,
-    type: minmax_type,
+    type: MinMaxType,
   ): number {
     switch (type) {
-      case minmax_type.AUTO:
+      case MinMaxType.AUTO:
         return value;
-      case minmax_type.SOFT:
+      case MinMaxType.SOFT:
         if (
           (isMin && value > configMinMax) ||
           (!isMin && value < configMinMax)
@@ -506,7 +513,7 @@ class ChartsCard extends LitElement {
         } else {
           return value;
         }
-      case minmax_type.ABSOLUTE:
+      case MinMaxType.ABSOLUTE:
         return value + configMinMax;
       default:
         return value;
@@ -515,16 +522,16 @@ class ChartsCard extends LitElement {
 
   private _getTypeOfMinMax(
     value?: "auto" | number | string,
-  ): [number | undefined, minmax_type] {
+  ): [number | undefined, MinMaxType] {
     if (typeof value === "number") {
       return [
         value,
-        minmax_type.FIXED,
+        MinMaxType.FIXED,
       ];
     } else if (value === undefined || value === "auto") {
       return [
         undefined,
-        minmax_type.AUTO,
+        MinMaxType.AUTO,
       ];
     }
     if (typeof value === "string") {
@@ -536,12 +543,12 @@ class ChartsCard extends LitElement {
       if (value.startsWith("~")) {
         return [
           floatValue,
-          minmax_type.SOFT,
+          MinMaxType.SOFT,
         ];
       } else if (value.startsWith("|") && value.endsWith("|")) {
         return [
           floatValue,
-          minmax_type.ABSOLUTE,
+          MinMaxType.ABSOLUTE,
         ];
       }
     }
