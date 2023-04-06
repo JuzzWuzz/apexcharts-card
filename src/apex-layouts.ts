@@ -1,19 +1,24 @@
+import { DEFAULT_AREA_OPACITY, DEFAULT_SERIE_TYPE } from "./const";
 import {
-  DEFAULT_AREA_OPACITY,
-  DEFAULT_FLOAT_PRECISION,
-  DEFAULT_SERIE_TYPE,
-} from "./const";
-import { ChartCardConfig, ChartCardSeries } from "./types";
+  ChartCardConfig,
+  ChartCardSeries,
+  ChartCardYAxisConfig,
+  DataTypeMap,
+  MinMaxType,
+} from "./types";
 import {
   computeColor,
   computeTextColor,
   formatValueAndUom,
+  getDataTypeConfig,
   mergeDeep,
 } from "./utils";
 
 export function getLayoutConfig(
   config: ChartCardConfig,
+  dataTypeMap: DataTypeMap,
   series: ChartCardSeries[] = [],
+  yaxis: ChartCardYAxisConfig[] = [],
   now: Date = new Date(),
   start?: Date,
   end?: Date,
@@ -41,20 +46,20 @@ export function getLayoutConfig(
     },
     fill: getFill(config, series),
     colors: getColors(series),
-    legend: getLegend(series),
+    legend: getLegend(dataTypeMap, series),
     stroke: getStroke(config, series),
     series: getSeries(series),
     xaxis: getXAxis(start, end),
-    yaxis: getYAxis(series),
+    yaxis: getYAxis(dataTypeMap, yaxis, series),
     tooltip: {
       x: {
         formatter: getXTooltipFormatter(config),
       },
       y: {
-        formatter: getYTooltipFormatter(series),
+        formatter: getYTooltipFormatter(dataTypeMap, series),
       },
     },
-    annotations: getAnnotations(config, series, now),
+    annotations: getAnnotations(config, dataTypeMap, series, now),
   };
 
   const xx = config.apex_config
@@ -89,21 +94,25 @@ function getColors(series: ChartCardSeries[]): string[] {
   return series.map((s) => s.color);
 }
 
-function getLegend(series: ChartCardSeries[]): ApexLegend {
+function getLegend(
+  dataTypeMap: DataTypeMap,
+  series: ChartCardSeries[],
+): ApexLegend {
   const getLegendFormatter = () => {
-    if (series === undefined) return undefined;
-    return function (_legendName, opts, seriesConf = series) {
-      const s = seriesConf[opts.seriesIndex];
+    const legendValues = series.map((s) => {
       const name = s.config.name ?? "";
       if (!s.config.show.legend_value) {
         return name;
       } else {
         const formattedValue = formatValueAndUom(
           s.headerValue,
-          s.config,
+          getDataTypeConfig(dataTypeMap, s.config.dataTypeId),
         ).formatted();
         return `${name}: <strong>${formattedValue}</strong>`;
       }
+    });
+    return function (_legendName, opts) {
+      return legendValues[opts.seriesIndex];
     };
   };
 
@@ -180,24 +189,103 @@ function getXAxis(start?: Date, end?: Date): ApexXAxis {
   return xAxis;
 }
 
-function getYAxis(series: ChartCardSeries[]): ApexYAxis[] {
-  return series.map((s) => {
+function doThing(
+  value,
+  isMin: boolean,
+  align_to: number | undefined,
+  configMinMax: string | number | undefined,
+  type: MinMaxType,
+) {
+  if (type === MinMaxType.FIXED) {
+    console.log("Fixed");
+    return configMinMax;
+  }
+  let val = value;
+  if (align_to !== undefined) {
+    const x = Math.abs(val) % align_to;
+    const y = align_to - x;
+    val = val >= 0 ? (isMin ? val - x : val + y) : isMin ? val - y : val + x;
+  }
+
+  if (typeof val === "number" && typeof configMinMax === "number") {
+    if (type === MinMaxType.ABSOLUTE) {
+      console.log("Absolute");
+      return val + configMinMax;
+    }
+    if (
+      type === MinMaxType.SOFT &&
+      ((isMin && val > configMinMax) || (!isMin && val < configMinMax))
+    ) {
+      console.log("Soft");
+      return configMinMax;
+    }
+  }
+  return val;
+}
+
+function getYAxis(
+  dataTypeMap: DataTypeMap,
+  yAxes: ChartCardYAxisConfig[],
+  series: ChartCardSeries[],
+): ApexYAxis[] {
+  return yAxes.map((y) => {
     // Construct the ApexConfig and remove items not permitted
-    const apexConfig = mergeDeep(s.yAxis.apex_config);
+    const apexConfig = mergeDeep(y.apex_config);
     delete apexConfig.min;
     delete apexConfig.max;
     delete apexConfig.decimalsInFloat;
 
+    const minMax = series
+      .filter((s) => s.config.yAxisIndex === y.index)
+      .map((s) => {
+        return { min: s.minMaxPoint.min[1], max: s.minMaxPoint.max[1] };
+      })
+      .reduce(
+        (
+          acc: { min: number | null; max: number | null },
+          cur: { min: number | null; max: number | null },
+        ) => {
+          if (cur.min !== null && (acc.min === null || cur.min < acc.min)) {
+            acc.min = cur.min;
+          }
+          if (cur.max !== null && (acc.max === null || cur.max > acc.max)) {
+            acc.max = cur.max;
+          }
+          return acc;
+        },
+        {
+          min: null,
+          max: null,
+        },
+      );
+
+    const dataTypeConfig = getDataTypeConfig(dataTypeMap, y.dataTypeId);
     const mergedConfig = mergeDeep(
       {
-        decimalsInFloat: s.config.float_precision ?? DEFAULT_FLOAT_PRECISION,
+        decimalsInFloat: dataTypeConfig.float_precision,
         labels: {
           formatter: function (value) {
-            return formatValueAndUom(value, s.config).formatted();
+            return formatValueAndUom(value, dataTypeConfig).formatted();
           },
         },
+        min: function (value, x) {
+          console.log(value);
+          console.log(x);
+          return doThing(minMax.min, true, y.align_to, y.min_value, y.min_type);
+        },
+        max: function (value, x) {
+          console.log(value);
+          console.log(x);
+          return doThing(
+            minMax.max,
+            false,
+            y.align_to,
+            y.max_value,
+            y.max_type,
+          );
+        },
       },
-      s.yAxis,
+      y,
       apexConfig,
     );
     delete mergedConfig.align_to;
@@ -227,10 +315,18 @@ function getXTooltipFormatter(config: ChartCardConfig) {
   };
 }
 
-function getYTooltipFormatter(series: ChartCardSeries[]) {
-  return function (value, opts, seriesConf = series.map((s) => s.config)) {
-    const s = seriesConf[opts.seriesIndex];
-    const formattedValue = formatValueAndUom(value, s).formatted();
+function getYTooltipFormatter(
+  dataTypeMap: DataTypeMap,
+  series: ChartCardSeries[],
+) {
+  const dataTypeConfigs = series.map((s) =>
+    getDataTypeConfig(dataTypeMap, s.config.dataTypeId),
+  );
+  return function (value, opts) {
+    const formattedValue = formatValueAndUom(
+      value,
+      dataTypeConfigs[opts.seriesIndex],
+    ).formatted();
     return [
       `<strong>${formattedValue}</strong>`,
     ];
@@ -239,6 +335,7 @@ function getYTooltipFormatter(series: ChartCardSeries[]) {
 
 function getAnnotations(
   config: ChartCardConfig,
+  dataTypeMap: DataTypeMap,
   series: ChartCardSeries[],
   now: Date,
 ): ApexAnnotations {
@@ -266,16 +363,17 @@ function getAnnotations(
     const points: PointAnnotations[] = [];
     series.map((s) => {
       const extremas = s.config.show.extremas;
-      console.log("Extremas");
-      console.log(extremas);
-      console.log(extremas?.toString());
+      const dataTypeConfig = getDataTypeConfig(
+        dataTypeMap,
+        s.config.dataTypeId,
+      );
       if (extremas !== undefined) {
         [
           extremas === true || extremas.toString().includes("min")
-            ? s.minPoint
+            ? s.minMaxPoint.min
             : null,
           extremas === true || extremas.toString().includes("max")
-            ? s.maxPoint
+            ? s.minMaxPoint.max
             : null,
         ].map((p) => {
           if (p === null) return;
@@ -285,13 +383,13 @@ function getAnnotations(
             x: p[0],
             y: p[1],
             seriesIndex: s.config.index,
-            yAxisIndex: s.config.index,
+            yAxisIndex: s.config.yAxisIndex,
             marker: {
               strokeColor: bgColor,
               fillColor: "var(--card-background-color)",
             },
             label: {
-              text: formatValueAndUom(p[1], s.config).value,
+              text: formatValueAndUom(p[1], dataTypeConfig).formatted(),
               borderColor: "var(--card-background-color)",
               borderWidth: 2,
               style: {

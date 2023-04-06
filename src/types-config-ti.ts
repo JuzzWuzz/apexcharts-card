@@ -9,8 +9,11 @@ export const ChartCardConfigExternal = t.iface([], {
   entity: "string",
   config_templates: t.opt(t.union(t.array("string"), "string")),
   color_list: t.opt(t.array("string")),
-  chart_type: t.opt("ChartCardChartType"),
-  all_series_config: t.opt("ChartCardSeriesConfigExternal"),
+  chart_type: t.opt(t.union(t.lit("line"), t.lit("scatter"))),
+  all_series_config: t.opt("ChartCardAllSeriesConfigExternal"),
+  all_yaxis_config: t.opt("ChartCardAllYAxisConfigExternal"),
+  yAxes: t.opt(t.array("ChartCardYAxisConfigExternal")),
+  dataTypes: t.opt(t.array("ChartCardDataTypeConfigExternal")),
   now: t.opt(
     t.iface([], {
       show: t.opt("boolean"),
@@ -28,7 +31,15 @@ export const ChartCardConfigExternal = t.iface([], {
   header: t.opt("ChartCardHeaderExternalConfig"),
 });
 
-export const ChartCardChartType = t.union(t.lit("line"), t.lit("scatter"));
+export const ChartCardDataTypeConfigExternal = t.iface([], {
+  id: "string",
+  clamp_negative: t.opt("boolean"),
+  float_precision: t.opt("number"),
+  unit: t.opt("string"),
+  unit_step: t.opt("number"),
+  unit_array: t.opt(t.array("string")),
+  unit_separator: t.opt("string"),
+});
 
 export const ChartCardHeaderExternalConfig = t.iface([], {
   show: t.opt("boolean"),
@@ -39,23 +50,25 @@ export const ChartCardHeaderExternalConfig = t.iface([], {
   standard_format: t.opt("boolean"),
 });
 
-export const ChartCardSeriesConfigExternal = t.iface([], {
+export const ChartCardAllSeriesConfigExternal = t.iface([], {
   attribute: t.opt("string"),
-  name: t.opt("string"),
-  type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
   color: t.opt("string"),
-  opacity: t.opt("number"),
   curve: t.opt(t.union(t.lit("smooth"), t.lit("straight"), t.lit("stepline"))),
+  name: t.opt("string"),
+  opacity: t.opt("number"),
   stroke_width: t.opt("number"),
-  clamp_negative: t.opt("boolean"),
-  unit: t.opt("string"),
-  unit_step: t.opt("number"),
-  unit_array: t.opt(t.array("string")),
-  unit_separator: t.opt("string"),
-  float_precision: t.opt("number"),
+  type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
   show: t.opt("ChartCardSeriesShowConfigExternal"),
-  yaxis: t.opt("ChartCardSeriesYAxisConfigExternal"),
 });
+
+export const ChartCardSeriesConfigExternal = t.iface(
+  ["ChartCardAllSeriesConfigExternal"],
+  {
+    dataTypeId: t.opt("string"),
+    yAxisIndex: t.opt("number"),
+    yAxisId: t.opt("string"),
+  },
+);
 
 export const ChartCardSeriesShowConfigExternal = t.iface([], {
   in_chart: t.opt("boolean"),
@@ -66,21 +79,32 @@ export const ChartCardSeriesShowConfigExternal = t.iface([], {
   extremas: t.opt(t.union("boolean", t.lit("min"), t.lit("max"))),
 });
 
-export const ChartCardSeriesYAxisConfigExternal = t.iface([], {
+export const ChartCardAllYAxisConfigExternal = t.iface([], {
   align_to: t.opt("number"),
   show: t.opt("boolean"),
   opposite: t.opt("boolean"),
+  float_precision: t.opt("number"),
   min_value: t.opt(t.union(t.lit("auto"), "number", "string")),
   max_value: t.opt(t.union(t.lit("auto"), "number", "string")),
   apex_config: t.opt("any"),
 });
 
+export const ChartCardYAxisConfigExternal = t.iface(
+  ["ChartCardAllYAxisConfigExternal"],
+  {
+    id: "string",
+    dataTypeId: t.opt("string"),
+  },
+);
+
 const exportedTypeSuite: t.ITypeSuite = {
   ChartCardConfigExternal,
-  ChartCardChartType,
+  ChartCardDataTypeConfigExternal,
   ChartCardHeaderExternalConfig,
+  ChartCardAllSeriesConfigExternal,
   ChartCardSeriesConfigExternal,
   ChartCardSeriesShowConfigExternal,
-  ChartCardSeriesYAxisConfigExternal,
+  ChartCardAllYAxisConfigExternal,
+  ChartCardYAxisConfigExternal,
 };
 export default exportedTypeSuite;

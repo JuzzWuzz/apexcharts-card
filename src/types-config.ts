@@ -3,8 +3,11 @@ export interface ChartCardConfigExternal {
   entity: string;
   config_templates?: string[] | string;
   color_list?: string[];
-  chart_type?: ChartCardChartType;
-  all_series_config?: ChartCardSeriesConfigExternal;
+  chart_type?: "line" | "scatter";
+  all_series_config?: ChartCardAllSeriesConfigExternal;
+  all_yaxis_config?: ChartCardAllYAxisConfigExternal;
+  yAxes?: ChartCardYAxisConfigExternal[];
+  dataTypes?: ChartCardDataTypeConfigExternal[];
   now?: {
     show?: boolean;
     color?: string;
@@ -19,7 +22,15 @@ export interface ChartCardConfigExternal {
   header?: ChartCardHeaderExternalConfig;
 }
 
-export type ChartCardChartType = "line" | "scatter";
+export interface ChartCardDataTypeConfigExternal {
+  id: string;
+  clamp_negative?: boolean;
+  float_precision?: number;
+  unit?: string;
+  unit_step?: number;
+  unit_array?: string[];
+  unit_separator?: string;
+}
 
 export interface ChartCardHeaderExternalConfig {
   show?: boolean;
@@ -30,22 +41,22 @@ export interface ChartCardHeaderExternalConfig {
   standard_format?: boolean;
 }
 
-export interface ChartCardSeriesConfigExternal {
+export interface ChartCardAllSeriesConfigExternal {
   attribute?: string;
-  name?: string;
-  type?: "line" | "column" | "area";
   color?: string;
-  opacity?: number;
   curve?: "smooth" | "straight" | "stepline";
+  name?: string;
+  opacity?: number;
   stroke_width?: number;
-  clamp_negative?: boolean;
-  unit?: string;
-  unit_step?: number;
-  unit_array?: string[];
-  unit_separator?: string;
-  float_precision?: number;
+  type?: "line" | "column" | "area";
   show?: ChartCardSeriesShowConfigExternal;
-  yaxis?: ChartCardSeriesYAxisConfigExternal;
+}
+
+export interface ChartCardSeriesConfigExternal
+  extends ChartCardAllSeriesConfigExternal {
+  dataTypeId?: string;
+  yAxisIndex?: number;
+  yAxisId?: string;
 }
 
 export interface ChartCardSeriesShowConfigExternal {
@@ -57,12 +68,19 @@ export interface ChartCardSeriesShowConfigExternal {
   extremas?: boolean | "min" | "max";
 }
 
-export interface ChartCardSeriesYAxisConfigExternal {
+export interface ChartCardAllYAxisConfigExternal {
   align_to?: number;
   show?: boolean;
   opposite?: boolean;
+  float_precision?: number;
   min_value?: "auto" | number | string;
   max_value?: "auto" | number | string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apex_config?: any;
+}
+
+export interface ChartCardYAxisConfigExternal
+  extends ChartCardAllYAxisConfigExternal {
+  id: string;
+  dataTypeId?: string;
 }

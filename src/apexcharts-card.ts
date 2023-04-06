@@ -13,14 +13,18 @@ import {
   ChartCardConfig,
   ChartCardSeries,
   ChartCardSeriesConfig,
-  ChartCardSeriesYAxisConfig,
+  ChartCardYAxisConfig,
   DataPoint,
+  DataTypeMap,
+  MinMaxPoint,
   MinMaxType,
 } from "./types";
 import * as pjson from "../package.json";
 import {
   formatApexDate,
   formatValueAndUom,
+  getDataTypeConfig,
+  getDefaultDataTypeConfig,
   getLovelace,
   log,
   mergeConfigTemplates,
@@ -31,13 +35,18 @@ import { stylesApex } from "./styles";
 import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
 import { createCheckers } from "ts-interface-checker";
-import { ChartCardConfigExternal } from "./types-config";
+import {
+  ChartCardAllYAxisConfigExternal,
+  ChartCardConfigExternal,
+  ChartCardYAxisConfigExternal,
+} from "./types-config";
 import exportedTypeSuite from "./types-config-ti";
 import {
   DEFAULT_DATA,
-  DEFAULT_MAX_POINT,
-  DEFAULT_MIN_POINT,
+  DEFAULT_DATA_TYPE_ID,
+  DEFAULT_FLOAT_PRECISION,
   DEFAULT_UPDATE_DELAY,
+  DEFAULT_Y_AXIS_ID,
 } from "./const";
 import { DEFAULT_COLORS, DEFAULT_SERIE_TYPE } from "./const";
 import { HomeAssistant } from "juzz-ha-helper";
@@ -66,7 +75,13 @@ class ChartsCard extends LitElement {
   @property({ attribute: false }) private _config?: ChartCardConfig;
 
   @property({ attribute: false })
+  private _dataTypeMap: DataTypeMap = new Map();
+
+  @property({ attribute: false })
   private _series: ChartCardSeries[] = [];
+
+  @property({ attribute: false })
+  private _yaxis: ChartCardYAxisConfig[] = [];
 
   private _entity?: HassEntity;
 
@@ -141,18 +156,64 @@ class ChartsCard extends LitElement {
         configDup,
       );
 
-      console.log("##########");
-      console.log("CONFIG:");
-      console.log(this._config);
-      console.log(JSON.stringify(this._config));
-      console.log("##########");
-      console.log();
+      // console.log("##########");
+      // console.log("CONFIG:");
+      // console.log(this._config);
+      // console.log(JSON.stringify(this._config));
+      // console.log("##########");
+      // console.log();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       throw new Error(
         `/// apexcharts-card version ${pjson.version} /// ${e.message}`,
       );
     }
+  }
+
+  private generateYAxes(
+    conf: ChartCardConfig,
+    multiYAxis: boolean,
+  ): ChartCardYAxisConfig[] {
+    const yAxes = conf.yAxes ?? [];
+    return yAxes.map((yaxis, index) => {
+      if (yaxis.id === DEFAULT_Y_AXIS_ID) {
+        throw Error(
+          `Cannot use '${DEFAULT_Y_AXIS_ID}' for the Y-Axis ID as its reserved by the system`,
+        );
+      }
+      const yaxisConfig: ChartCardYAxisConfig = mergeDeep(
+        {
+          multiYAxis: multiYAxis,
+          index: index,
+          id: DEFAULT_Y_AXIS_ID,
+          float_precision: DEFAULT_FLOAT_PRECISION,
+          min_type: MinMaxType.AUTO,
+          max_type: MinMaxType.AUTO,
+        },
+        conf.all_yaxis_config,
+        yaxis,
+      );
+
+      // Validate the DataTypeID if supplied
+      const dataTypeId = yaxisConfig.dataTypeId;
+      if (dataTypeId !== undefined && !this._dataTypeMap.has(dataTypeId)) {
+        throw Error(
+          `Data Type '${dataTypeId}' requested but not found in config`,
+        );
+      }
+
+      // Set Min/Max values
+      [
+        yaxisConfig.min_value,
+        yaxisConfig.min_type,
+      ] = this._getTypeOfMinMax(yaxisConfig.min_value);
+      [
+        yaxisConfig.max_value,
+        yaxisConfig.max_type,
+      ] = this._getTypeOfMinMax(yaxisConfig.max_value);
+
+      return yaxisConfig;
+    });
   }
 
   private async _updateData() {
@@ -168,9 +229,31 @@ class ChartsCard extends LitElement {
       const conf = this._config;
 
       // Get the colours to use
-      const graphColors = this._config?.color_list || DEFAULT_COLORS;
+      const graphColors = conf.color_list || DEFAULT_COLORS;
 
-      // Do Config load
+      // Build up the map of DataTypes based on the array
+      conf.dataTypes?.forEach((dataType) => {
+        if (dataType.id === DEFAULT_DATA_TYPE_ID) {
+          throw Error(
+            `Cannot use '${DEFAULT_DATA_TYPE_ID}' for the Data Type ID as its reserved by the system`,
+          );
+        }
+        const dataTypeConfig = mergeDeep(getDefaultDataTypeConfig(), dataType);
+        this._dataTypeMap.set(dataType.id, dataTypeConfig);
+      });
+      // console.log("##########");
+      // console.log("Data Types:");
+      // console.log(this._dataTypeMap);
+
+      // Init the basics of the Y-Axis
+      const multiYAxis = (conf.yAxes?.length ?? 1) > 1;
+      this._yaxis = this.generateYAxes(conf, multiYAxis);
+
+      console.log("##########");
+      console.log("Pre-Series Y-Axis:");
+      console.log(this._yaxis);
+
+      // Do Series Config load
       this._series = (this._entity.attributes.series ?? []).map(
         (series, index) => {
           try {
@@ -186,7 +269,6 @@ class ChartsCard extends LitElement {
              */
             const seriesConfig: ChartCardSeriesConfig = mergeDeep(
               {
-                index: index,
                 show: {
                   legend_value: true,
                   legend_function: "last",
@@ -194,38 +276,73 @@ class ChartsCard extends LitElement {
                   in_header: true,
                   name_in_header: true,
                 },
+                yAxisIndex: -1,
+                index: index,
               },
               conf.all_series_config,
               series.config,
             );
             // Set the series chart type
-            seriesConfig.type = this._config?.chart_type
+            seriesConfig.type = conf.chart_type
               ? undefined
               : seriesConfig.type || DEFAULT_SERIE_TYPE;
 
+            // console.log("##########");
+            // console.log("Series Config:");
+            // console.log(seriesConfig);
+
+            /**
+             * Figure out the Y-Axis
+             */
             console.log("##########");
-            console.log("Series Config:");
-            console.log(seriesConfig);
+            console.log("Series Y-Axis Config:");
+            const yAxisId = seriesConfig.yAxisId ?? index.toString();
+            console.log(`Requesting Y-Axis: '${yAxisId}'`);
+            const yAxis = this._yaxis.find((yAxis) => yAxis.id === yAxisId);
+            if (yAxis === undefined) {
+              throw Error(
+                `Requested Y-Axis ID '${yAxisId}', that does not exist`,
+              );
+            }
+            seriesConfig.yAxisIndex = yAxis.index;
+            console.log("Final Y-Axis:");
+            console.log(this._yaxis);
 
             /**
              * Load the series data
              */
             const seriesData: Array<DataPoint> = series.data ?? DEFAULT_DATA;
-            const seriesMinPoint = seriesData.reduce((prev, cur) => {
-              if (cur[1] !== null && (prev[1] === null || cur[1] < prev[1]))
-                return cur;
-              return prev;
-            }, DEFAULT_MIN_POINT);
-            const seriesMaxPoint = seriesData.reduce((prev, cur) => {
-              if (cur[1] !== null && (prev[1] === null || cur[1] > prev[1]))
-                return cur;
-              return prev;
-            }, DEFAULT_MAX_POINT);
+            const seriesMinMax: MinMaxPoint = seriesData.reduce(
+              (acc: MinMaxPoint, cur: DataPoint) => {
+                if (
+                  cur[1] !== null &&
+                  (acc.min[1] === null || cur[1] < acc.min[1])
+                ) {
+                  acc.min = cur;
+                }
+                if (
+                  cur[1] !== null &&
+                  (acc.max[1] === null || cur[1] > acc.max[1])
+                ) {
+                  acc.max = cur;
+                }
+                return acc;
+              },
+              {
+                min: [
+                  0,
+                  null,
+                ],
+                max: [
+                  0,
+                  null,
+                ],
+              },
+            );
 
-            console.log("##########");
-            console.log("Series Min & Max:");
-            console.log(seriesMinPoint);
-            console.log(seriesMaxPoint);
+            // console.log("##########");
+            // console.log("Series Min & Max:");
+            // console.log(seriesMinMax);
 
             const inHeader = seriesConfig.show.in_header;
             let seriesHeaderValue: number | null = null;
@@ -240,9 +357,9 @@ class ChartsCard extends LitElement {
               }
             }
 
-            console.log("##########");
-            console.log("Series Header Value");
-            console.log(seriesHeaderValue);
+            // console.log("##########");
+            // console.log("Series Header Value");
+            // console.log(seriesHeaderValue);
 
             /**
              * Load the series color
@@ -250,41 +367,18 @@ class ChartsCard extends LitElement {
             const seriesColor =
               seriesConfig.color ?? graphColors[index % graphColors.length];
 
-            console.log("##########");
-            console.log("Series Color:");
-            console.log(seriesColor);
+            // console.log("##########");
+            // console.log("Series Color:");
+            // console.log(seriesColor);
 
-            /**
-             * Load the series Y-Axis
-             */
-            const seriesYAxis = mergeDeep(seriesConfig);
-
-            // Set Min/Max values
-            [
-              seriesYAxis.min_value,
-              seriesYAxis.min_type,
-            ] = this._getTypeOfMinMax(seriesYAxis.min_value);
-            [
-              seriesYAxis.max_value,
-              seriesYAxis.max_type,
-            ] = this._getTypeOfMinMax(seriesYAxis.max_value);
-
-            // this._computeYAxisAutoMinMax(seriesYAxis);
-
-            console.log("##########");
-            console.log("Series Y-Axis:");
-            console.log(seriesYAxis);
-
-            console.log("##########");
+            // console.log("##########");
 
             return {
               config: seriesConfig,
               data: seriesData,
-              minPoint: seriesMinPoint,
-              maxPoint: seriesMaxPoint,
+              minMaxPoint: seriesMinMax,
               headerValue: seriesHeaderValue,
               color: seriesColor,
-              yAxis: seriesYAxis,
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (e: any) {
@@ -296,7 +390,15 @@ class ChartsCard extends LitElement {
       );
 
       this._apexChart?.updateOptions(
-        getLayoutConfig(conf, this._series, now, start, end),
+        getLayoutConfig(
+          conf,
+          this._dataTypeMap,
+          this._series,
+          this._yaxis,
+          now,
+          start,
+          end,
+        ),
         false,
         false,
       );
@@ -374,7 +476,10 @@ class ChartsCard extends LitElement {
     const seriesStates = this._series
       .filter((s) => s.config.show.in_header)
       .map((s) => {
-        const formatted = formatValueAndUom(s.headerValue, s.config);
+        const formatted = formatValueAndUom(
+          s.headerValue,
+          getDataTypeConfig(this._dataTypeMap, s.config.dataTypeId),
+        );
         const styles: StyleInfo = {
           color: this._config?.header?.colorize_states ? s.color : "",
         };
@@ -417,106 +522,9 @@ class ChartsCard extends LitElement {
       const graph = this.shadowRoot.querySelector("#graph");
       this._apexChart = new ApexCharts(
         graph,
-        getLayoutConfig(this._config, this._series),
+        getLayoutConfig(this._config, this._dataTypeMap),
       );
       this._apexChart.render();
-    }
-  }
-
-  private _computeYAxisAutoMinMax(yAxis: ChartCardSeriesYAxisConfig) {
-    if (
-      yAxis.min_type !== MinMaxType.FIXED ||
-      yAxis.max_type !== MinMaxType.FIXED
-    ) {
-      const minMax = this._series
-        .map((s) => {
-          return {
-            min: s.minPoint[1],
-            max: s.maxPoint[1],
-          };
-        })
-        .reduce(
-          (
-            acc: { min: number | null; max: number | null },
-            cur: { min: number | null; max: number | null },
-          ) => {
-            if (cur.min !== null && (acc.min === null || cur.min < acc.min)) {
-              acc.min = cur.min;
-            }
-            if (cur.max !== null && (acc.max === null || cur.max > acc.max)) {
-              acc.max = cur.max;
-            }
-            return acc;
-          },
-          {
-            min: null,
-            max: null,
-          },
-        );
-      if (yAxis.align_to !== undefined) {
-        if (minMax.min !== null && yAxis.min_type !== MinMaxType.FIXED) {
-          if (minMax.min % yAxis.align_to !== 0) {
-            minMax.min =
-              minMax.min >= 0
-                ? minMax.min - (minMax.min % yAxis.align_to)
-                : -(
-                    yAxis.align_to +
-                    (minMax.min % yAxis.align_to) -
-                    minMax.min
-                  );
-          }
-        }
-        if (minMax.max !== null && yAxis.max_type !== MinMaxType.FIXED) {
-          if (minMax.max % yAxis.align_to !== 0) {
-            minMax.max =
-              minMax.max >= 0
-                ? yAxis.align_to - (minMax.max % yAxis.align_to) + minMax.max
-                : (minMax.max % yAxis.align_to) - minMax.max;
-          }
-        }
-      }
-
-      if (minMax.min !== null && yAxis.min_type !== MinMaxType.FIXED) {
-        yAxis.min = this._getMinMaxBasedOnType(
-          true,
-          minMax.min,
-          yAxis.min_value as number,
-          yAxis.min_type,
-        );
-      }
-      if (minMax.max !== null && yAxis.max_type !== MinMaxType.FIXED) {
-        yAxis.max = this._getMinMaxBasedOnType(
-          false,
-          minMax.max,
-          yAxis.max_value as number,
-          yAxis.max_type,
-        );
-      }
-    }
-  }
-
-  private _getMinMaxBasedOnType(
-    isMin: boolean,
-    value: number,
-    configMinMax: number,
-    type: MinMaxType,
-  ): number {
-    switch (type) {
-      case MinMaxType.AUTO:
-        return value;
-      case MinMaxType.SOFT:
-        if (
-          (isMin && value > configMinMax) ||
-          (!isMin && value < configMinMax)
-        ) {
-          return configMinMax;
-        } else {
-          return value;
-        }
-      case MinMaxType.ABSOLUTE:
-        return value + configMinMax;
-      default:
-        return value;
     }
   }
 

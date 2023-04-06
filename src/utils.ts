@@ -1,21 +1,49 @@
 import { TinyColor } from "@ctrl/tinycolor";
 import { ChartCardConfigExternal } from "./types-config";
-import { DEFAULT_FLOAT_PRECISION, NO_VALUE } from "./const";
+import {
+  DEFAULT_CLAMP_NEGATIVE,
+  DEFAULT_DATA_TYPE_ID,
+  DEFAULT_FLOAT_PRECISION,
+  DEFAULT_UNIT_SEPARATOR,
+  NO_VALUE,
+} from "./const";
 import { LovelaceConfig } from "juzz-ha-helper";
-import { ChartCardSeriesConfig, FormattedValue } from "./types";
+import { ChartCardDataTypeConfig, DataTypeMap, FormattedValue } from "./types";
 
 export function log(message: unknown): void {
   // eslint-disable-next-line no-console
   console.warn("apexcharts-card: ", message);
 }
 
+export function getDefaultDataTypeConfig(): ChartCardDataTypeConfig {
+  return {
+    id: DEFAULT_DATA_TYPE_ID,
+    clamp_negative: DEFAULT_CLAMP_NEGATIVE,
+    float_precision: DEFAULT_FLOAT_PRECISION,
+    unit_separator: DEFAULT_UNIT_SEPARATOR,
+  };
+}
+
+export function getDataTypeConfig(
+  dataTypeMap: DataTypeMap,
+  dataTypeId?: string,
+): ChartCardDataTypeConfig {
+  if (dataTypeId !== undefined) {
+    const foundDataType = dataTypeMap.get(dataTypeId);
+    if (foundDataType) {
+      return foundDataType;
+    }
+  }
+
+  return getDefaultDataTypeConfig();
+}
+
 export function formatValueAndUom(
   value: string | number | null | undefined,
-  seriesConf: ChartCardSeriesConfig,
+  dataTypeConfig: ChartCardDataTypeConfig,
 ): FormattedValue {
   let lValue: string | number | null | undefined = value;
-  let lPrecision: number =
-    seriesConf.float_precision ?? DEFAULT_FLOAT_PRECISION;
+  let lPrecision: number = dataTypeConfig.float_precision;
   if (lValue === undefined || lValue === null) {
     lValue = null;
   } else {
@@ -29,24 +57,24 @@ export function formatValueAndUom(
   }
   let uom: string | undefined = undefined;
   if (typeof lValue === "number") {
-    if ((seriesConf.clamp_negative ?? false) && lValue < 0) {
+    if (dataTypeConfig.clamp_negative && lValue < 0) {
       lValue = 0;
     }
-    if (seriesConf.unit_step && seriesConf.unit_array) {
+    if (dataTypeConfig.unit_step && dataTypeConfig.unit_array) {
       let i = 0;
       if (lValue !== 0) {
         i = Math.min(
           Math.max(
             Math.floor(
-              Math.log(Math.abs(lValue)) / Math.log(seriesConf.unit_step),
+              Math.log(Math.abs(lValue)) / Math.log(dataTypeConfig.unit_step),
             ),
             0,
           ),
-          seriesConf.unit_array.length - 1,
+          dataTypeConfig.unit_array.length - 1,
         );
-        lValue = lValue / Math.pow(seriesConf.unit_step, i);
+        lValue = lValue / Math.pow(dataTypeConfig.unit_step, i);
       }
-      uom = seriesConf.unit_array[i];
+      uom = dataTypeConfig.unit_array[i];
       if (i === 0) {
         lPrecision = 0;
       }
@@ -56,8 +84,8 @@ export function formatValueAndUom(
 
   return {
     value: lValue ?? NO_VALUE,
-    unitSeparator: seriesConf.unit_separator ?? " ",
-    unitOfMeasurement: uom ?? seriesConf.unit ?? "",
+    unitSeparator: dataTypeConfig?.unit_separator,
+    unitOfMeasurement: uom ?? dataTypeConfig?.unit ?? "",
     formatted() {
       return [
         this.value,

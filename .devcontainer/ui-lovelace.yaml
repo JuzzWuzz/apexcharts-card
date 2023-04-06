@@ -139,13 +139,12 @@ apexcharts_card_templates_2:
       show:
         legend_value: true
         extremas: true
-      yaxis:
-        min_value: "|-10|"
-        max_value: "|+10|"
-        align_to: 1
-        apex_config:
-          tickAmount: 6
-          showAlways: true
+    all_yaxis_config:
+      min_value: "|-10|"
+      max_value: "|+10|"
+      align_to: 1
+      apex_config:
+        tickAmount: 6
     apex_config:
       legend:
         showForSingleSeries: true
@@ -166,41 +165,45 @@ apexcharts_card_templates_2:
           datetimeFormatter:
             day: dd MMM
             hour: HH:mm
-  temp_default:
-    config_templates: default
-    header:
-      title: Temperature
-    all_series_config:
-      unit_separator: ""
-      float_precision: 1
+  # temp_default:
+  #   config_templates: default
+  #   header:
+  #     title: Temperature
+  #   all_series_config:
+  #     unit_separator: ""
+  #     float_precision: 1
   power_energy_base:
     config_templates: default
-    all_series_config:
-      unit_step: 1000
-      float_precision: 2
-      clamp_negative: true
-      yaxis:
-        align_to: 10
+    dataTypes:
+      - id: power
+        # clamp_negative: true
+        float_precision: 2
+        unit_step: 1000
+        unit_array:
+          - W
+          - kW
+          - MW
+          - GW
+      - id: energy
+        # clamp_negative: true
+        float_precision: 2
+        unit_step: 1000
+        unit_array:
+          - Wh
+          - kWh
+          - MWh
+          - GWh
+    all_yaxis_config:
+      align_to: 10
   power_base:
     config_templates: power_energy_base
     header:
       title: Power
-    all_series_config:
-      unit_array:
-        - W
-        - kW
-        - MW
-        - GW
   energy_base:
     config_templates: power_energy_base
     header:
       title: Energy
     all_series_config:
-      unit_array:
-        - Wh
-        - kWh
-        - MWh
-        - GWh
       type: column
       show:
         legend_function: sum
@@ -243,12 +246,26 @@ views:
       - type: custom:apexcharts-card-2
         config_templates: energy_base
         header:
-          title: Server Rack Energy x
+          title: Server Rack Energy New 1
         entity: button.graph_entities_server_rack_energy
+        yAxes:
+          - id: energy
+            dataTypeId: energy
+      - type: custom:apexcharts-card-2
+        config_templates: energy_base
+        header:
+          title: Server Rack Energy New 2
+        entity: button.graph_entities_server_rack_energy_2
+        yAxes:
+          - id: energy
+            dataTypeId: energy
+          - id: power
+            dataTypeId: power
+            opposite: true
       - type: custom:apexcharts-card
         config_templates: energy_base
         header:
-          title: Server Rack Energy x
+          title: Server Rack Energy Old
         series:
           - entity: button.graph_entities_server_rack_energy
   - path: panel

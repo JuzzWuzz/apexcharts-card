@@ -1,19 +1,27 @@
 import { ApexOptions } from "apexcharts";
 import {
   ChartCardConfigExternal,
+  ChartCardDataTypeConfigExternal,
   ChartCardSeriesConfigExternal,
   ChartCardSeriesShowConfigExternal,
-  ChartCardSeriesYAxisConfigExternal,
+  ChartCardYAxisConfigExternal,
 } from "./types-config";
 
 export interface ChartCardConfig extends ChartCardConfigExternal {
   apex_config?: ApexOptions;
 }
 
+export interface ChartCardDataTypeConfig
+  extends ChartCardDataTypeConfigExternal {
+  clamp_negative: boolean;
+  float_precision: number;
+  unit_separator: string;
+}
+
 export interface ChartCardSeriesConfig extends ChartCardSeriesConfigExternal {
-  index: number;
   show: ChartCardSeriesShowConfig;
-  yaxis?: ChartCardSeriesYAxisConfig;
+  yAxisIndex: number;
+  index: number;
 }
 
 export interface ChartCardSeriesShowConfig
@@ -25,14 +33,15 @@ export interface ChartCardSeriesShowConfig
   name_in_header: boolean;
 }
 
-export interface ChartCardSeriesYAxisConfig
-  extends ChartCardSeriesYAxisConfigExternal {
-  min?: number;
-  max?: number;
+export interface ChartCardYAxisConfig extends ChartCardYAxisConfigExternal {
+  multiYAxis: boolean;
+  index: number;
   min_type: MinMaxType;
   max_type: MinMaxType;
+  float_precision: number;
 }
 
+export type DataTypeMap = Map<string, ChartCardDataTypeConfig>;
 export type DataPoint = [number, number | null];
 
 export enum MinMaxType {
@@ -42,14 +51,17 @@ export enum MinMaxType {
   ABSOLUTE,
 }
 
+export type MinMaxPoint = {
+  min: DataPoint;
+  max: DataPoint;
+};
+
 export interface ChartCardSeries {
   config: ChartCardSeriesConfig;
   data: Array<DataPoint>;
-  minPoint: DataPoint;
-  maxPoint: DataPoint;
+  minMaxPoint: MinMaxPoint;
   headerValue: number | null;
   color: string;
-  yAxis: ChartCardSeriesYAxisConfig;
 }
 
 export interface FormattedValue {

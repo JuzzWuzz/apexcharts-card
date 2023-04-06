@@ -2,7 +2,14 @@ import { DataPoint } from "./types";
 
 export const DEFAULT_SERIE_TYPE = "line";
 
+// Data Type Config
+export const DEFAULT_DATA_TYPE_ID = "default";
+export const DEFAULT_CLAMP_NEGATIVE = false;
 export const DEFAULT_FLOAT_PRECISION = 1;
+export const DEFAULT_UNIT_SEPARATOR = " ";
+
+// Y-Axis Config
+export const DEFAULT_Y_AXIS_ID = "default";
 
 export const DEFAULT_COLORS = [
   "var(--accent-color)",
@@ -26,11 +33,3 @@ export const DEFAULT_UPDATE_DELAY = 1500;
 export const DEFAULT_AREA_OPACITY = 0.7;
 
 export const DEFAULT_DATA: Array<DataPoint> = [];
-export const DEFAULT_MIN_POINT: DataPoint = [
-  0,
-  null,
-];
-export const DEFAULT_MAX_POINT: DataPoint = [
-  0,
-  null,
-];
