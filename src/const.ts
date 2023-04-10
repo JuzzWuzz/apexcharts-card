@@ -29,7 +29,6 @@ export const DEFAULT_COLORS = [
 
 export const NO_VALUE = "N/A";
 
-export const DEFAULT_UPDATE_DELAY = 1500;
 export const DEFAULT_AREA_OPACITY = 0.7;
 
 export const DEFAULT_DATA: Array<DataPoint> = [];

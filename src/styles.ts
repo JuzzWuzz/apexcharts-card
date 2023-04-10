@@ -2,24 +2,65 @@ import { css, CSSResultGroup } from "lit";
 
 export const stylesApex: CSSResultGroup = css`
   :host {
-    display: block;
+    --mdc-button-outline-color: currentColor;
   }
 
-  ha-card {
-    overflow: hidden;
-    position: relative;
+  #time-selector {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    color: var(--mdc-theme-primary);
+  }
+  #time-selector > #date {
+    flex-grow: 1;
   }
 
-  .wrapper {
-    display: grid;
-    grid-template-areas: "header" "graph";
-    grid-template-columns: 1fr;
-    grid-template-rows: min-content 1fr;
+  .lol {
+    font-size: 20px;
   }
 
-  #graph-wrapper {
+  mwc-button {
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  ha-button-toggle-group {
+    direction: var(--direction);
+    padding-inline-start: 8px;
+    padding-left: 8px;
+  }
+  ha-icon-button {
+    margin-left: 4px;
+    --mdc-icon-button-size: 28px;
+    --mdc-icon-size: 20px;
+  }
+  ha-svg-icon {
+    height: 36px;
+    width: 36px;
+  }
+  ha-icon-button.active::before,
+  mwc-button.active::before {
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
-    grid-area: graph;
+    position: absolute;
+    background-color: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    content: "";
+    transition: opacity 15ms linear, background-color 15ms linear;
+    opacity: var(--mdc-icon-button-ripple-opacity, 0.12);
+  }
+  ha-icon-button.active::before {
+    border-radius: 50%;
+  }
+
+  .apexcharts-legend {
+    padding: 0px;
+  }
+
+  #graph {
+    padding-left: -16px;
   }
 
   /* Needed for minimal layout */
@@ -27,25 +68,14 @@ export const stylesApex: CSSResultGroup = css`
     overflow: visible !important;
   }
 
-  #header {
-    padding: 8px 16px 0px;
-    grid-area: header;
-  }
-  #header.floating {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    right: 0px;
-  }
-
   #header__title {
-    color: var(--secondary-text-color);
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 500;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     padding-bottom: 5px;
+    position: relative;
   }
 
   #header__states {
@@ -62,15 +92,6 @@ export const stylesApex: CSSResultGroup = css`
   #states__state {
     flex: 0 0 10%;
     position: relative;
-  }
-
-  #header__title {
-    position: relative;
-  }
-
-  #header__title.disabled,
-  #states__state.disabled {
-    pointer-events: none;
   }
 
   #state__value {
@@ -99,7 +120,7 @@ export const stylesApex: CSSResultGroup = css`
     text-overflow: ellipsis;
   }
 
-  #last_updated {
+  #lastUpdated {
     font-size: 0.63em;
     font-weight: 300;
     overflow: hidden;

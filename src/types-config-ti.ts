@@ -5,106 +5,121 @@ import * as t from "ts-interface-checker";
 // tslint:disable:object-literal-key-quotes
 
 export const ChartCardConfigExternal = t.iface([], {
-  type: t.lit("custom:apexcharts-card-2"),
+  type: t.lit("custom:apexcharts-card"),
   entity: "string",
-  config_templates: t.opt(t.union(t.array("string"), "string")),
-  color_list: t.opt(t.array("string")),
-  chart_type: t.opt(t.union(t.lit("line"), t.lit("scatter"))),
-  all_series_config: t.opt("ChartCardAllSeriesConfigExternal"),
-  all_yaxis_config: t.opt("ChartCardAllYAxisConfigExternal"),
-  yAxes: t.opt(t.array("ChartCardYAxisConfigExternal")),
-  dataTypes: t.opt(t.array("ChartCardDataTypeConfigExternal")),
-  now: t.opt(
-    t.iface([], {
-      show: t.opt("boolean"),
-      color: t.opt("string"),
-      label: t.opt("string"),
-    }),
-  ),
-  show: t.opt(
-    t.iface([], {
-      loading: t.opt("boolean"),
-      last_updated: t.opt("boolean"),
-    }),
-  ),
-  apex_config: t.opt("any"),
+  configTemplates: t.opt(t.union(t.array("string"), "string")),
+  colorList: t.opt(t.array("string")),
+  chartType: t.opt(t.union(t.lit("line"), t.lit("scatter"))),
   header: t.opt("ChartCardHeaderExternalConfig"),
+  now: t.opt("ChartCardNowExternalConfig"),
+  show: t.opt("ChartCardShowExternalConfig"),
+  dataTypes: t.opt(t.array("ChartCardDataTypeConfigExternal")),
+  allSeriesConfig: t.opt("ChartCardAllSeriesConfigExternal"),
+  allYaxisConfig: t.opt("ChartCardAllYAxisConfigExternal"),
+  yAxes: t.opt(t.array("ChartCardYAxisConfigExternal")),
+  apexConfig: t.opt("any"),
+  period: t.opt("Periods"),
+  showDateSelector: t.opt("boolean"),
+  autoRefreshTime: t.opt("number"),
 });
 
 export const ChartCardDataTypeConfigExternal = t.iface([], {
   id: "string",
-  clamp_negative: t.opt("boolean"),
-  float_precision: t.opt("number"),
+  clampNegative: t.opt("boolean"),
+  floatPrecision: t.opt("number"),
   unit: t.opt("string"),
-  unit_step: t.opt("number"),
-  unit_array: t.opt(t.array("string")),
-  unit_separator: t.opt("string"),
+  unitStep: t.opt("number"),
+  unitArray: t.opt(t.array("string")),
+  unitSeparator: t.opt("string"),
 });
 
 export const ChartCardHeaderExternalConfig = t.iface([], {
+  colorizeStates: t.opt("boolean"),
   show: t.opt("boolean"),
-  floating: t.opt("boolean"),
+  showStates: t.opt("boolean"),
   title: t.opt("string"),
-  show_states: t.opt("boolean"),
-  colorize_states: t.opt("boolean"),
-  standard_format: t.opt("boolean"),
+});
+
+export const ChartCardNowExternalConfig = t.iface([], {
+  color: t.opt("string"),
+  label: t.opt("string"),
+  show: t.opt("boolean"),
+});
+
+export const ChartCardShowExternalConfig = t.iface([], {
+  lastUpdated: t.opt("boolean"),
+  loading: t.opt("boolean"),
 });
 
 export const ChartCardAllSeriesConfigExternal = t.iface([], {
-  attribute: t.opt("string"),
   color: t.opt("string"),
   curve: t.opt(t.union(t.lit("smooth"), t.lit("straight"), t.lit("stepline"))),
   name: t.opt("string"),
   opacity: t.opt("number"),
-  stroke_width: t.opt("number"),
-  type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
   show: t.opt("ChartCardSeriesShowConfigExternal"),
+  strokeWidth: t.opt("number"),
+  type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
 });
 
 export const ChartCardSeriesConfigExternal = t.iface(
   ["ChartCardAllSeriesConfigExternal"],
   {
     dataTypeId: t.opt("string"),
-    yAxisIndex: t.opt("number"),
     yAxisId: t.opt("string"),
+    yAxisIndex: t.opt("number"),
   },
 );
 
 export const ChartCardSeriesShowConfigExternal = t.iface([], {
-  in_chart: t.opt("boolean"),
-  in_header: t.opt("boolean"),
-  legend_function: t.opt(t.union(t.lit("last"), t.lit("sum"))),
-  legend_value: t.opt("boolean"),
-  name_in_header: t.opt("boolean"),
+  inChart: t.opt("boolean"),
+  inHeader: t.opt("boolean"),
+  legendFunction: t.opt(t.union(t.lit("last"), t.lit("sum"))),
+  legendValue: t.opt("boolean"),
+  nameInHeader: t.opt("boolean"),
   extremas: t.opt(t.union("boolean", t.lit("min"), t.lit("max"))),
 });
 
 export const ChartCardAllYAxisConfigExternal = t.iface([], {
-  align_to: t.opt("number"),
-  show: t.opt("boolean"),
+  alignTo: t.opt("number"),
+  floatPrecision: t.opt("number"),
   opposite: t.opt("boolean"),
-  float_precision: t.opt("number"),
-  min_value: t.opt(t.union(t.lit("auto"), "number", "string")),
-  max_value: t.opt(t.union(t.lit("auto"), "number", "string")),
-  apex_config: t.opt("any"),
+  maxValue: t.opt(t.union(t.lit("auto"), "number", "string")),
+  minValue: t.opt(t.union(t.lit("auto"), "number", "string")),
+  show: t.opt("boolean"),
+  apexConfig: t.opt("any"),
 });
 
 export const ChartCardYAxisConfigExternal = t.iface(
   ["ChartCardAllYAxisConfigExternal"],
   {
-    id: "string",
     dataTypeId: t.opt("string"),
+    id: t.opt("string"),
   },
 );
+
+export const Periods = t.enumtype({
+  LAST_HOUR: "-1h",
+  LAST_THREE_HOUR: "-3h",
+  LAST_SIX_HOUR: "-6h",
+  LAST_TWELVE_HOUR: "-12h",
+  DAY: "1d",
+  TWO_DAY: "2d",
+  WEEK: "1w",
+  MONTH: "1m",
+  YEAR: "1y",
+});
 
 const exportedTypeSuite: t.ITypeSuite = {
   ChartCardConfigExternal,
   ChartCardDataTypeConfigExternal,
   ChartCardHeaderExternalConfig,
+  ChartCardNowExternalConfig,
+  ChartCardShowExternalConfig,
   ChartCardAllSeriesConfigExternal,
   ChartCardSeriesConfigExternal,
   ChartCardSeriesShowConfigExternal,
   ChartCardAllYAxisConfigExternal,
   ChartCardYAxisConfigExternal,
+  Periods,
 };
 export default exportedTypeSuite;

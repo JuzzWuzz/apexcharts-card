@@ -5,28 +5,26 @@ import {
   PropertyValues,
   CSSResultGroup,
 } from "lit";
-import { property, customElement } from "lit/decorators.js";
-import { ifDefined } from "lit/directives/if-defined.js";
+import { customElement, state } from "lit/decorators.js";
 import { ClassInfo, classMap } from "lit/directives/class-map.js";
 import { StyleInfo, styleMap } from "lit/directives/style-map.js";
+import moment, { Moment } from "moment";
 import {
   ChartCardConfig,
   ChartCardSeries,
-  ChartCardSeriesConfig,
   ChartCardYAxisConfig,
-  DataPoint,
   DataTypeMap,
-  MinMaxPoint,
-  MinMaxType,
 } from "./types";
 import * as pjson from "../package.json";
 import {
   formatApexDate,
   formatValueAndUom,
+  generateBaseConfig,
+  generateDataTypeMap,
+  generateSeries,
+  generateYAxes,
   getDataTypeConfig,
-  getDefaultDataTypeConfig,
   getLovelace,
-  log,
   mergeConfigTemplates,
   mergeDeep,
 } from "./utils";
@@ -34,22 +32,8 @@ import ApexCharts from "apexcharts";
 import { stylesApex } from "./styles";
 import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
-import { createCheckers } from "ts-interface-checker";
-import {
-  ChartCardAllYAxisConfigExternal,
-  ChartCardConfigExternal,
-  ChartCardYAxisConfigExternal,
-} from "./types-config";
-import exportedTypeSuite from "./types-config-ti";
-import {
-  DEFAULT_DATA,
-  DEFAULT_DATA_TYPE_ID,
-  DEFAULT_FLOAT_PRECISION,
-  DEFAULT_UPDATE_DELAY,
-  DEFAULT_Y_AXIS_ID,
-} from "./const";
-import { DEFAULT_COLORS, DEFAULT_SERIE_TYPE } from "./const";
-import { HomeAssistant } from "juzz-ha-helper";
+import { ChartCardConfigExternal, Periods } from "./types-config";
+import { HomeAssistant, LovelaceCard } from "juzz-ha-helper";
 
 /* eslint no-console: 0 */
 console.info(
@@ -61,63 +45,99 @@ console.info(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).ApexCharts = ApexCharts;
 
-@customElement("apexcharts-card-2")
+@customElement("apexcharts-card")
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class ChartsCard extends LitElement {
-  private _hass?: HomeAssistant;
-
   private _apexChart?: ApexCharts;
 
-  private _loaded = false;
+  private _updating = false;
+  private _error?: string;
 
-  @property({ type: Boolean }) private _updating = false;
-
-  @property({ attribute: false }) private _config?: ChartCardConfig;
-
-  @property({ attribute: false })
-  private _dataTypeMap: DataTypeMap = new Map();
-
-  @property({ attribute: false })
-  private _series: ChartCardSeries[] = [];
-
-  @property({ attribute: false })
-  private _yaxis: ChartCardYAxisConfig[] = [];
-
+  private _hass?: HomeAssistant;
   private _entity?: HassEntity;
 
-  private _updateDelay: number = DEFAULT_UPDATE_DELAY;
+  @state() private _config?: ChartCardConfig;
+  private _dataTypeMap: DataTypeMap = new Map();
+  private _yaxis: ChartCardYAxisConfig[] = [];
+  private _series: ChartCardSeries[] = [];
 
-  @property({ attribute: false }) _lastUpdated: Date = new Date();
+  @state() private _lastUpdated: Date = new Date();
 
+  // Time Controls
+  private _refreshTimer?: number;
+  private _date?: Moment;
+  private _startDate?: Moment;
+  private _endDate?: Moment;
+  private _period?: Periods;
+  private _resolution?: "PT1M" | "PT5M" | "PT15M" | "PT30M" | "P1D" | "P1M";
+
+  /**
+   * Invoked when the component is added to the document's DOM.
+   */
   public connectedCallback() {
     super.connectedCallback();
-    if (this._config && this._hass && !this._loaded) {
-      this._initialLoad();
-    } else if (this._config && this._hass && this._apexChart) {
-      window.requestAnimationFrame(() => {
-        this._updateOnInterval();
-      });
+
+    if (this._config && this._hass) {
+      if (this._apexChart) {
+        window.requestAnimationFrame(() => {
+          this._updateData();
+        });
+
+        this.initTimer();
+      } else {
+        this._initialLoad();
+      }
     }
   }
 
+  /**
+   * Invoked when the component is removed from the document's DOM.
+   */
   disconnectedCallback() {
-    this._updating = false;
     super.disconnectedCallback();
+
+    this._updating = false;
+    this.cancelTimer();
   }
 
-  private _updateOnInterval(): void {
-    if (!this._updating && this._hass) {
+  private initTimer(): void {
+    if (this._config && this._hass && !this._refreshTimer) {
+      this._pickToday();
+      this._refreshTimer = setInterval(() => {
+        this.callServiceRefresh();
+      }, this._config.autoRefreshTime * 1000);
+    }
+  }
+
+  private cancelTimer(): void {
+    clearInterval(this._refreshTimer);
+    this._refreshTimer = undefined;
+  }
+
+  private async _initialLoad() {
+    if (
+      this._config &&
+      !this._apexChart &&
+      this.shadowRoot?.querySelector("#graph")
+    ) {
+      const graph = this.shadowRoot.querySelector("#graph");
+      const layout = getLayoutConfig(this._config, this._dataTypeMap);
+      this._apexChart = new ApexCharts(
+        graph,
+        mergeDeep(layout, { chart: { height: "300px" } }),
+      );
+      this._apexChart.render();
+
       this._updateData();
+
+      this.initTimer();
     }
   }
 
-  protected updated(changedProperties: PropertyValues) {
-    super.updated(changedProperties);
-    if (this._config && this._hass && this.isConnected && !this._loaded) {
-      this._initialLoad();
-    }
-  }
-
+  /**
+   * Called whenever the HASS object changes
+   * This is done often when states change
+   */
   public set hass(hass: HomeAssistant) {
     this._hass = hass;
     if (!this._config || !hass) return;
@@ -128,270 +148,126 @@ class ChartsCard extends LitElement {
     }
     if (this._entity !== entityState) {
       this._entity = entityState;
-      if (!this._updating) {
-        setTimeout(() => {
-          this._updateData();
-        }, this._updateDelay);
-      }
+      this._updateData();
     }
   }
 
+  /**
+   * Sets the config for the card
+   */
   public setConfig(config: ChartCardConfigExternal) {
     let configDup: ChartCardConfigExternal = JSON.parse(JSON.stringify(config));
-    if (configDup.config_templates) {
-      configDup.config_templates =
-        configDup.config_templates && Array.isArray(configDup.config_templates)
-          ? configDup.config_templates
-          : [configDup.config_templates];
+    if (configDup.configTemplates) {
+      configDup.configTemplates =
+        configDup.configTemplates && Array.isArray(configDup.configTemplates)
+          ? configDup.configTemplates
+          : [configDup.configTemplates];
       configDup = mergeConfigTemplates(getLovelace(), configDup);
     }
     try {
-      const { ChartCardConfigExternal } = createCheckers(exportedTypeSuite);
-      ChartCardConfigExternal.strictCheck(configDup);
+      // Generate the base config
+      const conf = generateBaseConfig(configDup);
 
-      this._config = mergeDeep(
-        {
-          show: { loading: true },
-        },
-        configDup,
-      );
+      // Set the time data
+      this._period = conf.period;
 
-      // console.log("##########");
-      // console.log("CONFIG:");
-      // console.log(this._config);
-      // console.log(JSON.stringify(this._config));
-      // console.log("##########");
-      // console.log();
+      // Now update the config
+      this._config = conf;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      throw new Error(
-        `/// apexcharts-card version ${pjson.version} /// ${e.message}`,
+    } catch (error: any) {
+      this._error = error.message;
+      console.error(
+        `/// apexcharts-card version ${pjson.version} /// ${this._error}`,
       );
     }
   }
 
-  private generateYAxes(
-    conf: ChartCardConfig,
-    multiYAxis: boolean,
-  ): ChartCardYAxisConfig[] {
-    const yAxes = conf.yAxes ?? [];
-    return yAxes.map((yaxis, index) => {
-      if (yaxis.id === DEFAULT_Y_AXIS_ID) {
-        throw Error(
-          `Cannot use '${DEFAULT_Y_AXIS_ID}' for the Y-Axis ID as its reserved by the system`,
-        );
-      }
-      const yaxisConfig: ChartCardYAxisConfig = mergeDeep(
-        {
-          multiYAxis: multiYAxis,
-          index: index,
-          id: DEFAULT_Y_AXIS_ID,
-          float_precision: DEFAULT_FLOAT_PRECISION,
-          min_type: MinMaxType.AUTO,
-          max_type: MinMaxType.AUTO,
-        },
-        conf.all_yaxis_config,
-        yaxis,
-      );
+  /**
+   * Called to determine whether an update cycle is required.
+   * Use the entity item to check if the `changedProps` contains our element and return `true`
+   */
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    if (!this._config) {
+      return false;
+    }
 
-      // Validate the DataTypeID if supplied
-      const dataTypeId = yaxisConfig.dataTypeId;
-      if (dataTypeId !== undefined && !this._dataTypeMap.has(dataTypeId)) {
-        throw Error(
-          `Data Type '${dataTypeId}' requested but not found in config`,
-        );
-      }
+    // Check if the entity we are tracking has changed
+    const entityId = this._config.entity;
+    const oldHass = changedProps.get("_hass") as HomeAssistant | undefined;
+    if (
+      oldHass &&
+      this._hass &&
+      oldHass.states[entityId] !== this._hass.states[entityId]
+    ) {
+      this._updateData();
+    }
 
-      // Set Min/Max values
+    // If we have not yet initialised
+    if (this._config && !this._apexChart) {
+      return true;
+    }
+
+    // Only update on specific changes
+    if (
       [
-        yaxisConfig.min_value,
-        yaxisConfig.min_type,
-      ] = this._getTypeOfMinMax(yaxisConfig.min_value);
-      [
-        yaxisConfig.max_value,
-        yaxisConfig.max_type,
-      ] = this._getTypeOfMinMax(yaxisConfig.max_value);
+        "_config",
+        "_lastUpdated",
+      ].some((key) => changedProps.has(key)) &&
+      this._config &&
+      this._apexChart
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 
-      return yaxisConfig;
-    });
+  /**
+   * Called whenever the component’s update finishes and the element's DOM has been updated and rendered.
+   */
+  protected updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties);
+
+    // We have rendered but not yet initialised
+    if (this._config && !this._apexChart && this.isConnected) {
+      this._initialLoad();
+    }
   }
 
   private async _updateData() {
-    if (!this._config || !this._apexChart || !this._entity) return;
+    if (!this._config || !this._apexChart || !this._entity || this._updating) {
+      return;
+    }
 
     this._updating = true;
     const now = new Date();
-    this._lastUpdated = now;
 
     try {
+      /**
+       * Compute the time range
+       */
       const start = new Date(this._entity.attributes.start);
       const end = new Date(this._entity.attributes.end);
-      const conf = this._config;
 
-      // Get the colours to use
-      const graphColors = conf.color_list || DEFAULT_COLORS;
+      /**
+       * Compute the DataType Map
+       */
+      this._dataTypeMap = generateDataTypeMap(this._config);
 
-      // Build up the map of DataTypes based on the array
-      conf.dataTypes?.forEach((dataType) => {
-        if (dataType.id === DEFAULT_DATA_TYPE_ID) {
-          throw Error(
-            `Cannot use '${DEFAULT_DATA_TYPE_ID}' for the Data Type ID as its reserved by the system`,
-          );
-        }
-        const dataTypeConfig = mergeDeep(getDefaultDataTypeConfig(), dataType);
-        this._dataTypeMap.set(dataType.id, dataTypeConfig);
-      });
-      // console.log("##########");
-      // console.log("Data Types:");
-      // console.log(this._dataTypeMap);
+      /**
+       * Compute the Y-Axes
+       */
+      this._yaxis = generateYAxes(this._config, this._dataTypeMap);
 
-      // Init the basics of the Y-Axis
-      const multiYAxis = (conf.yAxes?.length ?? 1) > 1;
-      this._yaxis = this.generateYAxes(conf, multiYAxis);
-
-      console.log("##########");
-      console.log("Pre-Series Y-Axis:");
-      console.log(this._yaxis);
-
-      // Do Series Config load
-      this._series = (this._entity.attributes.series ?? []).map(
-        (series, index) => {
-          try {
-            /**
-             * Check the config to ensure  valid options are being supplied
-             */
-            const { ChartCardSeriesConfigExternal } =
-              createCheckers(exportedTypeSuite);
-            ChartCardSeriesConfigExternal.strictCheck(series.config);
-
-            /**
-             * Load the series config
-             */
-            const seriesConfig: ChartCardSeriesConfig = mergeDeep(
-              {
-                show: {
-                  legend_value: true,
-                  legend_function: "last",
-                  in_chart: true,
-                  in_header: true,
-                  name_in_header: true,
-                },
-                yAxisIndex: -1,
-                index: index,
-              },
-              conf.all_series_config,
-              series.config,
-            );
-            // Set the series chart type
-            seriesConfig.type = conf.chart_type
-              ? undefined
-              : seriesConfig.type || DEFAULT_SERIE_TYPE;
-
-            // console.log("##########");
-            // console.log("Series Config:");
-            // console.log(seriesConfig);
-
-            /**
-             * Figure out the Y-Axis
-             */
-            console.log("##########");
-            console.log("Series Y-Axis Config:");
-            const yAxisId = seriesConfig.yAxisId ?? index.toString();
-            console.log(`Requesting Y-Axis: '${yAxisId}'`);
-            const yAxis = this._yaxis.find((yAxis) => yAxis.id === yAxisId);
-            if (yAxis === undefined) {
-              throw Error(
-                `Requested Y-Axis ID '${yAxisId}', that does not exist`,
-              );
-            }
-            seriesConfig.yAxisIndex = yAxis.index;
-            console.log("Final Y-Axis:");
-            console.log(this._yaxis);
-
-            /**
-             * Load the series data
-             */
-            const seriesData: Array<DataPoint> = series.data ?? DEFAULT_DATA;
-            const seriesMinMax: MinMaxPoint = seriesData.reduce(
-              (acc: MinMaxPoint, cur: DataPoint) => {
-                if (
-                  cur[1] !== null &&
-                  (acc.min[1] === null || cur[1] < acc.min[1])
-                ) {
-                  acc.min = cur;
-                }
-                if (
-                  cur[1] !== null &&
-                  (acc.max[1] === null || cur[1] > acc.max[1])
-                ) {
-                  acc.max = cur;
-                }
-                return acc;
-              },
-              {
-                min: [
-                  0,
-                  null,
-                ],
-                max: [
-                  0,
-                  null,
-                ],
-              },
-            );
-
-            // console.log("##########");
-            // console.log("Series Min & Max:");
-            // console.log(seriesMinMax);
-
-            const inHeader = seriesConfig.show.in_header;
-            let seriesHeaderValue: number | null = null;
-            if (inHeader) {
-              if (seriesConfig.show.legend_function === "sum") {
-                seriesHeaderValue = seriesData.reduce((sum, entry) => {
-                  if (entry[1] !== null) return sum + entry[1];
-                  return sum;
-                }, 0);
-              } else if (seriesData.length > 0) {
-                seriesHeaderValue = seriesData[seriesData.length - 1][1];
-              }
-            }
-
-            // console.log("##########");
-            // console.log("Series Header Value");
-            // console.log(seriesHeaderValue);
-
-            /**
-             * Load the series color
-             */
-            const seriesColor =
-              seriesConfig.color ?? graphColors[index % graphColors.length];
-
-            // console.log("##########");
-            // console.log("Series Color:");
-            // console.log(seriesColor);
-
-            // console.log("##########");
-
-            return {
-              config: seriesConfig,
-              data: seriesData,
-              minMaxPoint: seriesMinMax,
-              headerValue: seriesHeaderValue,
-              color: seriesColor,
-            };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } catch (e: any) {
-            throw new Error(
-              `/// apexcharts-card version ${pjson.version} /// ${e.message}`,
-            );
-          }
-        },
-      );
+      /**
+       * Compute the Series
+       */
+      this._series = generateSeries(this._config, this._yaxis, this._entity);
 
       this._apexChart?.updateOptions(
         getLayoutConfig(
-          conf,
+          this._config,
           this._dataTypeMap,
           this._series,
           this._yaxis,
@@ -402,9 +278,19 @@ class ChartsCard extends LitElement {
         false,
         false,
       );
-    } catch (err) {
-      log(err);
+
+      /**
+       * Reset the error now
+       */
+      this._error = undefined;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      this._error = error.message;
+      console.error(
+        `/// apexcharts-card version ${pjson.version} /// ${this._error}`,
+      );
     }
+    this._lastUpdated = now;
     this._updating = false;
   }
 
@@ -412,86 +298,117 @@ class ChartsCard extends LitElement {
     return stylesApex;
   }
 
+  /**
+   * Render the card
+   */
   protected render(): TemplateResult {
-    if (!this._config || !this._hass) return html``;
+    if (this._error !== undefined) {
+      const errorCard = document.createElement(
+        "hui-error-card",
+      ) as LovelaceCard;
+      errorCard.setConfig({
+        type: "error",
+        error: this._error,
+      });
+      return html`${errorCard}`;
+    }
 
     const spinnerClass: ClassInfo = {
-      "lds-ring": this._config.show?.loading && this._updating ? true : false,
+      "lds-ring":
+        this._config && this._config.show.loading && this._updating
+          ? true
+          : false,
     };
-    const wrapperClasses: ClassInfo = {
-      wrapper: true,
-      "with-header": this._config.header?.show || true,
-    };
-
-    const standardHeaderTitle = this._config.header?.standard_format
-      ? this._config.header?.title
-      : undefined;
 
     return html`
-      <ha-card header=${ifDefined(standardHeaderTitle)}>
-        <div id="spinner-wrapper">
-          <div id="spinner" class=${classMap(spinnerClass)}>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
+      <ha-card>
+        <div class="card-content">
+          ${this._renderTitle()} ${this._renderDateSelector()}
+          <div id="spinner-wrapper">
+            <div id="spinner" class=${classMap(spinnerClass)}></div>
           </div>
+          ${this._renderStates()}
+          <div id="graph"></div>
+          ${this._renderLastUpdated()}
         </div>
-        <div class=${classMap(wrapperClasses)}>
-          ${this._config.header?.show &&
-          (this._config.header.show_states ||
-            !this._config.header.standard_format)
-            ? this._renderHeader()
-            : html``}
-          <div id="graph-wrapper">
-            <div id="graph"></div>
-          </div>
-        </div>
-        ${this._renderLastUpdated()}
       </ha-card>
     `;
   }
 
-  private _renderHeader(): TemplateResult {
-    const classes: ClassInfo = {
-      floating: this._config?.header?.floating || false,
-    };
+  private _renderTitle(): TemplateResult {
+    if (
+      !this._config ||
+      !this._config.header.show ||
+      !this._config.header?.title
+    ) {
+      return html``;
+    }
+    return html`<div id="header__title">
+      <span>${this._config.header.title}</span>
+    </div>`;
+  }
+
+  private _renderDateSelector(): TemplateResult {
+    if (
+      !this._config ||
+      !this._startDate ||
+      !this._endDate ||
+      !this._config.showDateSelector
+    ) {
+      return html``;
+    }
+
     return html`
-      <div id="header" class=${classMap(classes)}>
-        ${!this._config?.header?.standard_format && this._config?.header?.title
-          ? this._renderTitle()
-          : html``}
-        ${this._config?.header?.show_states ? this._renderStates() : html``}
+      <div id="time-selector">
+        <div id="date" class="lol">
+          ${this._period === Periods.DAY
+            ? this._startDate.format("D MMMM YYYY")
+            : this._period === Periods.MONTH
+            ? this._startDate.format("MMMM YYYY")
+            : `${this._startDate.format("D MMM")} -
+                  ${this._endDate.format("D MMM")}
+                  `}
+        </div>
+        <ha-icon-button-prev @click=${this._pickPrevious}></ha-icon-button-prev>
+        <ha-icon-button-next @click=${this._pickNext}></ha-icon-button-next>
+        <mwc-button class="lol" dense outlined @click=${this._pickToday}>
+          Today
+        </mwc-button>
+        <mwc-button dense outlined @click=${this._refresh}>
+          Refresh
+        </mwc-button>
       </div>
     `;
   }
 
-  private _renderTitle(): TemplateResult {
-    return html`<div id="header__title" class="disabled">
-      <span>${this._config?.header?.title}</span>
-    </div>`;
-  }
-
   private _renderStates(): TemplateResult {
+    if (
+      !this._config ||
+      !this._config.header.show ||
+      !this._config.header.showStates
+    ) {
+      return html``;
+    }
+    const conf = this._config;
     const seriesStates = this._series
-      .filter((s) => s.config.show.in_header)
+      .filter((s) => s.config.show.inHeader)
       .map((s) => {
         const formatted = formatValueAndUom(
           s.headerValue,
           getDataTypeConfig(this._dataTypeMap, s.config.dataTypeId),
         );
         const styles: StyleInfo = {
-          color: this._config?.header?.colorize_states ? s.color : "",
+          color: conf.header.colorizeStates ? s.color : "",
         };
         return html`
-          <div id="states__state" class="disabled">
+          <div id="states__state">
             <div id="state__value">
               <span id="state" style=${styleMap(styles)}>
                 ${formatted.value}
               </span>
               <span id="uom">${formatted.unitOfMeasurement}</span>
             </div>
-            ${s.config.show.name_in_header
+            ${s.config.show.nameInHeader
               ? html`<div id="state__name">${s.config.name ?? ""}</div>`
               : html``}
           </div>
@@ -501,70 +418,166 @@ class ChartsCard extends LitElement {
   }
 
   private _renderLastUpdated(): TemplateResult {
-    if (this._config?.show?.last_updated) {
-      return html`
-        <div id="last_updated">${formatApexDate(this._lastUpdated)}</div>
-      `;
+    if (!this._config || !this._config.show.lastUpdated) {
+      return html``;
     }
-    return html``;
-  }
-
-  private async _initialLoad() {
-    await this.updateComplete;
-
-    if (
-      !this._apexChart &&
-      this.shadowRoot &&
-      this._config &&
-      this.shadowRoot.querySelector("#graph")
-    ) {
-      this._loaded = true;
-      const graph = this.shadowRoot.querySelector("#graph");
-      this._apexChart = new ApexCharts(
-        graph,
-        getLayoutConfig(this._config, this._dataTypeMap),
-      );
-      this._apexChart.render();
-    }
-  }
-
-  private _getTypeOfMinMax(
-    value?: "auto" | number | string,
-  ): [number | undefined, MinMaxType] {
-    if (typeof value === "number") {
-      return [
-        value,
-        MinMaxType.FIXED,
-      ];
-    } else if (value === undefined || value === "auto") {
-      return [
-        undefined,
-        MinMaxType.AUTO,
-      ];
-    }
-    if (typeof value === "string") {
-      const matched = value.match(/[+-]?\d+(\.\d+)?/g);
-      if (!matched || matched.length !== 1) {
-        throw new Error(`Bad yaxis min/max format: ${value}`);
-      }
-      const floatValue = parseFloat(matched[0]);
-      if (value.startsWith("~")) {
-        return [
-          floatValue,
-          MinMaxType.SOFT,
-        ];
-      } else if (value.startsWith("|") && value.endsWith("|")) {
-        return [
-          floatValue,
-          MinMaxType.ABSOLUTE,
-        ];
-      }
-    }
-    throw new Error(`Bad yaxis min/max format: ${value}`);
+    return html`
+      <div id="lastUpdated">${formatApexDate(this._lastUpdated)}</div>
+    `;
   }
 
   public getCardSize(): number {
     return 3;
+  }
+
+  /**
+   * Button clicking functions
+   */
+
+  /**
+   * Helper to get a duration value to add/subtract a time value
+   */
+  private _getDuration(): moment.Duration {
+    switch (this._period) {
+      case Periods.DAY:
+      case Periods.TWO_DAY:
+        return moment.duration(1, "day");
+      case Periods.WEEK:
+        return moment.duration(1, "week");
+      case Periods.MONTH:
+        return moment.duration(1, "month");
+      case Periods.YEAR:
+        return moment.duration(1, "year");
+      default:
+        return moment.duration(0, "second");
+    }
+  }
+
+  /**
+   * Update the Start & End date values
+   */
+  private _updateDates(): void {
+    if (!this._date) return;
+
+    switch (this._period) {
+      case Periods.DAY:
+        this._startDate = this._date.clone().startOf("day");
+        this._endDate = this._date.clone().add(1, "day").startOf("day");
+        this._resolution = "PT15M";
+        break;
+      case Periods.TWO_DAY:
+        this._startDate = this._date.clone().subtract(1, "day").startOf("day");
+        this._endDate = this._date.clone().add(1, "day").startOf("day");
+        this._resolution = "PT30M";
+        break;
+      case Periods.WEEK:
+        this._startDate = this._date.clone().startOf("isoWeek");
+        this._endDate = this._date.clone().add(1, "week").startOf("isoWeek");
+        this._resolution = "P1D";
+        break;
+      case Periods.MONTH:
+        this._startDate = this._date.clone().startOf("month");
+        this._endDate = this._date.clone().add(1, "month").startOf("month");
+        this._resolution = "P1D";
+        break;
+      case Periods.YEAR:
+        this._startDate = this._date.clone().startOf("month");
+        this._endDate = this._date.clone().add(1, "month").startOf("month");
+        this._resolution = "P1M";
+        break;
+    }
+
+    // Update the graphs
+    this.callService();
+  }
+
+  /**
+   * Handle the `Next` button being pressed (Advance the day)
+   */
+  private _pickNext(): void {
+    if (!this._date) return;
+    const newDate = this._date.clone().add(this._getDuration());
+    if (newDate.isAfter(moment().add(1, "day").startOf("day"))) {
+      return;
+    }
+    this._date = newDate;
+    this._updateDates();
+  }
+
+  /**
+   * Handle the `Previous` button being pressed (Recede the day)
+   */
+  private _pickPrevious(): void {
+    if (!this._date) return;
+    this._date = this._date.clone().subtract(this._getDuration());
+    this._updateDates();
+  }
+
+  /**
+   * Set the date to the time right now
+   */
+  private _pickToday(): void {
+    this._date = moment();
+    this._updateDates();
+  }
+
+  /**
+   * Call for a refresh of the existing config on the system
+   */
+  private _refresh(): void {
+    this.callServiceRefresh();
+  }
+
+  /**
+   * Change the period of viewing
+   */
+  private _pickPeriod(ev: CustomEvent): void {
+    this._period = ev.detail.value;
+    this._updateDates();
+  }
+
+  /**
+   * Service Calls
+   */
+
+  /**
+   * Call the service to change graph data
+   */
+  private callService(): void {
+    if (
+      !this._config ||
+      !this._hass ||
+      !this._startDate ||
+      !this._endDate ||
+      !this._resolution
+    ) {
+      return;
+    }
+
+    this._hass.callService("mqtt", "publish", {
+      topic: `graphs/${this._config.entity.replace(
+        "button.graph_entities_",
+        "",
+      )}/change`,
+      payload: JSON.stringify({
+        timeGroup: this._resolution,
+        timeStart: this._startDate.toISOString(),
+        timeEnd: this._endDate.toISOString(),
+      }),
+    });
+  }
+
+  /**
+   * Press the button which refreshes the data
+   */
+  private callServiceRefresh(): void {
+    if (!this._config || !this._hass) {
+      return;
+    }
+
+    this._hass.callService("button", "press", {
+      entity_id: this._config.entity,
+    });
   }
 }
 

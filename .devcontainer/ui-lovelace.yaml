@@ -1,23 +1,26 @@
-apexcharts_card_templates:
+apexchartsCardTemplates:
   default:
     header:
       show: true
       title: My Title
-      show_states: true
-      colorize_states: true
+      showStates: true
+      colorizeStates: true
     show:
       loading: true
-      last_updated: true
+      lastUpdated: true
     now:
       show: true
-      label: Nows
-    all_series_config:
+      label: Now
+    allSeriesConfig:
       show:
-        legend_value: true
-        extremas: true
-      data_generator: |
-        return entity.attributes.querydata;
-    apex_config:
+        legendValue: true
+    allYaxisConfig:
+      minValue: "|-10|"
+      maxValue: "|+10|"
+      alignTo: 1
+      apexConfig:
+        tickAmount: 6
+    apexConfig:
       legend:
         showForSingleSeries: true
       tooltip:
@@ -37,222 +40,78 @@ apexcharts_card_templates:
           datetimeFormatter:
             day: dd MMM
             hour: HH:mm
-    yaxis:
-      - min: "|-10|"
-        max: "|+10|"
-        align_to: 1
-        decimals: 0
-        apex_config:
-          tickAmount: 6
-          showAlways: true
-  temp_default:
-    config_templates: default
+  baseTemperature:
+    configTemplates: default
     header:
       title: Temperature
-    graph_span: 2 day
-    span:
-      start: day
-      offset: "-1d"
-    all_series_config:
-      unit_separator: ""
-      float_precision: 1
-    yaxis:
+    allYaxisConfig:
+      minValue: "|-5|"
+      maxValue: "|+5|"
+    dataTypes:
       - id: temperature
-        min: "|-10|"
-        max: "|+10|"
-        align_to: 1
-        decimals: 0
-        apex_config:
-          tickAmount: 6
-          showAlways: true
+        clampNegative: true
+        floatPrecision: 0
+        unit: "°C"
       - id: humidity
-        min: "|-10|"
-        max: "|+10|"
-        align_to: 1
-        decimals: 0
-        apex_config:
-          tickAmount: 6
-          showAlways: true
-        opposite: true
-    series:
-      - yaxis_id: temperature
-        name: Temperature
-        unit: °C
-      - yaxis_id: humidity
-        name: Humidity
+        clampNegative: true
+        floatPrecision: 0
         unit: "%"
-  power_energy_base:
-    config_templates: default
-    span_generator: |
-      let start = moment(entities[0].attributes.start);
-      let end = moment(entities[0].attributes.end);
-      if (start.isValid() && end.isValid()) {
-        return [start, end];
-      } else {
-        return [undefined, undefined];
-      }
-    all_series_config:
-      unit_step: 1000
-      float_precision: 2
-      clamp_negative: true
-    yaxis:
-      - align_to: 10
-        decimals: 2
-  power_base:
-    config_templates: power_energy_base
-    header:
-      title: Power
-    all_series_config:
-      unit_array:
-        - W
-        - kW
-        - MW
-        - GW
-  energy_base:
-    config_templates: power_energy_base
-    header:
-      title: Energy
-    all_series_config:
-      unit_array:
-        - Wh
-        - kWh
-        - MWh
-        - GWh
-      type: column
-      show:
-        legend_function: sum
-
-apexcharts_card_templates_2:
-  default:
-    header:
-      show: true
-      title: My Title
-      show_states: true
-      colorize_states: true
-    show:
-      loading: true
-      last_updated: true
-    now:
-      show: true
-      label: Nows
-    all_series_config:
-      show:
-        legend_value: true
-        extremas: true
-    all_yaxis_config:
-      min_value: "|-10|"
-      max_value: "|+10|"
-      align_to: 1
-      apex_config:
-        tickAmount: 6
-    apex_config:
-      legend:
-        showForSingleSeries: true
-      tooltip:
-        x:
-          format: dd MMM yyyy, HH:mm
-      xaxis:
-        axisBorder:
-          show: false
-        axisTicks:
-          show: false
-        tooltip:
-          enabled: false
-        crosshairs:
-          show: false
-        labels:
-          show: true
-          datetimeFormatter:
-            day: dd MMM
-            hour: HH:mm
-  # temp_default:
-  #   config_templates: default
-  #   header:
-  #     title: Temperature
-  #   all_series_config:
-  #     unit_separator: ""
-  #     float_precision: 1
-  power_energy_base:
-    config_templates: default
+    yAxes:
+      - id: temperature
+        dataTypeId: temperature
+      - id: humidity
+        dataTypeId: humidity
+        opposite: true
+  baseEnergyPower:
+    configTemplates: default
     dataTypes:
       - id: power
-        # clamp_negative: true
-        float_precision: 2
-        unit_step: 1000
-        unit_array:
+        clampNegative: true
+        floatPrecision: 2
+        unitStep: 1000
+        unitArray:
           - W
           - kW
           - MW
           - GW
       - id: energy
-        # clamp_negative: true
-        float_precision: 2
-        unit_step: 1000
-        unit_array:
+        clampNegative: true
+        floatPrecision: 2
+        unitStep: 1000
+        unitArray:
           - Wh
           - kWh
           - MWh
           - GWh
-    all_yaxis_config:
-      align_to: 10
-  power_base:
-    config_templates: power_energy_base
+    allYaxisConfig:
+      alignTo: 10
+  basePower:
+    configTemplates: baseEnergyPower
     header:
       title: Power
-  energy_base:
-    config_templates: power_energy_base
+  baseEnergy:
+    configTemplates: baseEnergyPower
     header:
       title: Energy
-    all_series_config:
+    allSeriesConfig:
       type: column
       show:
-        legend_function: sum
+        legendFunction: sum
 title: Home
 views:
   - path: default_view
     title: Home
     badges: []
     cards:
-      # - type: custom:apexcharts-card-2
-      #   config_templates: energy_base
-      #   header:
-      #     title: Server Rack Energy 1
-      #   entity: button.graph_entities_server_rack_energy
-      # - type: custom:apexcharts-card-2
-      #   config_templates: energy_base
-      #   header:
-      #     title: Server Rack Energy 2
-      #   entity: button.graph_entities_server_rack_energy_2
-      # - type: custom:apexcharts-card-2
-      #   config_templates: power_base
-      #   header:
-      #     title: Server Rack Power 1
-      #   entity: button.graph_entities_server_rack_power
-      # - type: custom:apexcharts-card-2
-      #   config_templates: power_base
-      #   header:
-      #     title: Server Rack Power 2
-      #   entity: button.graph_entities_server_rack_power_2
-      # - type: custom:apexcharts-card-2
-      #   config_templates: temp_default
-      #   header:
-      #     title: Server Rack Temperature 1
-      #   entity: button.graph_entities_server_rack_temperature
-      # - type: custom:apexcharts-card-2
-      #   config_templates: temp_default
-      #   header:
-      #     title: Server Rack Temperature 2
-      #   entity: button.graph_entities_server_rack_temperature_2
-      - type: custom:apexcharts-card-2
-        config_templates: energy_base
+      - type: custom:apexcharts-card
+        configTemplates: baseEnergy
         header:
           title: Server Rack Energy New 1
         entity: button.graph_entities_server_rack_energy
         yAxes:
-          - id: energy
-            dataTypeId: energy
-      - type: custom:apexcharts-card-2
-        config_templates: energy_base
+          - dataTypeId: energy
+      - type: custom:apexcharts-card
+        configTemplates: baseEnergy
         header:
           title: Server Rack Energy New 2
         entity: button.graph_entities_server_rack_energy_2
@@ -263,18 +122,23 @@ views:
             dataTypeId: power
             opposite: true
       - type: custom:apexcharts-card
-        config_templates: energy_base
+        configTemplates: baseTemperature
         header:
-          title: Server Rack Energy Old
-        series:
-          - entity: button.graph_entities_server_rack_energy
-  - path: panel
-    title: Panel
-    badges: []
-    panel: true
-    cards:
-      - type: custom:apexcharts-card-2
-        config_templates: energy_base
-        header:
-          title: Server Rack Energy x
-        entity: button.graph_entities_server_rack_energy
+          title: Server Rack Temp
+        entity: button.graph_entities_server_rack_temperature_humidity
+        yAxes:
+          - id: temperature
+            dataTypeId: temperature
+          - id: humidity
+            dataTypeId: humidity
+            opposite: true
+  # - path: panel
+  #   title: Panel
+  #   badges: []
+  #   panel: true
+  #   cards:
+  #     - type: custom:apexcharts-card-2
+  #       configTemplates: baseEnergy
+  #       header:
+  #         title: Server Rack Energy x
+  #       entity: button.graph_entities_server_rack_energy

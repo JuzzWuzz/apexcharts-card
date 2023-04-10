@@ -1,3 +1,4 @@
+import { ApexOptions } from "apexcharts";
 import { DEFAULT_AREA_OPACITY, DEFAULT_SERIE_TYPE } from "./const";
 import {
   ChartCardConfig,
@@ -22,10 +23,10 @@ export function getLayoutConfig(
   now: Date = new Date(),
   start?: Date,
   end?: Date,
-): unknown {
-  const def = {
+): ApexOptions {
+  const options = {
     chart: {
-      type: config.chart_type || DEFAULT_SERIE_TYPE,
+      type: config.chartType || DEFAULT_SERIE_TYPE,
       foreColor: "var(--primary-text-color)",
       width: "100%",
       zoom: {
@@ -62,17 +63,7 @@ export function getLayoutConfig(
     annotations: getAnnotations(config, dataTypeMap, series, now),
   };
 
-  const xx = config.apex_config
-    ? mergeDeep(def, evalApexConfig(config.apex_config))
-    : def;
-
-  console.log("##########");
-  console.log("Layout Config:");
-  console.log("##########");
-  console.log(JSON.stringify(xx));
-  console.log(xx);
-  console.log("##########");
-  return xx;
+  return mergeDeep(options, evalApexConfig(config.apexConfig));
 }
 
 function getFill(config: ChartCardConfig, series: ChartCardSeries[]): ApexFill {
@@ -86,7 +77,7 @@ function getFill(config: ChartCardConfig, series: ChartCardSeries[]): ApexFill {
   };
   return {
     opacity: getOpacity(),
-    type: config.apex_config?.fill?.type || "solid",
+    type: config.apexConfig?.fill?.type || "solid",
   };
 }
 
@@ -101,7 +92,7 @@ function getLegend(
   const getLegendFormatter = () => {
     const legendValues = series.map((s) => {
       const name = s.config.name ?? "";
-      if (!s.config.show.legend_value) {
+      if (!s.config.show.legendValue) {
         return name;
       } else {
         const formattedValue = formatValueAndUom(
@@ -117,6 +108,9 @@ function getLegend(
   };
 
   return {
+    onItemClick: {
+      toggleDataSeries: false,
+    },
     position: "bottom",
     show: true,
     formatter: getLegendFormatter(),
@@ -128,11 +122,11 @@ function getStroke(
   series: ChartCardSeries[],
 ): ApexStroke {
   const getStrokeWidth = () => {
-    if (config.chart_type !== undefined && config.chart_type !== "line")
-      return config.apex_config?.stroke?.width ?? 3;
+    if (config.chartType !== undefined && config.chartType !== "line")
+      return config.apexConfig?.stroke?.width ?? 3;
     return series.map((s) => {
-      if (s.config.stroke_width !== undefined) {
-        return s.config.stroke_width;
+      if (s.config.strokeWidth !== undefined) {
+        return s.config.strokeWidth;
       }
       return [
         undefined,
@@ -157,7 +151,7 @@ function getSeries(series: ChartCardSeries[]): ApexAxisChartSeries {
     return {
       name: s.config.name,
       type: s.config.type,
-      data: s.config.show.in_chart ? s.data : [],
+      data: s.config.show.inChart ? s.data : [],
     };
   });
 }
@@ -192,31 +186,28 @@ function getXAxis(start?: Date, end?: Date): ApexXAxis {
 function doThing(
   value,
   isMin: boolean,
-  align_to: number | undefined,
+  alignTo: number | undefined,
   configMinMax: string | number | undefined,
   type: MinMaxType,
 ) {
   if (type === MinMaxType.FIXED) {
-    console.log("Fixed");
     return configMinMax;
   }
   let val = value;
-  if (align_to !== undefined) {
-    const x = Math.abs(val) % align_to;
-    const y = align_to - x;
+  if (alignTo !== undefined) {
+    const x = Math.abs(val) % alignTo;
+    const y = alignTo - x;
     val = val >= 0 ? (isMin ? val - x : val + y) : isMin ? val - y : val + x;
   }
 
   if (typeof val === "number" && typeof configMinMax === "number") {
     if (type === MinMaxType.ABSOLUTE) {
-      console.log("Absolute");
       return val + configMinMax;
     }
     if (
       type === MinMaxType.SOFT &&
       ((isMin && val > configMinMax) || (!isMin && val < configMinMax))
     ) {
-      console.log("Soft");
       return configMinMax;
     }
   }
@@ -230,11 +221,12 @@ function getYAxis(
 ): ApexYAxis[] {
   return yAxes.map((y) => {
     // Construct the ApexConfig and remove items not permitted
-    const apexConfig = mergeDeep(y.apex_config);
+    const apexConfig = mergeDeep(y.apexConfig);
     delete apexConfig.min;
     delete apexConfig.max;
     delete apexConfig.decimalsInFloat;
 
+    // Get the Min/Max values f or the Y-Axis
     const minMax = series
       .filter((s) => s.config.yAxisIndex === y.index)
       .map((s) => {
@@ -262,45 +254,25 @@ function getYAxis(
     const dataTypeConfig = getDataTypeConfig(dataTypeMap, y.dataTypeId);
     const mergedConfig = mergeDeep(
       {
-        decimalsInFloat: dataTypeConfig.float_precision,
+        decimalsInFloat: dataTypeConfig.floatPrecision,
         labels: {
           formatter: function (value) {
             return formatValueAndUom(value, dataTypeConfig).formatted();
           },
         },
-        min: function (value, x) {
-          console.log(value);
-          console.log(x);
-          return doThing(minMax.min, true, y.align_to, y.min_value, y.min_type);
-        },
-        max: function (value, x) {
-          console.log(value);
-          console.log(x);
-          return doThing(
-            minMax.max,
-            false,
-            y.align_to,
-            y.max_value,
-            y.max_type,
-          );
-        },
+        min: doThing(minMax.min, true, y.alignTo, y.minValue, y.min_type),
+        max: doThing(minMax.max, false, y.alignTo, y.maxValue, y.max_type),
       },
       y,
       apexConfig,
     );
-    delete mergedConfig.align_to;
-    delete mergedConfig.apex_config;
-    delete mergedConfig.min_type;
-    delete mergedConfig.max_type;
-    delete mergedConfig.min_value;
-    delete mergedConfig.max_value;
 
     return mergedConfig as ApexYAxis;
   });
 }
 
 function getXTooltipFormatter(config: ChartCardConfig) {
-  if (config.apex_config?.tooltip?.x?.format) return undefined;
+  if (config.apexConfig?.tooltip?.x?.format) return undefined;
 
   return function (val) {
     return new Intl.DateTimeFormat("en", {
@@ -340,10 +312,10 @@ function getAnnotations(
   now: Date,
 ): ApexAnnotations {
   const getNowAnnotation = (): XAxisAnnotations => {
-    if (config.now?.show !== true || series.length === 0) {
+    if (!config.now.show || series.length === 0) {
       return {};
     }
-    const color = computeColor(config.now.color || "var(--primary-color)");
+    const color = computeColor(config.now.color);
     const textColor = computeTextColor(color);
     return {
       x: now.getTime(),
@@ -409,8 +381,9 @@ function getAnnotations(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function evalApexConfig(apexConfig: any): any {
+function evalApexConfig(apexConfig?: ApexOptions): ApexOptions | undefined {
+  if (!apexConfig) return undefined;
+
   const eval2 = eval;
   Object.keys(apexConfig).forEach((key) => {
     if (
