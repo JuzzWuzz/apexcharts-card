@@ -1,4 +1,4 @@
-import { DataPoint } from "./types";
+import { DataPoint, MinMaxPoint } from "./types";
 
 export const DEFAULT_SERIE_TYPE = "line";
 
@@ -32,3 +32,14 @@ export const NO_VALUE = "N/A";
 export const DEFAULT_AREA_OPACITY = 0.7;
 
 export const DEFAULT_DATA: Array<DataPoint> = [];
+
+export const DEFAULT_MIN_MAX: MinMaxPoint = {
+  min: [
+    0,
+    0,
+  ],
+  max: [
+    0,
+    0,
+  ],
+};

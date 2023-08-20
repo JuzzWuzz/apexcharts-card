@@ -8,8 +8,10 @@ import {
   ChartCardSeriesShowConfigExternal,
   ChartCardShowExternalConfig,
   ChartCardYAxisConfigExternal,
-  Periods,
+  LegendFunction,
+  Period,
 } from "./types-config";
+import { HassEntity } from "home-assistant-js-websocket";
 
 export interface ChartCardConfig extends ChartCardConfigExternal {
   colorList: string[];
@@ -17,9 +19,10 @@ export interface ChartCardConfig extends ChartCardConfigExternal {
   now: ChartCardNowConfig;
   show: ChartCardShowConfig;
   apexConfig?: ApexOptions;
-  period: Periods;
+  period: Period;
   showDateSelector: boolean;
   autoRefreshTime: number;
+  rememberOptions: boolean;
 }
 
 export interface ChartCardDataTypeConfig
@@ -36,8 +39,8 @@ export interface ChartCardHeaderConfig extends ChartCardHeaderExternalConfig {
 }
 
 export interface ChartCardNowConfig extends ChartCardNowExternalConfig {
-  show: boolean;
   color: string;
+  show: boolean;
 }
 
 export interface ChartCardShowConfig extends ChartCardShowExternalConfig {
@@ -56,14 +59,14 @@ export interface ChartCardSeriesShowConfig
   extends ChartCardSeriesShowConfigExternal {
   inChart: boolean;
   inHeader: boolean;
-  legendFunction: "last" | "sum";
+  legendFunction: LegendFunction;
   legendValue: boolean;
   nameInHeader: boolean;
 }
 
 export interface ChartCardYAxisConfig extends ChartCardYAxisConfigExternal {
-  floatPrecision: number;
   id: string;
+  floatPrecision: number;
   index: number;
   max_type: MinMaxType;
   min_type: MinMaxType;
@@ -93,47 +96,15 @@ export interface ChartCardSeries {
   color: string;
 }
 
+export interface EntitySeries {
+  data: Array<DataPoint>;
+  index: number;
+  minMax: MinMaxPoint;
+}
+
 export interface FormattedValue {
   value: string;
   unitSeparator: string;
   unitOfMeasurement: string;
   formatted(): string;
 }
-
-export const periodIds = [
-  "LAST_ONE_HOUR",
-  "LAST_THREE_HOUR",
-  "LAST_SIX_HOUR",
-  "LAST_TWELVE_HOUR",
-  "DAY",
-  "TWO_DAY",
-  "WEEK",
-  "MONTH",
-  "YEAR",
-] as const;
-
-type PeriodId = (typeof periodIds)[number];
-
-export const PeriodLabels: Record<PeriodId, string> = {
-  LAST_ONE_HOUR: "Last 1h",
-  LAST_THREE_HOUR: "Last 3h",
-  LAST_SIX_HOUR: "Last 6h",
-  LAST_TWELVE_HOUR: "Last 12h",
-  DAY: "Day",
-  TWO_DAY: "2 Day",
-  WEEK: "Week",
-  MONTH: "Month",
-  YEAR: "Year",
-} as const;
-
-export const PeriodValues: Record<PeriodId, string> = {
-  LAST_ONE_HOUR: "-1h",
-  LAST_THREE_HOUR: "-3h",
-  LAST_SIX_HOUR: "-6h",
-  LAST_TWELVE_HOUR: "Last 12h",
-  DAY: "Day",
-  TWO_DAY: "2 Day",
-  WEEK: "Week",
-  MONTH: "Month",
-  YEAR: "Year",
-} as const;

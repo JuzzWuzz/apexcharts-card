@@ -5,6 +5,7 @@ import {
   DEFAULT_DATA,
   DEFAULT_DATA_TYPE_ID,
   DEFAULT_FLOAT_PRECISION,
+  DEFAULT_MIN_MAX,
   DEFAULT_SERIE_TYPE,
   DEFAULT_UNIT_SEPARATOR,
   DEFAULT_Y_AXIS_ID,
@@ -19,6 +20,7 @@ import {
   ChartCardYAxisConfig,
   DataPoint,
   DataTypeMap,
+  EntitySeries,
   FormattedValue,
   MinMaxPoint,
   MinMaxType,
@@ -26,11 +28,13 @@ import {
 import {
   ChartCardConfigExternal,
   ChartCardYAxisConfigExternal,
-  Periods,
+  Period,
+  Resolution,
 } from "./types-config";
 import { HassEntity } from "home-assistant-js-websocket";
 import { createCheckers } from "ts-interface-checker";
 import exportedTypeSuite from "./types-config-ti";
+import moment from "moment";
 
 /**
  * ########################################
@@ -332,9 +336,10 @@ export function generateBaseConfig(
         lastUpdated: true,
         loading: true,
       },
-      period: Periods.TWO_DAY,
+      period: Period.TWO_DAY,
       showDateSelector: false,
       autoRefreshTime: 120,
+      rememberOptions: true,
     },
     conf,
   );
@@ -417,13 +422,8 @@ export function generateSeries(
   yAxes: ChartCardYAxisConfig[],
   entity: HassEntity,
 ): ChartCardSeries[] {
-  return (entity.attributes.series ?? []).map((series, index: number) => {
-    /**
-     * Run checkers to ensure valid data being supplied
-     */
-    const { ChartCardSeriesConfigExternal } = createCheckers(exportedTypeSuite);
-    ChartCardSeriesConfigExternal.strictCheck(series.config);
-
+  const entitySeriesArr: EntitySeries[] = entity.attributes.series ?? [];
+  return conf.series.map((series, index: number) => {
     /**
      * Load the series config
      */
@@ -441,7 +441,7 @@ export function generateSeries(
         yAxisIndex: -1,
       },
       conf.allSeriesConfig,
-      series.config,
+      series,
     );
     // Set the series chart type
     seriesConfig.type = conf.chartType
@@ -453,34 +453,58 @@ export function generateSeries(
      */
     const yAxis = yAxes.find((yAxis) => yAxis.id === seriesConfig.yAxisId);
     if (yAxis === undefined) {
-      throw Error(
-        `Series ${index}: Requested Y-Axis ID '${seriesConfig.yAxisId}', that does not exist`,
-      );
+      if (
+        conf.yAxes !== undefined &&
+        seriesConfig.yAxisId === DEFAULT_Y_AXIS_ID
+      ) {
+        throw Error(
+          `Series ${index}: You need to specify a 'yAxisId' matching one defined in the 'yAxes' array`,
+        );
+      } else {
+        throw Error(
+          `Series ${index}: Requested a 'yAxisId' of '${seriesConfig.yAxisId}', that does not exist`,
+        );
+      }
     }
     seriesConfig.yAxisIndex = yAxis.index;
 
     /**
+     * Find the data for this series item
+     */
+    const entitySeries = entitySeriesArr.find(
+      (entitySeries) => entitySeries.index === seriesConfig.index,
+    );
+
+    /**
      * Load the series data
      */
-    const seriesData: Array<DataPoint> = series.data ?? DEFAULT_DATA;
+    const seriesData: Array<DataPoint> = entitySeries?.data ?? DEFAULT_DATA;
 
     /**
      * Load the Min/Max for the series
      */
-    const seriesMinMax: MinMaxPoint = series.minMax;
+    const seriesMinMax: MinMaxPoint = entitySeries?.minMax ?? DEFAULT_MIN_MAX;
 
     /**
      * Compute the Header values
      */
     let seriesHeaderValue: number | null = null;
     if (seriesConfig.show.inHeader) {
-      if (seriesConfig.show.legendFunction === "sum") {
-        seriesHeaderValue = seriesData.reduce((sum, entry) => {
-          if (entry[1] !== null) return sum + entry[1];
-          return sum;
-        }, 0);
-      } else if (seriesData.length > 0) {
-        seriesHeaderValue = seriesData[seriesData.length - 1][1];
+      switch (seriesConfig.show.legendFunction) {
+        case "sum": {
+          seriesHeaderValue = seriesData.reduce((sum, entry) => {
+            if (entry[1] !== null) return sum + entry[1];
+            return sum;
+          }, 0);
+
+          break;
+        }
+        case "last": {
+          if (seriesData.length > 0) {
+            seriesHeaderValue = seriesData[seriesData.length - 1][1];
+          }
+          break;
+        }
       }
     }
 
@@ -499,4 +523,215 @@ export function generateSeries(
       color: seriesColor,
     };
   });
+}
+
+/**
+ * ########################################
+ * # Generation Functions
+ * ########################################
+ */
+
+/**
+ * Returns a label for the given period
+ * @param period
+ * @returns Formatted label
+ */
+export function getPeriodLabel(period: Period): string {
+  switch (period) {
+    case Period.LAST_HOUR:
+      return "Last hour";
+    case Period.LAST_THREE_HOUR:
+      return "Last 3 hours";
+    case Period.LAST_SIX_HOUR:
+      return "Last 6 hours";
+    case Period.LAST_TWELVE_HOUR:
+      return "Last 12 hours";
+    case Period.DAY:
+      return "Day";
+    case Period.TWO_DAY:
+      return "2 Days";
+    case Period.WEEK:
+      return "Week";
+    case Period.MONTH:
+      return "Month";
+  }
+}
+
+/**
+ * Returns a label for the given resolution
+ * @param resolution
+ * @returns Formatted label
+ */
+export function getResolutionLabel(resolution: Resolution): string {
+  switch (resolution) {
+    case Resolution.RAW:
+      return "Raw";
+    case Resolution.ONE_MINUTE:
+      return "1m";
+    case Resolution.FIVE_MINUTES:
+      return "5m";
+    case Resolution.FIFTEEN_MINUTES:
+      return "15m";
+    case Resolution.THIRTY_MINUTES:
+      return "30m";
+    case Resolution.ONE_DAY:
+      return "1d";
+  }
+}
+
+/**
+ * Helper to get a duration value to add/subtract a time value
+ * @param period
+ * @returns A moment duration
+ */
+export function getPeriodDuration(period: Period): moment.Duration {
+  switch (period) {
+    case Period.LAST_TWELVE_HOUR:
+      return moment.duration(12, "hour");
+    case Period.LAST_SIX_HOUR:
+      return moment.duration(6, "hour");
+    case Period.LAST_THREE_HOUR:
+      return moment.duration(3, "hour");
+    case Period.LAST_HOUR:
+      return moment.duration(1, "hour");
+    case Period.DAY:
+    case Period.TWO_DAY:
+      return moment.duration(1, "day");
+    case Period.WEEK:
+      return moment.duration(1, "week");
+    case Period.MONTH:
+      return moment.duration(1, "month");
+    // case Periods.YEAR:
+    //   return moment.duration(1, "year");
+  }
+}
+
+/**
+ * Use the given date to calculate the start and end dates based on the period supplied
+ * @param date The date to work the start and end out against
+ * @param period
+ * @returns A dictionary of the calculated start and end dates
+ */
+export function calculateNewDates(
+  date: moment.Moment,
+  period: Period,
+): { startDate: moment.Moment; endDate: moment.Moment } {
+  const duration = getPeriodDuration(period);
+
+  let startDate = date.clone();
+  let endDate = date.clone();
+  switch (period) {
+    case Period.LAST_HOUR:
+    case Period.LAST_THREE_HOUR:
+    case Period.LAST_SIX_HOUR:
+    case Period.LAST_TWELVE_HOUR:
+      startDate = startDate.subtract(duration);
+      break;
+    case Period.DAY:
+      startDate = startDate.startOf("day");
+      endDate = endDate.add(duration).startOf("day");
+      break;
+    case Period.TWO_DAY:
+      startDate = startDate.subtract(duration).startOf("day");
+      endDate = endDate.add(duration).startOf("day");
+      break;
+    case Period.WEEK:
+      startDate = startDate.startOf("isoWeek");
+      endDate = endDate.add(duration).startOf("isoWeek");
+      break;
+    case Period.MONTH:
+      startDate = startDate.startOf("month");
+      endDate = endDate.add(duration).startOf("month");
+      break;
+  }
+
+  return {
+    startDate: startDate,
+    endDate: endDate,
+  };
+}
+
+/**
+ * Helper to get the supported resolutions based on the period
+ * @param period
+ * @returns An array of supported resolutions
+ * @throws Error if the "Supported Resolutions" for the desired period is empty
+ */
+export function getResolutionsForPeriod(period: Period): Resolution[] {
+  let supportedResolutions: Resolution[];
+  switch (period) {
+    case Period.LAST_HOUR:
+    case Period.LAST_THREE_HOUR:
+      supportedResolutions = [
+        Resolution.RAW,
+        Resolution.ONE_MINUTE,
+        Resolution.FIVE_MINUTES,
+      ];
+      break;
+    case Period.LAST_SIX_HOUR:
+      supportedResolutions = [
+        Resolution.ONE_MINUTE,
+        Resolution.FIVE_MINUTES,
+        Resolution.FIFTEEN_MINUTES,
+        Resolution.THIRTY_MINUTES,
+      ];
+      break;
+    case Period.LAST_TWELVE_HOUR:
+    case Period.DAY:
+      supportedResolutions = [
+        Resolution.FIVE_MINUTES,
+        Resolution.FIFTEEN_MINUTES,
+        Resolution.THIRTY_MINUTES,
+      ];
+      break;
+    case Period.TWO_DAY:
+      supportedResolutions = [
+        Resolution.FIFTEEN_MINUTES,
+        Resolution.THIRTY_MINUTES,
+      ];
+      break;
+    case Period.WEEK:
+    case Period.MONTH:
+      supportedResolutions = [Resolution.ONE_DAY];
+      break;
+  }
+
+  if (supportedResolutions.length === 0) {
+    throw new Error("No supported resolutions for the chosen period");
+  }
+
+  return supportedResolutions;
+}
+
+export function getDateRangeLabel(
+  startDate: moment.Moment,
+  endDate: moment.Moment,
+  period: Period,
+): string {
+  switch (period) {
+    case Period.LAST_HOUR:
+    case Period.LAST_THREE_HOUR:
+    case Period.LAST_SIX_HOUR:
+    case Period.LAST_TWELVE_HOUR: {
+      // if (startDate.isSame(endDate, "day")) {
+      return `${startDate.format("D MMM HH:mm")} - ${endDate.format("HH:mm")}`;
+      // } else {
+      //   return `${startDate.format("D MMM HH:mm")} - ${endDate.format(
+      //     "HH:mm",
+      //   )}`;
+      // }
+    }
+    case Period.DAY: {
+      return startDate.format("D MMM YYYY");
+    }
+    case Period.TWO_DAY:
+    case Period.WEEK: {
+      return `${startDate.format("D MMM")} - ${endDate
+        .subtract(1, "second")
+        .format("D MMM")}`;
+    }
+    case Period.MONTH: {
+      return startDate.format("MMMM YYYY");
+    }
+  }
 }

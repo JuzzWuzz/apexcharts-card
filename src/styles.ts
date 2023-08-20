@@ -5,18 +5,34 @@ export const stylesApex: CSSResultGroup = css`
     --mdc-button-outline-color: currentColor;
   }
 
-  #time-selector {
+  #date-selector {
     align-items: center;
     display: flex;
     justify-content: flex-end;
     color: var(--mdc-theme-primary);
-  }
-  #time-selector > #date {
-    flex-grow: 1;
+    margin-bottom: 5px;
   }
 
-  .lol {
+  #graph-controls {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    color: var(--mdc-theme-primary);
+    margin-bottom: 5px;
+  }
+
+  #date-selector > #date {
+    flex-grow: 1;
+    font-family: var(
+      --mdc-typography-button-font-family,
+      var(--mdc-typography-font-family, Roboto)
+    );
     font-size: 20px;
+    font-weight: var(--mdc-typography-button-font-weight, 500);
+  }
+
+  #graph-controls > ha-select {
+    width: 175px;
   }
 
   mwc-button {
@@ -28,7 +44,9 @@ export const stylesApex: CSSResultGroup = css`
     padding-inline-start: 8px;
     padding-left: 8px;
   }
-  ha-icon-button {
+  ha-icon-button,
+  ha-icon-button-arrow-prev,
+  ha-icon-button-arrow-next {
     margin-left: 4px;
     --mdc-icon-button-size: 28px;
     --mdc-icon-size: 20px;

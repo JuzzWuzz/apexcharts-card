@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "@ctrl/tinycolor": "^3.6.0",
+    "@mdi/js": "^7.2.96",
     "apexcharts": "^3.41.0",
     "home-assistant-js-websocket": "^8.0.1",
     "lit": "^2.7.5",

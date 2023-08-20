@@ -17,6 +17,7 @@ import {
 } from "./types";
 import * as pjson from "../package.json";
 import {
+  calculateNewDates,
   formatApexDate,
   formatValueAndUom,
   generateBaseConfig,
@@ -24,7 +25,12 @@ import {
   generateSeries,
   generateYAxes,
   getDataTypeConfig,
+  getDateRangeLabel,
   getLovelace,
+  getPeriodDuration,
+  getPeriodLabel,
+  getResolutionLabel,
+  getResolutionsForPeriod,
   mergeConfigTemplates,
   mergeDeep,
 } from "./utils";
@@ -32,8 +38,9 @@ import ApexCharts from "apexcharts";
 import { stylesApex } from "./styles";
 import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
-import { ChartCardConfigExternal, Periods } from "./types-config";
+import { ChartCardConfigExternal, Period, Resolution } from "./types-config";
 import { HomeAssistant, LovelaceCard } from "juzz-ha-helper";
+import { mdiArrowLeft, mdiArrowRight, mdiReload } from "@mdi/js";
 
 /* eslint no-console: 0 */
 console.info(
@@ -45,7 +52,7 @@ console.info(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).ApexCharts = ApexCharts;
 
-@customElement("apexcharts-card")
+@customElement("apexcharts-card2")
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class ChartsCard extends LitElement {
   private _apexChart?: ApexCharts;
@@ -56,20 +63,23 @@ class ChartsCard extends LitElement {
   private _hass?: HomeAssistant;
   private _entity?: HassEntity;
 
+  // Config variables
   @state() private _config?: ChartCardConfig;
   private _dataTypeMap: DataTypeMap = new Map();
   private _yaxis: ChartCardYAxisConfig[] = [];
   private _series: ChartCardSeries[] = [];
 
-  @state() private _lastUpdated: Date = new Date();
-
-  // Time Controls
+  // Time variables
   private _refreshTimer?: number;
-  private _date?: Moment;
+  @state() private _date?: Moment;
+  @state() private _lastUpdated: Date = new Date();
+  private _viewingLiveData = true;
+
+  // Graph display variables
   private _startDate?: Moment;
   private _endDate?: Moment;
-  private _period?: Periods;
-  private _resolution?: "PT1M" | "PT5M" | "PT15M" | "PT30M" | "P1D" | "P1M";
+  @state() private _period?: Period;
+  @state() private _resolution?: Resolution;
 
   /**
    * Invoked when the component is added to the document's DOM.
@@ -101,10 +111,12 @@ class ChartsCard extends LitElement {
   }
 
   private initTimer(): void {
+    console.log("initTimer()");
+
     if (this._config && this._hass && !this._refreshTimer) {
       this._pickToday();
       this._refreshTimer = setInterval(() => {
-        this.callServiceRefresh();
+        this._refresh();
       }, this._config.autoRefreshTime * 1000);
     }
   }
@@ -120,6 +132,8 @@ class ChartsCard extends LitElement {
       !this._apexChart &&
       this.shadowRoot?.querySelector("#graph")
     ) {
+      console.log("_initialLoad()");
+
       const graph = this.shadowRoot.querySelector("#graph");
       const layout = getLayoutConfig(this._config, this._dataTypeMap);
       this._apexChart = new ApexCharts(
@@ -128,8 +142,26 @@ class ChartsCard extends LitElement {
       );
       this._apexChart.render();
 
+      // Restore the last used config if configured
+      if (this._config.rememberOptions) {
+        const lastPeriod = this._entity?.attributes?.period;
+        const lastResolution = this._entity?.attributes?.resolution;
+        if (lastPeriod && lastResolution) {
+          const supportedResolutions = getResolutionsForPeriod(lastPeriod);
+          if (supportedResolutions.includes(lastResolution)) {
+            this._period = lastPeriod;
+            this._resolution = lastResolution;
+          }
+        }
+      }
+
+      // Refresh the data
+      this._refresh();
+
+      // Update the graph data
       this._updateData();
 
+      // Init the timer
       this.initTimer();
     }
   }
@@ -142,11 +174,9 @@ class ChartsCard extends LitElement {
     this._hass = hass;
     if (!this._config || !hass) return;
 
+    // Update the graph entity if it has changed
     const entityState = hass.states[this._config.entity];
-    if (entityState === undefined) {
-      return;
-    }
-    if (this._entity !== entityState) {
+    if (entityState && this._entity !== entityState) {
       this._entity = entityState;
       this._updateData();
     }
@@ -156,6 +186,8 @@ class ChartsCard extends LitElement {
    * Sets the config for the card
    */
   public setConfig(config: ChartCardConfigExternal) {
+    console.log("setConfig");
+
     let configDup: ChartCardConfigExternal = JSON.parse(JSON.stringify(config));
     if (configDup.configTemplates) {
       configDup.configTemplates =
@@ -169,7 +201,7 @@ class ChartsCard extends LitElement {
       const conf = generateBaseConfig(configDup);
 
       // Set the time data
-      this._period = conf.period;
+      this._updatePeriod(conf.period);
 
       // Now update the config
       this._config = conf;
@@ -193,18 +225,17 @@ class ChartsCard extends LitElement {
     }
 
     // Check if the entity we are tracking has changed
-    const entityId = this._config.entity;
     const oldHass = changedProps.get("_hass") as HomeAssistant | undefined;
-    if (
-      oldHass &&
-      this._hass &&
-      oldHass.states[entityId] !== this._hass.states[entityId]
-    ) {
-      this._updateData();
+    if (oldHass && this._hass) {
+      // Check if the main graph entity has changed
+      const entityId = this._config.entity;
+      if (oldHass.states[entityId] !== this._hass.states[entityId]) {
+        this._updateData();
+      }
     }
 
     // If we have not yet initialised
-    if (this._config && !this._apexChart) {
+    if (!this._apexChart) {
       return true;
     }
 
@@ -212,10 +243,11 @@ class ChartsCard extends LitElement {
     if (
       [
         "_config",
+        "_date",
         "_lastUpdated",
-      ].some((key) => changedProps.has(key)) &&
-      this._config &&
-      this._apexChart
+        "_period",
+        "_resolution",
+      ].some((key) => changedProps.has(key))
     ) {
       return true;
     } else {
@@ -236,6 +268,14 @@ class ChartsCard extends LitElement {
   }
 
   private async _updateData() {
+    console.log(
+      `_updateData(): ${
+        !this._config || !this._apexChart || !this._entity || this._updating
+          ? "skipping"
+          : "running"
+      }`,
+    );
+
     if (!this._config || !this._apexChart || !this._entity || this._updating) {
       return;
     }
@@ -247,8 +287,8 @@ class ChartsCard extends LitElement {
       /**
        * Compute the time range
        */
-      const start = new Date(this._entity.attributes.start);
-      const end = new Date(this._entity.attributes.end);
+      const start = new Date(this._entity.attributes.timeStart);
+      const end = new Date(this._entity.attributes.timeEnd);
 
       /**
        * Compute the DataType Map
@@ -320,16 +360,26 @@ class ChartsCard extends LitElement {
           : false,
     };
 
+    const attributes = Object.keys(this._entity?.attributes ?? {}).filter(
+      (key) => key !== "series",
+    );
+
     return html`
       <ha-card>
         <div class="card-content">
           ${this._renderTitle()} ${this._renderDateSelector()}
+          ${this._renderControls()}
           <div id="spinner-wrapper">
             <div id="spinner" class=${classMap(spinnerClass)}></div>
           </div>
           ${this._renderStates()}
           <div id="graph"></div>
           ${this._renderLastUpdated()}
+        </div>
+        <div>
+          ${attributes.map(
+            (key) => html`${key}: ${this._entity?.attributes[key]}<br />`,
+          )}
         </div>
       </ha-card>
     `;
@@ -353,30 +403,89 @@ class ChartsCard extends LitElement {
       !this._config ||
       !this._startDate ||
       !this._endDate ||
-      !this._config.showDateSelector
+      !this._config.showDateSelector ||
+      !this._period ||
+      !this._resolution
     ) {
       return html``;
     }
 
     return html`
-      <div id="time-selector">
-        <div id="date" class="lol">
-          ${this._period === Periods.DAY
-            ? this._startDate.format("D MMMM YYYY")
-            : this._period === Periods.MONTH
-            ? this._startDate.format("MMMM YYYY")
-            : `${this._startDate.format("D MMM")} -
-                  ${this._endDate.format("D MMM")}
-                  `}
+      <div id="date-selector">
+        <div id="date">
+          ${getDateRangeLabel(this._startDate, this._endDate, this._period)}
         </div>
-        <ha-icon-button-prev @click=${this._pickPrevious}></ha-icon-button-prev>
-        <ha-icon-button-next @click=${this._pickNext}></ha-icon-button-next>
-        <mwc-button class="lol" dense outlined @click=${this._pickToday}>
+        <mwc-button dense outlined @click=${this._pickToday}>
           Today
         </mwc-button>
-        <mwc-button dense outlined @click=${this._refresh}>
-          Refresh
-        </mwc-button>
+        <ha-icon-button
+          .path=${mdiArrowLeft}
+          @click=${this._pickPrevious}
+        ></ha-icon-button>
+        <ha-icon-button
+          .path=${mdiArrowRight}
+          @click=${this._pickNext}
+        ></ha-icon-button>
+        <ha-icon-button
+          .path=${mdiReload}
+          @click=${this._refresh}
+        ></ha-icon-button>
+      </div>
+    `;
+  }
+
+  private _renderControls(): TemplateResult {
+    if (
+      !this._config ||
+      !this._startDate ||
+      !this._endDate ||
+      !this._config.showDateSelector ||
+      !this._period ||
+      !this._resolution
+    ) {
+      return html``;
+    }
+    console.log("Render Controls");
+
+    return html`
+      <div id="graph-controls">
+        <ha-select
+          .label=${"Period"}
+          .value=${this._period}
+          @selected=${this._pickPeriod}
+        >
+          ${Object.values(Period).map(
+            (period) =>
+              html`<mwc-list-item .value=${period}
+                >${getPeriodLabel(period)}</mwc-list-item
+              >`,
+          )}</ha-select
+        >
+        <ha-select
+          .label=${"Resolution"}
+          value=${this._resolution}
+          @selected=${this._pickResolution}
+        >
+          ${getResolutionsForPeriod(this._period).map((resolution) => {
+            if (resolution === this._resolution) {
+              return html` <mwc-list-item
+                .value=${resolution}
+                aria-selected="true"
+                selected
+                activated
+              >
+                ${getResolutionLabel(resolution)}</mwc-list-item
+              >`;
+            } else {
+              return html` <mwc-list-item
+                .value=${resolution}
+                aria-selected="false"
+              >
+                ${getResolutionLabel(resolution)}</mwc-list-item
+              >`;
+            }
+          })}</ha-select
+        >
       </div>
     `;
   }
@@ -435,105 +544,173 @@ class ChartsCard extends LitElement {
    */
 
   /**
-   * Helper to get a duration value to add/subtract a time value
+   * Update the Start & End date values and call for an update
    */
-  private _getDuration(): moment.Duration {
-    switch (this._period) {
-      case Periods.DAY:
-      case Periods.TWO_DAY:
-        return moment.duration(1, "day");
-      case Periods.WEEK:
-        return moment.duration(1, "week");
-      case Periods.MONTH:
-        return moment.duration(1, "month");
-      case Periods.YEAR:
-        return moment.duration(1, "year");
-      default:
-        return moment.duration(0, "second");
+  private _triggerUpdate(): void {
+    console.log(
+      `_triggerUpdate(): ${
+        !this._date || !this._period ? "skipping" : "running"
+      }`,
+    );
+    if (!this._date || !this._period) return;
+
+    const newDates = calculateNewDates(this._date, this._period);
+    this._startDate = newDates.startDate;
+    this._endDate = newDates.endDate;
+
+    // Update the graphs
+    this.callService();
+  }
+
+  private _updateDate(date: moment.Moment) {
+    console.log(
+      `updateDate(): ${this._date === date ? "skipping" : "running"}`,
+    );
+
+    // If the chosen date is the same, skip the update
+    if (this._date === date) {
+      return;
+    }
+
+    // Update the date
+    this._date = date;
+
+    // Trigger an update
+    this._triggerUpdate();
+  }
+
+  /**
+   * Update the period being observed
+   * @param period
+   */
+  private _updatePeriod(period: Period) {
+    console.log("_updatePeriod()");
+
+    // Update the period
+    this._period = period;
+
+    // Get the resolutions supported by this period
+    const supportedResolutions = getResolutionsForPeriod(this._period);
+
+    /**
+     * Grab the last resolution (coarsest) if one is not definend or the one defined is not in the supported list
+     * If we are updating the resolution, that function will call a refresh
+     * Otherwise call for a refresh
+     */
+    if (!this._resolution || !supportedResolutions.includes(this._resolution)) {
+      this._updateResolution(supportedResolutions.pop());
+    } else {
+      this._refresh();
     }
   }
 
   /**
-   * Update the Start & End date values
+   * Update the resolution being observed
+   * @param resolution
    */
-  private _updateDates(): void {
-    if (!this._date) return;
+  private _updateResolution(resolution?: Resolution) {
+    console.log("_updateResolution()");
 
-    switch (this._period) {
-      case Periods.DAY:
-        this._startDate = this._date.clone().startOf("day");
-        this._endDate = this._date.clone().add(1, "day").startOf("day");
-        this._resolution = "PT15M";
-        break;
-      case Periods.TWO_DAY:
-        this._startDate = this._date.clone().subtract(1, "day").startOf("day");
-        this._endDate = this._date.clone().add(1, "day").startOf("day");
-        this._resolution = "PT30M";
-        break;
-      case Periods.WEEK:
-        this._startDate = this._date.clone().startOf("isoWeek");
-        this._endDate = this._date.clone().add(1, "week").startOf("isoWeek");
-        this._resolution = "P1D";
-        break;
-      case Periods.MONTH:
-        this._startDate = this._date.clone().startOf("month");
-        this._endDate = this._date.clone().add(1, "month").startOf("month");
-        this._resolution = "P1D";
-        break;
-      case Periods.YEAR:
-        this._startDate = this._date.clone().startOf("month");
-        this._endDate = this._date.clone().add(1, "month").startOf("month");
-        this._resolution = "P1M";
-        break;
+    // This requires the period to be set already
+    if (!this._period || !resolution) {
+      return;
     }
 
-    // Update the graphs
-    this.callService();
+    // Get the resolutions supported by this period
+    const supportedResolutions = getResolutionsForPeriod(this._period);
+
+    // Make sure that resolution is in the supported set
+    if (!supportedResolutions.includes(resolution)) {
+      return;
+    }
+
+    // Update the resolution
+    this._resolution = resolution;
+
+    // Refresh the data
+    this._refresh();
   }
 
   /**
    * Handle the `Next` button being pressed (Advance the day)
    */
   private _pickNext(): void {
-    if (!this._date) return;
-    const newDate = this._date.clone().add(this._getDuration());
-    if (newDate.isAfter(moment().add(1, "day").startOf("day"))) {
-      return;
+    console.log(
+      `_pickNext(): ${!this._date || !this._period ? "skipping" : "running"}"`,
+    );
+    if (!this._date || !this._period) return;
+
+    const currentTime = moment();
+    const duration = getPeriodDuration(this._period);
+    const newDate = this._date.clone().add(duration);
+    console.log(
+      `New Date: ${newDate.toISOString()}... ${newDate.isAfter(currentTime)}`,
+    );
+
+    if (newDate.isAfter(currentTime)) {
+      this._viewingLiveData = false;
+      this._updateDate(currentTime);
+    } else {
+      this._updateDate(newDate);
     }
-    this._date = newDate;
-    this._updateDates();
   }
 
   /**
    * Handle the `Previous` button being pressed (Recede the day)
    */
   private _pickPrevious(): void {
-    if (!this._date) return;
-    this._date = this._date.clone().subtract(this._getDuration());
-    this._updateDates();
+    console.log(
+      `_pickPrevious(): ${
+        !this._date || !this._period ? "skipping" : "running"
+      }`,
+    );
+    if (!this._date || !this._period) return;
+    const duration = getPeriodDuration(this._period);
+    const newDate = this._date.clone().subtract(duration);
+    this._viewingLiveData = false;
+
+    this._updateDate(newDate);
   }
 
   /**
    * Set the date to the time right now
    */
   private _pickToday(): void {
-    this._date = moment();
-    this._updateDates();
-  }
-
-  /**
-   * Call for a refresh of the existing config on the system
-   */
-  private _refresh(): void {
-    this.callServiceRefresh();
+    console.log("_pickPrevious()");
+    this._viewingLiveData = true;
+    this._updateDate(moment());
   }
 
   /**
    * Change the period of viewing
    */
-  private _pickPeriod(ev: CustomEvent): void {
-    this._period = ev.detail.value;
-    this._updateDates();
+  private _pickPeriod(ev): void {
+    this._updatePeriod(ev.target.value);
+  }
+
+  /**
+   * Change the resolution of viewing
+   */
+  private _pickResolution(ev): void {
+    this._updateResolution(ev.target.value);
+  }
+
+  /**
+   * Refresh the graph data. Either auto or manual
+   */
+  private _refresh(): void {
+    const currentTime = moment();
+    console.log(
+      `_refresh(): ${this._endDate?.toISOString()} -- ${currentTime.toISOString()}. ${
+        this._viewingLiveData
+      }`,
+    );
+
+    if (this._viewingLiveData && currentTime.isAfter(this._endDate)) {
+      this._updateDate(currentTime);
+    } else {
+      this._triggerUpdate();
+    }
   }
 
   /**
@@ -544,39 +721,46 @@ class ChartsCard extends LitElement {
    * Call the service to change graph data
    */
   private callService(): void {
+    console.log(
+      `callService(): ${
+        !this._config ||
+        !this._hass ||
+        !this._startDate ||
+        !this._endDate ||
+        !this._period ||
+        !this._resolution
+          ? "skipping"
+          : "running"
+      }`,
+    );
+
     if (
       !this._config ||
       !this._hass ||
       !this._startDate ||
       !this._endDate ||
+      !this._period ||
       !this._resolution
     ) {
       return;
     }
 
     this._hass.callService("mqtt", "publish", {
-      topic: `graphs/${this._config.entity.replace(
-        "button.graph_entities_",
-        "",
-      )}/change`,
+      topic: `graphs2/${this._config.entity}`,
       payload: JSON.stringify({
-        timeGroup: this._resolution,
+        period: this._period,
+        resolution: this._resolution,
         timeStart: this._startDate.toISOString(),
         timeEnd: this._endDate.toISOString(),
+        series: this._series.map((series) => {
+          return {
+            index: series.config.index,
+            measurement: series.config.measurement,
+            device: series.config.device,
+            channel: series.config.channel,
+          };
+        }),
       }),
-    });
-  }
-
-  /**
-   * Press the button which refreshes the data
-   */
-  private callServiceRefresh(): void {
-    if (!this._config || !this._hass) {
-      return;
-    }
-
-    this._hass.callService("button", "press", {
-      entity_id: this._config.entity,
     });
   }
 }

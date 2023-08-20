@@ -1,5 +1,5 @@
 export interface ChartCardConfigExternal {
-  type: "custom:apexcharts-card";
+  type: "custom:apexcharts-card2";
   entity: string;
   configTemplates?: string[] | string;
   colorList?: string[];
@@ -10,12 +10,14 @@ export interface ChartCardConfigExternal {
   dataTypes?: ChartCardDataTypeConfigExternal[];
   allSeriesConfig?: ChartCardAllSeriesConfigExternal;
   allYaxisConfig?: ChartCardAllYAxisConfigExternal;
+  series: ChartCardSeriesConfigExternal[];
   yAxes?: ChartCardYAxisConfigExternal[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apexConfig?: any;
-  period?: Periods;
+  period?: Period;
   showDateSelector?: boolean;
   autoRefreshTime?: number;
+  rememberOptions?: boolean;
 }
 
 export interface ChartCardDataTypeConfigExternal {
@@ -23,9 +25,9 @@ export interface ChartCardDataTypeConfigExternal {
   clampNegative?: boolean;
   floatPrecision?: number;
   unit?: string;
-  unitStep?: number;
   unitArray?: string[];
   unitSeparator?: string;
+  unitStep?: number;
 }
 
 export interface ChartCardHeaderExternalConfig {
@@ -60,24 +62,26 @@ export interface ChartCardSeriesConfigExternal
   extends ChartCardAllSeriesConfigExternal {
   dataTypeId?: string;
   yAxisId?: string;
-  yAxisIndex?: number;
+  measurement: string;
+  device: string;
+  channel?: string;
 }
 
 export interface ChartCardSeriesShowConfigExternal {
+  extremas?: boolean | "min" | "max";
   inChart?: boolean;
   inHeader?: boolean;
-  legendFunction?: "last" | "sum";
+  legendFunction?: LegendFunction;
   legendValue?: boolean;
   nameInHeader?: boolean;
-  extremas?: boolean | "min" | "max";
 }
 
 export interface ChartCardAllYAxisConfigExternal {
   alignTo?: number;
   floatPrecision?: number;
-  opposite?: boolean;
   maxValue?: "auto" | number | string;
   minValue?: "auto" | number | string;
+  opposite?: boolean;
   show?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apexConfig?: any;
@@ -85,11 +89,13 @@ export interface ChartCardAllYAxisConfigExternal {
 
 export interface ChartCardYAxisConfigExternal
   extends ChartCardAllYAxisConfigExternal {
-  dataTypeId?: string;
   id?: string;
+  dataTypeId?: string;
 }
 
-export enum Periods {
+export type LegendFunction = "last" | "sum" | "avgerage";
+
+export enum Period {
   LAST_HOUR = "-1h",
   LAST_THREE_HOUR = "-3h",
   LAST_SIX_HOUR = "-6h",
@@ -98,5 +104,14 @@ export enum Periods {
   TWO_DAY = "2d",
   WEEK = "1w",
   MONTH = "1m",
-  YEAR = "1y",
+  // YEAR = "1y",
+}
+
+export enum Resolution {
+  RAW = "RAW",
+  ONE_MINUTE = "PT1M",
+  FIVE_MINUTES = "PT5M",
+  FIFTEEN_MINUTES = "PT15M",
+  THIRTY_MINUTES = "PT30M",
+  ONE_DAY = "P1D",
 }
