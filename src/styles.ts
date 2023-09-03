@@ -130,6 +130,13 @@ export const stylesApex: CSSResultGroup = css`
     white-space: nowrap;
   }
 
+  #state__value > #function {
+    font-size: 0.8em;
+    font-weight: 300;
+    opacity: 0.8;
+    white-space: nowrap;
+  }
+
   #state__name {
     font-size: 0.8em;
     font-weight: 300;

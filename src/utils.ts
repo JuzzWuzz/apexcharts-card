@@ -434,7 +434,7 @@ export function generateSeries(
           inChart: true,
           inHeader: true,
           legendFunction: "last",
-          legendValue: true,
+          legendValue: false,
           nameInHeader: true,
         },
         yAxisId: DEFAULT_Y_AXIS_ID,
@@ -503,6 +503,7 @@ export function generateSeries(
           if (seriesData.length > 0) {
             seriesHeaderValue = seriesData[seriesData.length - 1][1];
           }
+
           break;
         }
       }
@@ -615,8 +616,9 @@ export function getPeriodDuration(period: Period): moment.Duration {
 export function calculateNewDates(
   date: moment.Moment,
   period: Period,
+  resolution: Resolution,
 ): { startDate: moment.Moment; endDate: moment.Moment } {
-  const duration = getPeriodDuration(period);
+  const periodDuration = getPeriodDuration(period);
 
   let startDate = date.clone();
   let endDate = date.clone();
@@ -624,25 +626,35 @@ export function calculateNewDates(
     case Period.LAST_HOUR:
     case Period.LAST_THREE_HOUR:
     case Period.LAST_SIX_HOUR:
-    case Period.LAST_TWELVE_HOUR:
-      startDate = startDate.subtract(duration);
+    case Period.LAST_TWELVE_HOUR: {
+      // We rounding up to the end of the next interval. Raw items round up to next minute
+      const duration = moment.duration(
+        resolution !== Resolution.RAW ? resolution : Resolution.ONE_MINUTE,
+      );
+      endDate = moment(Math.ceil(+endDate / +duration) * +duration);
+      startDate = endDate.clone().subtract(periodDuration);
       break;
-    case Period.DAY:
+    }
+    case Period.DAY: {
       startDate = startDate.startOf("day");
-      endDate = endDate.add(duration).startOf("day");
+      endDate = endDate.add(periodDuration).startOf("day");
       break;
-    case Period.TWO_DAY:
-      startDate = startDate.subtract(duration).startOf("day");
-      endDate = endDate.add(duration).startOf("day");
+    }
+    case Period.TWO_DAY: {
+      startDate = startDate.subtract(periodDuration).startOf("day");
+      endDate = endDate.add(periodDuration).startOf("day");
       break;
-    case Period.WEEK:
+    }
+    case Period.WEEK: {
       startDate = startDate.startOf("isoWeek");
-      endDate = endDate.add(duration).startOf("isoWeek");
+      endDate = endDate.add(periodDuration).startOf("isoWeek");
       break;
-    case Period.MONTH:
+    }
+    case Period.MONTH: {
       startDate = startDate.startOf("month");
-      endDate = endDate.add(duration).startOf("month");
+      endDate = endDate.add(periodDuration).startOf("month");
       break;
+    }
   }
 
   return {
@@ -732,6 +744,19 @@ export function getDateRangeLabel(
     }
     case Period.MONTH: {
       return startDate.format("MMMM YYYY");
+    }
+  }
+}
+
+export function getHeaderStateFunctionLabel(
+  legendFunction: LegendFunction,
+): string {
+  switch (legendFunction) {
+    case "last": {
+      return "Last";
+    }
+    case "sum": {
+      return "Sum";
     }
   }
 }

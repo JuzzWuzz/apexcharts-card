@@ -26,6 +26,7 @@ import {
   generateYAxes,
   getDataTypeConfig,
   getDateRangeLabel,
+  getHeaderStateFunctionLabel,
   getLovelace,
   getPeriodDuration,
   getPeriodLabel,
@@ -78,8 +79,8 @@ class ChartsCard extends LitElement {
   // Graph display variables
   private _startDate?: Moment;
   private _endDate?: Moment;
-  @state() private _period?: Period;
-  @state() private _resolution?: Resolution;
+  @state() private _period: Period = Period.TWO_DAY;
+  @state() private _resolution: Resolution = Resolution.THIRTY_MINUTES;
 
   /**
    * Invoked when the component is added to the document's DOM.
@@ -132,8 +133,6 @@ class ChartsCard extends LitElement {
       !this._apexChart &&
       this.shadowRoot?.querySelector("#graph")
     ) {
-      console.log("_initialLoad()");
-
       const graph = this.shadowRoot.querySelector("#graph");
       const layout = getLayoutConfig(this._config, this._dataTypeMap);
       this._apexChart = new ApexCharts(
@@ -186,7 +185,6 @@ class ChartsCard extends LitElement {
    * Sets the config for the card
    */
   public setConfig(config: ChartCardConfigExternal) {
-    console.log("setConfig");
 
     let configDup: ChartCardConfigExternal = JSON.parse(JSON.stringify(config));
     if (configDup.configTemplates) {
@@ -205,6 +203,11 @@ class ChartsCard extends LitElement {
 
       // Now update the config
       this._config = conf;
+
+      /**
+       * Compute the DataType Map
+       */
+      this._dataTypeMap = generateDataTypeMap(this._config);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -290,10 +293,6 @@ class ChartsCard extends LitElement {
       const start = new Date(this._entity.attributes.timeStart);
       const end = new Date(this._entity.attributes.timeEnd);
 
-      /**
-       * Compute the DataType Map
-       */
-      this._dataTypeMap = generateDataTypeMap(this._config);
 
       /**
        * Compute the Y-Axes
@@ -314,6 +313,7 @@ class ChartsCard extends LitElement {
           now,
           start,
           end,
+          this._period,
         ),
         false,
         false,
@@ -360,10 +360,6 @@ class ChartsCard extends LitElement {
           : false,
     };
 
-    const attributes = Object.keys(this._entity?.attributes ?? {}).filter(
-      (key) => key !== "series",
-    );
-
     return html`
       <ha-card>
         <div class="card-content">
@@ -375,11 +371,6 @@ class ChartsCard extends LitElement {
           ${this._renderStates()}
           <div id="graph"></div>
           ${this._renderLastUpdated()}
-        </div>
-        <div>
-          ${attributes.map(
-            (key) => html`${key}: ${this._entity?.attributes[key]}<br />`,
-          )}
         </div>
       </ha-card>
     `;
@@ -403,9 +394,7 @@ class ChartsCard extends LitElement {
       !this._config ||
       !this._startDate ||
       !this._endDate ||
-      !this._config.showDateSelector ||
-      !this._period ||
-      !this._resolution
+      !this._config.showDateSelector
     ) {
       return html``;
     }
@@ -439,13 +428,10 @@ class ChartsCard extends LitElement {
       !this._config ||
       !this._startDate ||
       !this._endDate ||
-      !this._config.showDateSelector ||
-      !this._period ||
-      !this._resolution
+      !this._config.showDateSelector
     ) {
       return html``;
     }
-    console.log("Render Controls");
 
     return html`
       <div id="graph-controls">
@@ -454,16 +440,24 @@ class ChartsCard extends LitElement {
           .value=${this._period}
           @selected=${this._pickPeriod}
         >
-          ${Object.values(Period).map(
-            (period) =>
-              html`<mwc-list-item .value=${period}
-                >${getPeriodLabel(period)}</mwc-list-item
-              >`,
-          )}</ha-select
+          ${Object.values(Period)
+            .filter(
+              (p) =>
+                ![
+                  Period.WEEK,
+                  Period.MONTH,
+                ].includes(p),
+            )
+            .map(
+              (period) =>
+                html`<mwc-list-item .value=${period}
+                  >${getPeriodLabel(period)}</mwc-list-item
+                >`,
+            )}</ha-select
         >
         <ha-select
           .label=${"Resolution"}
-          value=${this._resolution}
+          .value=${this._resolution}
           @selected=${this._pickResolution}
         >
           ${getResolutionsForPeriod(this._period).map((resolution) => {
@@ -516,6 +510,11 @@ class ChartsCard extends LitElement {
                 ${formatted.value}
               </span>
               <span id="uom">${formatted.unitOfMeasurement}</span>
+              <span id="function"
+                >(${getHeaderStateFunctionLabel(
+                  s.config.show.legendFunction,
+                )})</span
+              >
             </div>
             ${s.config.show.nameInHeader
               ? html`<div id="state__name">${s.config.name ?? ""}</div>`
@@ -547,14 +546,13 @@ class ChartsCard extends LitElement {
    * Update the Start & End date values and call for an update
    */
   private _triggerUpdate(): void {
-    console.log(
-      `_triggerUpdate(): ${
-        !this._date || !this._period ? "skipping" : "running"
-      }`,
-    );
-    if (!this._date || !this._period) return;
+    if (!this._date) return;
 
-    const newDates = calculateNewDates(this._date, this._period);
+    const newDates = calculateNewDates(
+      this._date,
+      this._period,
+      this._resolution,
+    );
     this._startDate = newDates.startDate;
     this._endDate = newDates.endDate;
 
@@ -597,7 +595,7 @@ class ChartsCard extends LitElement {
      * If we are updating the resolution, that function will call a refresh
      * Otherwise call for a refresh
      */
-    if (!this._resolution || !supportedResolutions.includes(this._resolution)) {
+    if (!supportedResolutions.includes(this._resolution)) {
       this._updateResolution(supportedResolutions.pop());
     } else {
       this._refresh();
@@ -611,8 +609,8 @@ class ChartsCard extends LitElement {
   private _updateResolution(resolution?: Resolution) {
     console.log("_updateResolution()");
 
-    // This requires the period to be set already
-    if (!this._period || !resolution) {
+    // Ensure that the resolution is not undefined
+    if (!resolution) {
       return;
     }
 
@@ -635,10 +633,7 @@ class ChartsCard extends LitElement {
    * Handle the `Next` button being pressed (Advance the day)
    */
   private _pickNext(): void {
-    console.log(
-      `_pickNext(): ${!this._date || !this._period ? "skipping" : "running"}"`,
-    );
-    if (!this._date || !this._period) return;
+    if (!this._date) return;
 
     const currentTime = moment();
     const duration = getPeriodDuration(this._period);
@@ -659,12 +654,7 @@ class ChartsCard extends LitElement {
    * Handle the `Previous` button being pressed (Recede the day)
    */
   private _pickPrevious(): void {
-    console.log(
-      `_pickPrevious(): ${
-        !this._date || !this._period ? "skipping" : "running"
-      }`,
-    );
-    if (!this._date || !this._period) return;
+    if (!this._date) return;
     const duration = getPeriodDuration(this._period);
     const newDate = this._date.clone().subtract(duration);
     this._viewingLiveData = false;
@@ -676,7 +666,6 @@ class ChartsCard extends LitElement {
    * Set the date to the time right now
    */
   private _pickToday(): void {
-    console.log("_pickPrevious()");
     this._viewingLiveData = true;
     this._updateDate(moment());
   }
@@ -685,6 +674,7 @@ class ChartsCard extends LitElement {
    * Change the period of viewing
    */
   private _pickPeriod(ev): void {
+    if (ev.target.value === this._period) return;
     this._updatePeriod(ev.target.value);
   }
 
@@ -692,6 +682,7 @@ class ChartsCard extends LitElement {
    * Change the resolution of viewing
    */
   private _pickResolution(ev): void {
+    if (ev.target.value === this._resolution) return;
     this._updateResolution(ev.target.value);
   }
 
@@ -722,26 +713,14 @@ class ChartsCard extends LitElement {
    */
   private callService(): void {
     console.log(
-      `callService(): ${
-        !this._config ||
-        !this._hass ||
-        !this._startDate ||
-        !this._endDate ||
-        !this._period ||
-        !this._resolution
+      `--------------------------callService(): ${
+        !this._config || !this._hass || !this._startDate || !this._endDate
           ? "skipping"
           : "running"
       }`,
     );
 
-    if (
-      !this._config ||
-      !this._hass ||
-      !this._startDate ||
-      !this._endDate ||
-      !this._period ||
-      !this._resolution
-    ) {
+    if (!this._config || !this._hass || !this._startDate || !this._endDate) {
       return;
     }
 

@@ -14,6 +14,7 @@ import {
   getDataTypeConfig,
   mergeDeep,
 } from "./utils";
+import { Period } from "./types-config";
 
 export function getLayoutConfig(
   config: ChartCardConfig,
@@ -23,6 +24,7 @@ export function getLayoutConfig(
   now: Date = new Date(),
   start?: Date,
   end?: Date,
+  period?: Period,
 ): ApexOptions {
   const options = {
     chart: {
@@ -60,7 +62,7 @@ export function getLayoutConfig(
         formatter: getYTooltipFormatter(dataTypeMap, series),
       },
     },
-    annotations: getAnnotations(config, dataTypeMap, series, now),
+    annotations: getAnnotations(config, dataTypeMap, series, now, end, period),
   };
 
   return mergeDeep(options, evalApexConfig(config.apexConfig));
@@ -310,9 +312,23 @@ function getAnnotations(
   dataTypeMap: DataTypeMap,
   series: ChartCardSeries[],
   now: Date,
+  end?: Date,
+  period?: Period,
 ): ApexAnnotations {
   const getNowAnnotation = (): XAxisAnnotations => {
-    if (!config.now.show || series.length === 0) {
+    if (
+      !config.now.show ||
+      series.length === 0 ||
+      !end ||
+      now.getTime() > end.getTime() ||
+      !period ||
+      [
+        Period.LAST_HOUR,
+        Period.LAST_THREE_HOUR,
+        Period.LAST_SIX_HOUR,
+        Period.LAST_TWELVE_HOUR,
+      ].includes(period)
+    ) {
       return {};
     }
     const color = computeColor(config.now.color);

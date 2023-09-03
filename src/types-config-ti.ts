@@ -102,11 +102,7 @@ export const ChartCardYAxisConfigExternal = t.iface(
   },
 );
 
-export const LegendFunction = t.union(
-  t.lit("last"),
-  t.lit("sum"),
-  t.lit("entity"),
-);
+export const LegendFunction = t.union(t.lit("last"), t.lit("sum"));
 
 export const Period = t.enumtype({
   LAST_HOUR: "-1h",

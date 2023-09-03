@@ -31,6 +31,10 @@ const plugins = [
   dev && serve(serveopts),
   !dev &&
     terser({
+      compress: {
+        drop_console: false,
+        pure_funcs: ["console.log"],
+      },
       format: {
         comments: false,
       },

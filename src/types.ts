@@ -11,7 +11,6 @@ import {
   LegendFunction,
   Period,
 } from "./types-config";
-import { HassEntity } from "home-assistant-js-websocket";
 
 export interface ChartCardConfig extends ChartCardConfigExternal {
   colorList: string[];

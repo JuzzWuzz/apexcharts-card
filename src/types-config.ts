@@ -93,7 +93,7 @@ export interface ChartCardYAxisConfigExternal
   dataTypeId?: string;
 }
 
-export type LegendFunction = "last" | "sum" | "avgerage";
+export type LegendFunction = "last" | "sum";
 
 export enum Period {
   LAST_HOUR = "-1h",
