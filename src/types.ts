@@ -5,6 +5,7 @@ import {
   ChartCardHeaderExternalConfig,
   ChartCardNowExternalConfig,
   ChartCardSeriesConfigExternal,
+  ChartCardSeriesSetConfigExternal,
   ChartCardSeriesShowConfigExternal,
   ChartCardShowExternalConfig,
   ChartCardYAxisConfigExternal,
@@ -32,6 +33,7 @@ export interface ChartCardDataTypeConfig
 }
 
 export interface ChartCardHeaderConfig extends ChartCardHeaderExternalConfig {
+  appendSeriesSetName: boolean;
   colorizeStates: boolean;
   show: boolean;
   showStates: boolean;
@@ -52,6 +54,11 @@ export interface ChartCardSeriesConfig extends ChartCardSeriesConfigExternal {
   show: ChartCardSeriesShowConfig;
   yAxisId: string;
   yAxisIndex: number;
+}
+
+export interface ChartCardSeriesSetConfig
+  extends ChartCardSeriesSetConfigExternal {
+  index: number;
 }
 
 export interface ChartCardSeriesShowConfig

@@ -12,6 +12,7 @@ import moment, { Moment } from "moment";
 import {
   ChartCardConfig,
   ChartCardSeries,
+  ChartCardSeriesSetConfig,
   ChartCardYAxisConfig,
   DataTypeMap,
 } from "./types";
@@ -23,6 +24,7 @@ import {
   generateBaseConfig,
   generateDataTypeMap,
   generateSeries,
+  generateSeriesSets,
   generateYAxes,
   getDataTypeConfig,
   getDateRangeLabel,
@@ -67,6 +69,7 @@ class ChartsCard extends LitElement {
   // Config variables
   @state() private _config?: ChartCardConfig;
   private _dataTypeMap: DataTypeMap = new Map();
+  private _seriesSets: ChartCardSeriesSetConfig[] = [];
   private _yaxis: ChartCardYAxisConfig[] = [];
   private _series: ChartCardSeries[] = [];
 
@@ -81,6 +84,7 @@ class ChartsCard extends LitElement {
   private _endDate?: Moment;
   @state() private _period: Period = Period.TWO_DAY;
   @state() private _resolution: Resolution = Resolution.THIRTY_MINUTES;
+  @state() private _seriesSet = "???";
 
   /**
    * Invoked when the component is added to the document's DOM.
@@ -145,12 +149,19 @@ class ChartsCard extends LitElement {
       if (this._config.rememberOptions) {
         const lastPeriod = this._entity?.attributes?.period;
         const lastResolution = this._entity?.attributes?.resolution;
+        const lastSeriesSet = this._entity?.attributes?.seriesSet;
         if (lastPeriod && lastResolution) {
           const supportedResolutions = getResolutionsForPeriod(lastPeriod);
           if (supportedResolutions.includes(lastResolution)) {
             this._period = lastPeriod;
             this._resolution = lastResolution;
           }
+        }
+        if (
+          lastSeriesSet &&
+          this._seriesSets.find((seriesSet) => seriesSet.name === lastSeriesSet)
+        ) {
+          this._seriesSet = lastSeriesSet;
         }
       }
 
@@ -204,10 +215,16 @@ class ChartsCard extends LitElement {
       // Now update the config
       this._config = conf;
 
-      /**
-       * Compute the DataType Map
-       */
+      // Compute the DataType Map
       this._dataTypeMap = generateDataTypeMap(this._config);
+
+      // Compute the SeriesSets
+      this._seriesSets = generateSeriesSets(this._config);
+
+      // Set the series set to the first item if we have one
+      if (this._seriesSets.length > 0) {
+        this._seriesSet = this._seriesSets[0].name;
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -250,6 +267,7 @@ class ChartsCard extends LitElement {
         "_lastUpdated",
         "_period",
         "_resolution",
+        "_seriesSet",
       ].some((key) => changedProps.has(key))
     ) {
       return true;
@@ -293,16 +311,27 @@ class ChartsCard extends LitElement {
       const start = new Date(this._entity.attributes.timeStart);
       const end = new Date(this._entity.attributes.timeEnd);
 
+      /**
+       * Get the selected series
+       */
+      const seriesSet = this._seriesSets.find(
+        (value) => value.name === this._seriesSet,
+      );
 
       /**
        * Compute the Y-Axes
        */
-      this._yaxis = generateYAxes(this._config, this._dataTypeMap);
+      this._yaxis = generateYAxes(this._config, this._dataTypeMap, seriesSet);
 
       /**
        * Compute the Series
        */
-      this._series = generateSeries(this._config, this._yaxis, this._entity);
+      this._series = generateSeries(
+        this._entity,
+        this._config,
+        this._yaxis,
+        seriesSet,
+      );
 
       this._apexChart?.updateOptions(
         getLayoutConfig(
@@ -370,7 +399,7 @@ class ChartsCard extends LitElement {
           </div>
           ${this._renderStates()}
           <div id="graph"></div>
-          ${this._renderLastUpdated()}
+          ${this._renderSeriesSelection()} ${this._renderLastUpdated()}
         </div>
       </ha-card>
     `;
@@ -380,12 +409,20 @@ class ChartsCard extends LitElement {
     if (
       !this._config ||
       !this._config.header.show ||
-      !this._config.header?.title
+      (!this._config.header.title && !this._config.header.appendSeriesSetName)
     ) {
       return html``;
     }
+
     return html`<div id="header__title">
-      <span>${this._config.header.title}</span>
+      <span
+        >${[
+          this._config.header.title,
+          this._config.header.appendSeriesSetName ? this._seriesSet : undefined,
+        ]
+          .filter((s) => s !== undefined)
+          .join(": ")}</span
+      >
     </div>`;
   }
 
@@ -523,6 +560,28 @@ class ChartsCard extends LitElement {
         `;
       });
     return html`<div id="header__states">${seriesStates}</div>`;
+  }
+
+  private _renderSeriesSelection(): TemplateResult {
+    if (!this._config || this._seriesSets.length <= 1) {
+      return html``;
+    }
+
+    return html`
+      <div id="series-selector">
+        <ha-select
+          .label=${"Series"}
+          .value=${this._seriesSet}
+          @selected=${this._pickSeriesSet}
+        >
+          ${this._seriesSets.map(
+            (seriesSet) => html`<mwc-list-item .value=${seriesSet.name}
+              >${seriesSet.name}</mwc-list-item
+            >`,
+          )}</ha-select
+        >
+      </div>
+    `;
   }
 
   private _renderLastUpdated(): TemplateResult {
@@ -687,6 +746,21 @@ class ChartsCard extends LitElement {
   }
 
   /**
+   * Change the series set to view
+   */
+  private _pickSeriesSet(ev): void {
+    console.log(
+      `_pickSeriesSet(): ${
+        ev.target.value === this._seriesSet ? "skipping" : "running"
+      }`,
+    );
+    if (ev.target.value === this._seriesSet) return;
+    this._seriesSet = ev.target.value;
+    this._updateData();
+    this.callService();
+  }
+
+  /**
    * Refresh the graph data. Either auto or manual
    */
   private _refresh(): void {
@@ -729,8 +803,6 @@ class ChartsCard extends LitElement {
       payload: JSON.stringify({
         period: this._period,
         resolution: this._resolution,
-        timeStart: this._startDate.toISOString(),
-        timeEnd: this._endDate.toISOString(),
         series: this._series.map((series) => {
           return {
             index: series.config.index,
@@ -739,6 +811,9 @@ class ChartsCard extends LitElement {
             channel: series.config.channel,
           };
         }),
+        seriesSet: this._seriesSet,
+        timeStart: this._startDate.toISOString(),
+        timeEnd: this._endDate.toISOString(),
       }),
     });
   }

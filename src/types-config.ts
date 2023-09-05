@@ -10,8 +10,7 @@ export interface ChartCardConfigExternal {
   dataTypes?: ChartCardDataTypeConfigExternal[];
   allSeriesConfig?: ChartCardAllSeriesConfigExternal;
   allYaxisConfig?: ChartCardAllYAxisConfigExternal;
-  series: ChartCardSeriesConfigExternal[];
-  yAxes?: ChartCardYAxisConfigExternal[];
+  seriesSets: ChartCardSeriesSetConfigExternal[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apexConfig?: any;
   period?: Period;
@@ -31,6 +30,7 @@ export interface ChartCardDataTypeConfigExternal {
 }
 
 export interface ChartCardHeaderExternalConfig {
+  appendSeriesSetName?: boolean;
   colorizeStates?: boolean;
   show?: boolean;
   showStates?: boolean;
@@ -74,6 +74,14 @@ export interface ChartCardSeriesShowConfigExternal {
   legendFunction?: LegendFunction;
   legendValue?: boolean;
   nameInHeader?: boolean;
+}
+
+export interface ChartCardSeriesSetConfigExternal {
+  name: string;
+  allSeriesConfig?: ChartCardAllSeriesConfigExternal;
+  allYaxisConfig?: ChartCardAllYAxisConfigExternal;
+  series: ChartCardSeriesConfigExternal[];
+  yAxes?: ChartCardYAxisConfigExternal[];
 }
 
 export interface ChartCardAllYAxisConfigExternal {

@@ -16,8 +16,7 @@ export const ChartCardConfigExternal = t.iface([], {
   dataTypes: t.opt(t.array("ChartCardDataTypeConfigExternal")),
   allSeriesConfig: t.opt("ChartCardAllSeriesConfigExternal"),
   allYaxisConfig: t.opt("ChartCardAllYAxisConfigExternal"),
-  series: t.array("ChartCardSeriesConfigExternal"),
-  yAxes: t.opt(t.array("ChartCardYAxisConfigExternal")),
+  seriesSets: t.array("ChartCardSeriesSetConfigExternal"),
   apexConfig: t.opt("any"),
   period: t.opt("Period"),
   showDateSelector: t.opt("boolean"),
@@ -36,6 +35,7 @@ export const ChartCardDataTypeConfigExternal = t.iface([], {
 });
 
 export const ChartCardHeaderExternalConfig = t.iface([], {
+  appendSeriesSetName: t.opt("boolean"),
   colorizeStates: t.opt("boolean"),
   show: t.opt("boolean"),
   showStates: t.opt("boolean"),
@@ -71,7 +71,6 @@ export const ChartCardSeriesConfigExternal = t.iface(
     measurement: "string",
     device: "string",
     channel: t.opt("string"),
-    entity: t.opt("string"),
   },
 );
 
@@ -82,6 +81,14 @@ export const ChartCardSeriesShowConfigExternal = t.iface([], {
   legendFunction: t.opt("LegendFunction"),
   legendValue: t.opt("boolean"),
   nameInHeader: t.opt("boolean"),
+});
+
+export const ChartCardSeriesSetConfigExternal = t.iface([], {
+  name: "string",
+  allSeriesConfig: t.opt("ChartCardAllSeriesConfigExternal"),
+  allYaxisConfig: t.opt("ChartCardAllYAxisConfigExternal"),
+  series: t.array("ChartCardSeriesConfigExternal"),
+  yAxes: t.opt(t.array("ChartCardYAxisConfigExternal")),
 });
 
 export const ChartCardAllYAxisConfigExternal = t.iface([], {
@@ -133,6 +140,7 @@ const exportedTypeSuite: t.ITypeSuite = {
   ChartCardAllSeriesConfigExternal,
   ChartCardSeriesConfigExternal,
   ChartCardSeriesShowConfigExternal,
+  ChartCardSeriesSetConfigExternal,
   ChartCardAllYAxisConfigExternal,
   ChartCardYAxisConfigExternal,
   LegendFunction,

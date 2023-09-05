@@ -13,14 +13,6 @@ export const stylesApex: CSSResultGroup = css`
     margin-bottom: 5px;
   }
 
-  #graph-controls {
-    align-items: center;
-    display: flex;
-    justify-content: space-between;
-    color: var(--mdc-theme-primary);
-    margin-bottom: 5px;
-  }
-
   #date-selector > #date {
     flex-grow: 1;
     font-family: var(
@@ -31,8 +23,23 @@ export const stylesApex: CSSResultGroup = css`
     font-weight: var(--mdc-typography-button-font-weight, 500);
   }
 
-  #graph-controls > ha-select {
-    width: 175px;
+  #graph-controls {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  #graph-controls,
+  #series-selector {
+    color: var(--mdc-theme-primary);
+    margin-bottom: 5px;
+    gap: 32px;
+  }
+
+  #graph-controls > ha-select,
+  #series-selector > ha-select {
+    width: 100%;
+    --ha-select-min-width: 0;
   }
 
   mwc-button {

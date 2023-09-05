@@ -17,6 +17,7 @@ import {
   ChartCardDataTypeConfig,
   ChartCardSeries,
   ChartCardSeriesConfig,
+  ChartCardSeriesSetConfig,
   ChartCardYAxisConfig,
   DataPoint,
   DataTypeMap,
@@ -28,6 +29,7 @@ import {
 import {
   ChartCardConfigExternal,
   ChartCardYAxisConfigExternal,
+  LegendFunction,
   Period,
   Resolution,
 } from "./types-config";
@@ -324,6 +326,7 @@ export function generateBaseConfig(
     {
       colorList: DEFAULT_COLORS,
       header: {
+        appendSeriesSetName: false,
         colorizeStates: false,
         show: false,
         showStates: false,
@@ -365,14 +368,34 @@ export function generateDataTypeMap(conf: ChartCardConfig): DataTypeMap {
 }
 
 /**
+ * Generate the SeriesSets based on the main chart config
+ */
+export function generateSeriesSets(
+  conf: ChartCardConfig,
+): ChartCardSeriesSetConfig[] {
+  return conf.seriesSets.map((seriesSet, index: number) => {
+    const seriesSetConfig: ChartCardSeriesSetConfig = mergeDeep(
+      {
+        index: index,
+      },
+      seriesSet,
+    );
+
+    return seriesSetConfig;
+  });
+}
+
+/**
  * Generate the Y-Axes based on the main chart config
  */
 export function generateYAxes(
   conf: ChartCardConfig,
   dataTypeMap: DataTypeMap,
+  seriesSetConf?: ChartCardSeriesSetConfig,
 ): ChartCardYAxisConfig[] {
-  const yAxes: ChartCardYAxisConfigExternal[] = conf.yAxes ?? [{}];
-  const multiYAxis = (conf.yAxes?.length ?? 1) > 1;
+  if (!seriesSetConf) return [];
+  const yAxes: ChartCardYAxisConfigExternal[] = seriesSetConf.yAxes ?? [{}];
+  const multiYAxis = (seriesSetConf.yAxes?.length ?? 1) > 1;
   return yAxes.map((yaxis, index) => {
     if (multiYAxis && yaxis.id === undefined) {
       throw Error(
@@ -389,6 +412,7 @@ export function generateYAxes(
         multiYAxis: multiYAxis,
       },
       conf.allYaxisConfig,
+      seriesSetConf.allYaxisConfig,
       yaxis,
     );
 
@@ -418,12 +442,15 @@ export function generateYAxes(
  * Generate the series data based on the enntities attribute data
  */
 export function generateSeries(
+  entity: HassEntity,
   conf: ChartCardConfig,
   yAxes: ChartCardYAxisConfig[],
-  entity: HassEntity,
+  seriesSetConf?: ChartCardSeriesSetConfig,
 ): ChartCardSeries[] {
+  if (!seriesSetConf) return [];
+  const isRequestedSeries = entity.attributes.seriesSet === seriesSetConf.name;
   const entitySeriesArr: EntitySeries[] = entity.attributes.series ?? [];
-  return conf.series.map((series, index: number) => {
+  return seriesSetConf.series.map((series, index: number) => {
     /**
      * Load the series config
      */
@@ -441,6 +468,7 @@ export function generateSeries(
         yAxisIndex: -1,
       },
       conf.allSeriesConfig,
+      seriesSetConf.allSeriesConfig,
       series,
     );
     // Set the series chart type
@@ -454,7 +482,7 @@ export function generateSeries(
     const yAxis = yAxes.find((yAxis) => yAxis.id === seriesConfig.yAxisId);
     if (yAxis === undefined) {
       if (
-        conf.yAxes !== undefined &&
+        seriesSetConf.yAxes !== undefined &&
         seriesConfig.yAxisId === DEFAULT_Y_AXIS_ID
       ) {
         throw Error(
@@ -472,7 +500,8 @@ export function generateSeries(
      * Find the data for this series item
      */
     const entitySeries = entitySeriesArr.find(
-      (entitySeries) => entitySeries.index === seriesConfig.index,
+      (entitySeries) =>
+        isRequestedSeries && entitySeries.index === seriesConfig.index,
     );
 
     /**
