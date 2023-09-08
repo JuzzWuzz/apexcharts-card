@@ -13,8 +13,8 @@ export const DataType = t.enumtype({
 });
 
 export const DataTypeGroup = t.enumtype({
-  A: 0,
-  B: 1,
+  A: "a",
+  B: "b",
 });
 
 export const MinMaxType = t.enumtype({
@@ -208,6 +208,7 @@ export const SeriesSetConfigExternal = t.iface([], {
 });
 
 export const SeriesSetConfig = t.iface([], {
+  dataTypeGroup: "DataTypeGroup",
   name: "string",
   series: t.array("SeriesConfig"),
   yAxes: t.array("YAxisConfig"),

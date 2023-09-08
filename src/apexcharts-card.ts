@@ -81,7 +81,7 @@ class ChartsCard extends LitElement {
   private _endDate?: Moment;
   @state() private _period: Period = Period.TWO_DAY;
   @state() private _resolution: Resolution = Resolution.THIRTY_MINUTES;
-  @state() private _seriesSet = "???";
+  @state() private _seriesSet?: SeriesSetConfig;
 
   /**
    * Invoked when the component is added to the document's DOM.
@@ -147,18 +147,21 @@ class ChartsCard extends LitElement {
         const lastPeriod = this._entity?.attributes?.period;
         const lastResolution = this._entity?.attributes?.resolution;
         const lastSeriesSet = this._entity?.attributes?.seriesSet;
-        if (lastPeriod && lastResolution) {
-          const supportedResolutions = getResolutionsForPeriod(lastPeriod);
-          if (supportedResolutions.includes(lastResolution)) {
-            this._period = lastPeriod;
-            this._resolution = lastResolution;
+        if (lastPeriod && lastResolution && lastSeriesSet) {
+          const seriesSet = this._seriesSets.find(
+            (seriesSet) => seriesSet.name === lastSeriesSet,
+          );
+          if (seriesSet) {
+            const supportedResolutions = getResolutionsForPeriod(
+              lastPeriod,
+              seriesSet.dataTypeGroup,
+            );
+            if (supportedResolutions.includes(lastResolution)) {
+              this._period = lastPeriod;
+              this._resolution = lastResolution;
+              this._seriesSet = seriesSet;
+            }
           }
-        }
-        if (
-          lastSeriesSet &&
-          this._seriesSets.find((seriesSet) => seriesSet.name === lastSeriesSet)
-        ) {
-          this._seriesSet = lastSeriesSet;
         }
       }
 
@@ -207,7 +210,7 @@ class ChartsCard extends LitElement {
       const conf = generateBaseConfig(configDup);
 
       // Set the time data
-      this._updatePeriod(conf.period);
+      this._updatePeriod(conf.period, false);
 
       // Now update the config
       this._config = conf;
@@ -220,7 +223,7 @@ class ChartsCard extends LitElement {
 
       // Set the series set to the first item if we have one
       if (this._seriesSets.length > 0) {
-        this._seriesSet = this._seriesSets[0].name;
+        this._seriesSet = this._seriesSets[0];
       }
 
       /**
@@ -314,21 +317,18 @@ class ChartsCard extends LitElement {
       const end = new Date(this._entity.attributes.timeEnd);
 
       /**
-       * Get the selected series
-       */
-      const seriesSet = this._seriesSets.find(
-        (value) => value.name === this._seriesSet,
-      );
-
-      /**
        * Compute the Series
        */
-      this._series = generateSeries(this._entity, this._config, seriesSet);
+      this._series = generateSeries(
+        this._entity,
+        this._config,
+        this._seriesSet,
+      );
 
       /**
        * Get the YAxes
        */
-      const yAxes = seriesSet?.yAxes ?? [];
+      const yAxes = this._seriesSet?.yAxes ?? [];
 
       this._apexChart?.updateOptions(
         getLayoutConfig(
@@ -415,7 +415,9 @@ class ChartsCard extends LitElement {
       <span
         >${[
           this._config.header.title,
-          this._config.header.appendSeriesSetName ? this._seriesSet : undefined,
+          this._config.header.appendSeriesSetName
+            ? this._seriesSet?.name
+            : undefined,
         ]
           .filter((s) => s !== undefined)
           .join(": ")}</span
@@ -494,7 +496,10 @@ class ChartsCard extends LitElement {
           .value=${this._resolution}
           @selected=${this._pickResolution}
         >
-          ${getResolutionsForPeriod(this._period).map((resolution) => {
+          ${getResolutionsForPeriod(
+            this._period,
+            this._seriesSet?.dataTypeGroup,
+          ).map((resolution) => {
             if (resolution === this._resolution) {
               return html` <mwc-list-item
                 .value=${resolution}
@@ -568,7 +573,7 @@ class ChartsCard extends LitElement {
       <div id="series-selector">
         <ha-select
           .label=${"Series"}
-          .value=${this._seriesSet}
+          .value=${this._seriesSet?.name}
           @selected=${this._pickSeriesSet}
         >
           ${this._seriesSets.map(
@@ -637,14 +642,17 @@ class ChartsCard extends LitElement {
    * Update the period being observed
    * @param period
    */
-  private _updatePeriod(period: Period) {
+  private _updatePeriod(period: Period, callRefresh = true) {
     console.log("_updatePeriod()");
 
     // Update the period
     this._period = period;
 
     // Get the resolutions supported by this period
-    const supportedResolutions = getResolutionsForPeriod(this._period);
+    const supportedResolutions = getResolutionsForPeriod(
+      this._period,
+      this._seriesSet?.dataTypeGroup,
+    );
 
     /**
      * Grab the last resolution (coarsest) if one is not definend or the one defined is not in the supported list
@@ -652,8 +660,8 @@ class ChartsCard extends LitElement {
      * Otherwise call for a refresh
      */
     if (!supportedResolutions.includes(this._resolution)) {
-      this._updateResolution(supportedResolutions.pop());
-    } else {
+      this._updateResolution(supportedResolutions.pop(), callRefresh);
+    } else if (callRefresh) {
       this._refresh();
     }
   }
@@ -662,7 +670,7 @@ class ChartsCard extends LitElement {
    * Update the resolution being observed
    * @param resolution
    */
-  private _updateResolution(resolution?: Resolution) {
+  private _updateResolution(resolution?: Resolution, callRefresh = true) {
     console.log("_updateResolution()");
 
     // Ensure that the resolution is not undefined
@@ -671,7 +679,10 @@ class ChartsCard extends LitElement {
     }
 
     // Get the resolutions supported by this period
-    const supportedResolutions = getResolutionsForPeriod(this._period);
+    const supportedResolutions = getResolutionsForPeriod(
+      this._period,
+      this._seriesSet?.dataTypeGroup,
+    );
 
     // Make sure that resolution is in the supported set
     if (!supportedResolutions.includes(resolution)) {
@@ -682,7 +693,9 @@ class ChartsCard extends LitElement {
     this._resolution = resolution;
 
     // Refresh the data
-    this._refresh();
+    if (callRefresh) {
+      this._refresh();
+    }
   }
 
   /**
@@ -748,11 +761,14 @@ class ChartsCard extends LitElement {
   private _pickSeriesSet(ev): void {
     console.log(
       `_pickSeriesSet(): ${
-        ev.target.value === this._seriesSet ? "skipping" : "running"
+        ev.target.value === this._seriesSet?.name ? "skipping" : "running"
       }`,
     );
-    if (ev.target.value === this._seriesSet) return;
-    this._seriesSet = ev.target.value;
+    if (ev.target.value === this._seriesSet?.name) return;
+    this._seriesSet = this._seriesSets.find(
+      (seriesSet) => seriesSet.name === ev.target.value,
+    );
+    this._updatePeriod(this._period, false);
     this._updateData();
     this.callService();
   }
@@ -785,30 +801,46 @@ class ChartsCard extends LitElement {
   private callService(): void {
     console.log(
       `--------------------------callService(): ${
-        !this._config || !this._hass || !this._startDate || !this._endDate
+        !this._config ||
+        !this._hass ||
+        !this._startDate ||
+        !this._endDate ||
+        !this._seriesSet
           ? "skipping"
           : "running"
       }`,
     );
 
-    if (!this._config || !this._hass || !this._startDate || !this._endDate) {
+    if (
+      !this._config ||
+      !this._hass ||
+      !this._startDate ||
+      !this._endDate ||
+      !this._seriesSet
+    ) {
       return;
     }
+
+    console.log(
+      `Sending:\nStart: ${this._startDate.toISOString()}\nEnd: ${this._endDate.toISOString()}\nPeriod: ${
+        this._period
+      }\nResolution: ${this._resolution}`,
+    );
 
     this._hass.callService("mqtt", "publish", {
       topic: `graphs2/${this._config.entity}`,
       payload: JSON.stringify({
         period: this._period,
         resolution: this._resolution,
-        series: this._series.map((series) => {
+        series: this._seriesSet.series.map((seriesConfig) => {
           return {
-            index: series.config.index,
-            measurement: series.config.measurement,
-            device: series.config.device,
-            channel: series.config.channel,
+            index: seriesConfig.index,
+            measurement: seriesConfig.measurement,
+            device: seriesConfig.device,
+            channel: seriesConfig.channel,
           };
         }),
-        seriesSet: this._seriesSet,
+        seriesSet: this._seriesSet.name,
         timeStart: this._startDate.toISOString(),
         timeEnd: this._endDate.toISOString(),
       }),

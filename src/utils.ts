@@ -439,10 +439,10 @@ export function generateSeriesSets(conf: CardConfig): SeriesSetConfig[] {
       // Compute the Y-Axis Config
       const yaxisConfig: YAxisConfig = mergeDeep(
         {
+          index: index,
           id: DEFAULT_Y_AXIS_ID,
           dataType: DEFAULT_DATA_TYPE,
           floatPrecision: DEFAULT_FLOAT_PRECISION,
-          index: index,
           maxType: MinMaxType.AUTO,
           minType: MinMaxType.AUTO,
           multiYAxis: multiYAxis,
@@ -516,18 +516,32 @@ export function generateSeriesSets(conf: CardConfig): SeriesSetConfig[] {
       return seriesConfig;
     });
 
+    // Check for compatibility between the series
+    const dataTypes = series
+      .map((series) => series.dataType)
+      .filter((value, index, array) => array.indexOf(value) === index);
+    const dataTypeGroups = dataTypes
+      .map((dataType) => getDataTypeGroup(dataType))
+      .filter((value, index, array) => array.indexOf(value) === index);
+    if (dataTypeGroups.length > 1) {
+      throw Error(
+        `Series Set '${
+          seriesSetConf.name
+        }' has incompatible DataType's: ${dataTypes.join(", ")}`,
+      );
+    }
+
+    // Construct the final Series Set Config item
     const seriesSetConfig: SeriesSetConfig = {
+      dataTypeGroup: dataTypeGroups[0],
       name: seriesSetConf.name,
       series: series,
       yAxes: yAxes,
     };
 
     // Run validators to ensure the final config is correct
-    const { ChartCardSeriesSetConfig } = createCheckers(exportedTypeSuite);
-    ChartCardSeriesSetConfig.strictCheck(seriesSetConfig);
-
-    // Check for compatibility between the series
-    seriesSetConfig.series.map((series) => getDataTypeGroup(series.dataType));
+    const { SeriesSetConfig } = createCheckers(exportedTypeSuite);
+    SeriesSetConfig.strictCheck(seriesSetConfig);
 
     return seriesSetConfig;
   });
@@ -750,55 +764,83 @@ export function calculateNewDates(
 /**
  * Helper to get the supported resolutions based on the period
  * @param period
+ * @param dataTypeGroup
  * @returns An array of supported resolutions
  * @throws Error if the "Supported Resolutions" for the desired period is empty
  */
-export function getResolutionsForPeriod(period: Period): Resolution[] {
-  let supportedResolutions: Resolution[];
-  switch (period) {
-    case Period.LAST_HOUR:
-    case Period.LAST_THREE_HOUR: {
-      supportedResolutions = [
-        Resolution.RAW,
-        Resolution.ONE_MINUTE,
-        Resolution.FIVE_MINUTES,
-      ];
+export function getResolutionsForPeriod(
+  period: Period,
+  dataTypeGroup?: DataTypeGroup,
+): Resolution[] {
+  let supportedResolutions: Resolution[] = [];
+  switch (dataTypeGroup) {
+    case DataTypeGroup.A: {
+      switch (period) {
+        case Period.LAST_HOUR:
+        case Period.LAST_THREE_HOUR: {
+          supportedResolutions = [
+            Resolution.RAW,
+            Resolution.ONE_MINUTE,
+            Resolution.FIVE_MINUTES,
+          ];
+          break;
+        }
+        case Period.LAST_SIX_HOUR: {
+          supportedResolutions = [
+            Resolution.ONE_MINUTE,
+            Resolution.FIVE_MINUTES,
+            Resolution.FIFTEEN_MINUTES,
+            Resolution.THIRTY_MINUTES,
+          ];
+          break;
+        }
+        case Period.LAST_TWELVE_HOUR:
+        case Period.DAY: {
+          supportedResolutions = [
+            Resolution.FIVE_MINUTES,
+            Resolution.FIFTEEN_MINUTES,
+            Resolution.THIRTY_MINUTES,
+          ];
+          break;
+        }
+        case Period.TWO_DAY: {
+          supportedResolutions = [
+            Resolution.FIFTEEN_MINUTES,
+            Resolution.THIRTY_MINUTES,
+          ];
+          break;
+        }
+        case Period.WEEK:
+        case Period.MONTH: {
+          supportedResolutions = [Resolution.ONE_DAY];
+          break;
+        }
+      }
       break;
     }
-    case Period.LAST_SIX_HOUR: {
-      supportedResolutions = [
-        Resolution.ONE_MINUTE,
-        Resolution.FIVE_MINUTES,
-        Resolution.FIFTEEN_MINUTES,
-        Resolution.THIRTY_MINUTES,
-      ];
-      break;
-    }
-    case Period.LAST_TWELVE_HOUR:
-    case Period.DAY: {
-      supportedResolutions = [
-        Resolution.FIVE_MINUTES,
-        Resolution.FIFTEEN_MINUTES,
-        Resolution.THIRTY_MINUTES,
-      ];
-      break;
-    }
-    case Period.TWO_DAY: {
-      supportedResolutions = [
-        Resolution.FIFTEEN_MINUTES,
-        Resolution.THIRTY_MINUTES,
-      ];
-      break;
-    }
-    case Period.WEEK:
-    case Period.MONTH: {
-      supportedResolutions = [Resolution.ONE_DAY];
+    case DataTypeGroup.B: {
+      switch (period) {
+        case Period.LAST_HOUR:
+        case Period.LAST_THREE_HOUR:
+        case Period.LAST_SIX_HOUR:
+        case Period.LAST_TWELVE_HOUR:
+        case Period.DAY:
+        case Period.TWO_DAY: {
+          supportedResolutions = [Resolution.ONE_HOUR];
+          break;
+        }
+        case Period.WEEK:
+        case Period.MONTH: {
+          supportedResolutions = [Resolution.ONE_DAY];
+          break;
+        }
+      }
       break;
     }
   }
 
   if (supportedResolutions.length === 0) {
-    throw new Error("No supported resolutions for the chosen period");
+    //throw new Error("No supported resolutions for the chosen period");
   }
 
   return supportedResolutions;

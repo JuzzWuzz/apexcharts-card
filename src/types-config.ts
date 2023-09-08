@@ -11,8 +11,8 @@ export enum DataType {
 }
 
 export enum DataTypeGroup {
-  A,
-  B,
+  A = "a",
+  B = "b",
 }
 
 export enum MinMaxType {
@@ -244,6 +244,7 @@ export interface SeriesSetConfigExternal {
 }
 
 export interface SeriesSetConfig {
+  dataTypeGroup: DataTypeGroup;
   name: string;
   series: SeriesConfig[];
   yAxes: YAxisConfig[];
