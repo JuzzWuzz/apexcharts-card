@@ -1,12 +1,6 @@
 import { ApexOptions } from "apexcharts";
-import { DEFAULT_AREA_OPACITY, DEFAULT_SERIE_TYPE } from "./const";
-import {
-  ChartCardConfig,
-  ChartCardSeries,
-  ChartCardYAxisConfig,
-  DataTypeMap,
-  MinMaxType,
-} from "./types";
+import { DEFAULT_AREA_OPACITY, DEFAULT_SERIES_TYPE } from "./const";
+import { CardConfig, CardSeries, DataTypeMap } from "./types";
 import {
   computeColor,
   computeTextColor,
@@ -14,13 +8,13 @@ import {
   getDataTypeConfig,
   mergeDeep,
 } from "./utils";
-import { Period } from "./types-config";
+import { YAxisConfig, MinMaxType, Period } from "./types-config";
 
 export function getLayoutConfig(
-  config: ChartCardConfig,
+  config: CardConfig,
   dataTypeMap: DataTypeMap,
-  series: ChartCardSeries[] = [],
-  yaxis: ChartCardYAxisConfig[] = [],
+  series: CardSeries[] = [],
+  yaxis: YAxisConfig[] = [],
   now: Date = new Date(),
   start?: Date,
   end?: Date,
@@ -28,7 +22,7 @@ export function getLayoutConfig(
 ): ApexOptions {
   const options = {
     chart: {
-      type: config.chartType || DEFAULT_SERIE_TYPE,
+      type: config.chartType || DEFAULT_SERIES_TYPE,
       foreColor: "var(--primary-text-color)",
       width: "100%",
       zoom: {
@@ -68,7 +62,7 @@ export function getLayoutConfig(
   return mergeDeep(options, evalApexConfig(config.apexConfig));
 }
 
-function getFill(config: ChartCardConfig, series: ChartCardSeries[]): ApexFill {
+function getFill(config: CardConfig, series: CardSeries[]): ApexFill {
   const getOpacity = () => {
     return series.map((s) => {
       return (
@@ -83,14 +77,11 @@ function getFill(config: ChartCardConfig, series: ChartCardSeries[]): ApexFill {
   };
 }
 
-function getColors(series: ChartCardSeries[]): string[] {
+function getColors(series: CardSeries[]): string[] {
   return series.map((s) => s.color);
 }
 
-function getLegend(
-  dataTypeMap: DataTypeMap,
-  series: ChartCardSeries[],
-): ApexLegend {
+function getLegend(dataTypeMap: DataTypeMap, series: CardSeries[]): ApexLegend {
   const getLegendFormatter = () => {
     const legendValues = series.map((s) => {
       const name = s.config.name ?? "";
@@ -99,7 +90,7 @@ function getLegend(
       } else {
         const formattedValue = formatValueAndUom(
           s.headerValue,
-          getDataTypeConfig(dataTypeMap, s.config.dataTypeId),
+          getDataTypeConfig(dataTypeMap, s.config.dataType),
         ).formatted();
         return `${name}: <strong>${formattedValue}</strong>`;
       }
@@ -119,10 +110,7 @@ function getLegend(
   };
 }
 
-function getStroke(
-  config: ChartCardConfig,
-  series: ChartCardSeries[],
-): ApexStroke {
+function getStroke(config: CardConfig, series: CardSeries[]): ApexStroke {
   const getStrokeWidth = () => {
     if (config.chartType !== undefined && config.chartType !== "line")
       return config.apexConfig?.stroke?.width ?? 3;
@@ -148,7 +136,7 @@ function getStroke(
   };
 }
 
-function getSeries(series: ChartCardSeries[]): ApexAxisChartSeries {
+function getSeries(series: CardSeries[]): ApexAxisChartSeries {
   return series.map((s) => {
     return {
       name: s.config.name,
@@ -185,7 +173,7 @@ function getXAxis(start?: Date, end?: Date): ApexXAxis {
   return xAxis;
 }
 
-function doThing(
+function calculateMaxOrMin(
   value,
   isMin: boolean,
   alignTo: number | undefined,
@@ -218,8 +206,8 @@ function doThing(
 
 function getYAxis(
   dataTypeMap: DataTypeMap,
-  yAxes: ChartCardYAxisConfig[],
-  series: ChartCardSeries[],
+  yAxes: YAxisConfig[],
+  series: CardSeries[],
 ): ApexYAxis[] {
   return yAxes.map((y) => {
     // Construct the ApexConfig and remove items not permitted
@@ -253,7 +241,7 @@ function getYAxis(
         },
       );
 
-    const dataTypeConfig = getDataTypeConfig(dataTypeMap, y.dataTypeId);
+    const dataTypeConfig = getDataTypeConfig(dataTypeMap, y.dataType);
     const mergedConfig = mergeDeep(
       {
         decimalsInFloat: dataTypeConfig.floatPrecision,
@@ -262,8 +250,20 @@ function getYAxis(
             return formatValueAndUom(value, dataTypeConfig).formatted();
           },
         },
-        min: doThing(minMax.min, true, y.alignTo, y.minValue, y.min_type),
-        max: doThing(minMax.max, false, y.alignTo, y.maxValue, y.max_type),
+        max: calculateMaxOrMin(
+          minMax.max,
+          false,
+          y.alignTo,
+          y.maxValue,
+          y.maxType,
+        ),
+        min: calculateMaxOrMin(
+          minMax.min,
+          true,
+          y.alignTo,
+          y.minValue,
+          y.minType,
+        ),
       },
       y,
       apexConfig,
@@ -273,7 +273,7 @@ function getYAxis(
   });
 }
 
-function getXTooltipFormatter(config: ChartCardConfig) {
+function getXTooltipFormatter(config: CardConfig) {
   if (config.apexConfig?.tooltip?.x?.format) return undefined;
 
   return function (val) {
@@ -289,12 +289,9 @@ function getXTooltipFormatter(config: ChartCardConfig) {
   };
 }
 
-function getYTooltipFormatter(
-  dataTypeMap: DataTypeMap,
-  series: ChartCardSeries[],
-) {
+function getYTooltipFormatter(dataTypeMap: DataTypeMap, series: CardSeries[]) {
   const dataTypeConfigs = series.map((s) =>
-    getDataTypeConfig(dataTypeMap, s.config.dataTypeId),
+    getDataTypeConfig(dataTypeMap, s.config.dataType),
   );
   return function (value, opts) {
     const formattedValue = formatValueAndUom(
@@ -308,9 +305,9 @@ function getYTooltipFormatter(
 }
 
 function getAnnotations(
-  config: ChartCardConfig,
+  config: CardConfig,
   dataTypeMap: DataTypeMap,
-  series: ChartCardSeries[],
+  series: CardSeries[],
   now: Date,
   end?: Date,
   period?: Period,
@@ -351,11 +348,8 @@ function getAnnotations(
     const points: PointAnnotations[] = [];
     series.map((s) => {
       const extremas = s.config.show.extremas;
-      const dataTypeConfig = getDataTypeConfig(
-        dataTypeMap,
-        s.config.dataTypeId,
-      );
-      if (extremas !== undefined) {
+      const dataTypeConfig = getDataTypeConfig(dataTypeMap, s.config.dataType);
+      if (extremas !== false) {
         [
           extremas === true || extremas.toString().includes("min")
             ? s.minMaxPoint.min

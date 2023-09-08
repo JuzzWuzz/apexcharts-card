@@ -3,35 +3,37 @@ import {
   DEFAULT_CLAMP_NEGATIVE,
   DEFAULT_COLORS,
   DEFAULT_DATA,
-  DEFAULT_DATA_TYPE_ID,
+  DEFAULT_DATA_TYPE,
   DEFAULT_FLOAT_PRECISION,
   DEFAULT_MIN_MAX,
-  DEFAULT_SERIE_TYPE,
+  DEFAULT_SERIES_TYPE,
   DEFAULT_UNIT_SEPARATOR,
   DEFAULT_Y_AXIS_ID,
   NO_VALUE,
 } from "./const";
 import { LovelaceConfig } from "juzz-ha-helper";
 import {
-  ChartCardConfig,
-  ChartCardDataTypeConfig,
-  ChartCardSeries,
-  ChartCardSeriesConfig,
-  ChartCardSeriesSetConfig,
-  ChartCardYAxisConfig,
-  DataPoint,
+  CardConfig,
+  CardSeries,
   DataTypeMap,
   EntitySeries,
   FormattedValue,
-  MinMaxPoint,
-  MinMaxType,
 } from "./types";
 import {
-  ChartCardConfigExternal,
-  ChartCardYAxisConfigExternal,
+  CardConfigExternal,
+  DataPoint,
+  DataType,
+  DataTypeConfig,
+  DataTypeGroup,
   LegendFunction,
+  MinMaxPoint,
+  MinMaxType,
+  MinMaxValue,
   Period,
   Resolution,
+  SeriesConfig,
+  SeriesSetConfig,
+  YAxisConfig,
 } from "./types-config";
 import { HassEntity } from "home-assistant-js-websocket";
 import { createCheckers } from "ts-interface-checker";
@@ -72,9 +74,9 @@ export function computeTextColor(backgroundColor: string): string {
  * # DataType Functions
  * ########################################
  */
-export function getDefaultDataTypeConfig(): ChartCardDataTypeConfig {
+export function getDefaultDataTypeConfig(): DataTypeConfig {
   return {
-    id: DEFAULT_DATA_TYPE_ID,
+    dataType: DEFAULT_DATA_TYPE,
     clampNegative: DEFAULT_CLAMP_NEGATIVE,
     floatPrecision: DEFAULT_FLOAT_PRECISION,
     unitSeparator: DEFAULT_UNIT_SEPARATOR,
@@ -82,16 +84,9 @@ export function getDefaultDataTypeConfig(): ChartCardDataTypeConfig {
 }
 export function getDataTypeConfig(
   dataTypeMap: DataTypeMap,
-  dataTypeId?: string,
-): ChartCardDataTypeConfig {
-  if (dataTypeId !== undefined) {
-    const foundDataType = dataTypeMap.get(dataTypeId);
-    if (foundDataType) {
-      return foundDataType;
-    }
-  }
-
-  return getDefaultDataTypeConfig();
+  dataType: DataType,
+): DataTypeConfig {
+  return dataTypeMap.get(dataType) ?? getDefaultDataTypeConfig();
 }
 
 /**
@@ -101,7 +96,7 @@ export function getDataTypeConfig(
  */
 
 export function getTypeOfMinMax(
-  value?: "auto" | number | string,
+  value?: MinMaxValue,
 ): [number | undefined, MinMaxType] {
   if (typeof value === "number") {
     return [
@@ -158,7 +153,7 @@ export function formatApexDate(value: Date): string {
 }
 export function formatValueAndUom(
   value: string | number | null | undefined,
-  dataTypeConfig: ChartCardDataTypeConfig,
+  dataTypeConfig: DataTypeConfig,
 ): FormattedValue {
   let lValue: string | number | null | undefined = value;
   let lPrecision: number = dataTypeConfig.floatPrecision;
@@ -224,8 +219,8 @@ export function formatValueAndUom(
 export function mergeConfigTemplates(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ll: any,
-  config: ChartCardConfigExternal,
-): ChartCardConfigExternal {
+  config: CardConfigExternal,
+): CardConfigExternal {
   const tpl = config.configTemplates;
   if (!tpl) return config;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,7 +238,7 @@ export function mergeConfigTemplates(
     result = mergeDeep(result, res);
   });
   result = mergeDeep(result, config);
-  return result as ChartCardConfigExternal;
+  return result as CardConfigExternal;
 }
 
 /**
@@ -314,13 +309,13 @@ export function getLovelace(): LovelaceConfig | null {
  */
 
 /**
- * Generate the base config based on the
+ * Generate the base config based on a default set of values merged in with the user data
+ * @param conf The base config
+ * @returns The compiled final config
  */
-export function generateBaseConfig(
-  conf: ChartCardConfigExternal,
-): ChartCardConfig {
-  const { ChartCardConfigExternal } = createCheckers(exportedTypeSuite);
-  ChartCardConfigExternal.strictCheck(conf);
+export function generateBaseConfig(conf: CardConfigExternal): CardConfig {
+  const { CardConfigExternal } = createCheckers(exportedTypeSuite);
+  CardConfigExternal.strictCheck(conf);
 
   return mergeDeep(
     {
@@ -349,153 +344,211 @@ export function generateBaseConfig(
 }
 
 /**
- * Generate the DataTypeMap based on the main chart config
+ * Generate the DataTypes Map, these are code defined values
+ * This does not support User-Defined values in config
+ * @returns The map of DataTypes, for easier lookup
  */
-export function generateDataTypeMap(conf: ChartCardConfig): DataTypeMap {
+export function generateDataTypeMap(): DataTypeMap {
   const dataTypeMap: DataTypeMap = new Map();
 
-  conf.dataTypes?.forEach((dataType, index) => {
-    if (dataType.id === DEFAULT_DATA_TYPE_ID) {
-      throw Error(
-        `DataType ${index}: Cannot use '${DEFAULT_DATA_TYPE_ID}' for the <id> as its reserved by the system`,
-      );
-    }
-    const dataTypeConfig = mergeDeep(getDefaultDataTypeConfig(), dataType);
-    dataTypeMap.set(dataType.id, dataTypeConfig);
+  const systemDataTypes: DataTypeConfig[] = [
+    {
+      dataType: DataType.TEMPERATURE,
+      clampNegative: true,
+      floatPrecision: 0,
+      unit: "°C",
+      unitSeparator: "",
+    },
+    {
+      dataType: DataType.HUMIDITY,
+      clampNegative: true,
+      floatPrecision: 0,
+      unit: "%",
+      unitSeparator: " ",
+    },
+    {
+      dataType: DataType.POWER,
+      clampNegative: true,
+      floatPrecision: 2,
+      unitArray: [
+        "W",
+        "kW",
+        "MW",
+        "GW",
+      ],
+      unitSeparator: " ",
+      unitStep: 1000,
+    },
+    {
+      dataType: DataType.ENERGY,
+      clampNegative: true,
+      floatPrecision: 2,
+      unitArray: [
+        "Wh",
+        "kWh",
+        "MWh",
+        "GWh",
+      ],
+      unitSeparator: " ",
+      unitStep: 1000,
+    },
+  ];
+
+  systemDataTypes.forEach((dataType) => {
+    dataTypeMap.set(dataType.dataType, dataType);
   });
 
   return dataTypeMap;
 }
 
 /**
- * Generate the SeriesSets based on the main chart config
+ * Some DataTypes are not compatible for being shown on the same graph at the same time
+ * Return the Group the supplied DataType belongs to
+ * @param dataType The DataType to evaluate
+ * @returns The DataTypeGroup this belongs to
  */
-export function generateSeriesSets(
-  conf: ChartCardConfig,
-): ChartCardSeriesSetConfig[] {
-  return conf.seriesSets.map((seriesSet, index: number) => {
-    const seriesSetConfig: ChartCardSeriesSetConfig = mergeDeep(
-      {
-        index: index,
-      },
-      seriesSet,
-    );
+export function getDataTypeGroup(dataType: DataType): DataTypeGroup {
+  switch (dataType) {
+    case DataType.DEFAULT:
+    case DataType.HUMIDITY:
+    case DataType.POWER:
+    case DataType.TEMPERATURE: {
+      return DataTypeGroup.A;
+    }
+    case DataType.ENERGY: {
+      return DataTypeGroup.B;
+    }
+  }
+}
+
+/**
+ * Generate the SeriesSets based on the main chart config
+ * Validation is run to ensure the supplied config is compatible with one another
+ * @param conf The base config
+ * @returns An array of the Series Sets
+ */
+export function generateSeriesSets(conf: CardConfig): SeriesSetConfig[] {
+  return conf.seriesSets.map((seriesSetConf) => {
+    const yAxes = (seriesSetConf.yAxes ?? [{}]).map((yaxis, index, arr) => {
+      const multiYAxis = arr.length > 1;
+      if (multiYAxis && yaxis.id === undefined) {
+        throw Error(
+          `Y-Axis ${index}: Must specify a value for the Y-Axis <id> when using multiple Y-Axes`,
+        );
+      }
+      // Compute the Y-Axis Config
+      const yaxisConfig: YAxisConfig = mergeDeep(
+        {
+          id: DEFAULT_Y_AXIS_ID,
+          dataType: DEFAULT_DATA_TYPE,
+          floatPrecision: DEFAULT_FLOAT_PRECISION,
+          index: index,
+          maxType: MinMaxType.AUTO,
+          minType: MinMaxType.AUTO,
+          multiYAxis: multiYAxis,
+          opposite: false,
+          show: true,
+        },
+        conf.allYaxisConfig,
+        seriesSetConf.allYaxisConfig,
+        yaxis,
+      );
+
+      // Set Min/Max types
+      [
+        yaxisConfig.minValue,
+        yaxisConfig.minType,
+      ] = getTypeOfMinMax(yaxisConfig.minValue);
+      [
+        yaxisConfig.maxValue,
+        yaxisConfig.maxType,
+      ] = getTypeOfMinMax(yaxisConfig.maxValue);
+
+      return yaxisConfig;
+    });
+
+    const series = seriesSetConf.series.map((series, index) => {
+      // Compute the Series Config
+      const seriesConfig: SeriesConfig = mergeDeep(
+        {
+          dataType: DEFAULT_DATA_TYPE,
+          index: index,
+          show: {
+            extremas: false,
+            inChart: true,
+            inHeader: true,
+            legendFunction: "last",
+            legendValue: false,
+            nameInHeader: true,
+          },
+          yAxisId: DEFAULT_Y_AXIS_ID,
+          yAxisIndex: -1,
+        },
+        conf.allSeriesConfig,
+        seriesSetConf.allSeriesConfig,
+        series,
+      );
+      // Set the series chart type
+      seriesConfig.type = conf.chartType
+        ? undefined
+        : seriesConfig.type || DEFAULT_SERIES_TYPE;
+
+      /**
+       * Figure out the Y-Axis
+       */
+      const yAxis = yAxes.find((yAxis) => yAxis.id === seriesConfig.yAxisId);
+      if (yAxis === undefined) {
+        if (
+          seriesSetConf.yAxes !== undefined &&
+          seriesConfig.yAxisId === DEFAULT_Y_AXIS_ID
+        ) {
+          throw Error(
+            `Series ${index}: You need to specify a 'yAxisId' matching one defined in the 'yAxes' array`,
+          );
+        } else {
+          throw Error(
+            `Series ${index}: Requested a 'yAxisId' of '${seriesConfig.yAxisId}', that does not exist`,
+          );
+        }
+      }
+      seriesConfig.yAxisIndex = yAxis.index;
+
+      return seriesConfig;
+    });
+
+    const seriesSetConfig: SeriesSetConfig = {
+      name: seriesSetConf.name,
+      series: series,
+      yAxes: yAxes,
+    };
+
+    // Run validators to ensure the final config is correct
+    const { ChartCardSeriesSetConfig } = createCheckers(exportedTypeSuite);
+    ChartCardSeriesSetConfig.strictCheck(seriesSetConfig);
+
+    // Check for compatibility between the series
+    seriesSetConfig.series.map((series) => getDataTypeGroup(series.dataType));
 
     return seriesSetConfig;
   });
 }
 
 /**
- * Generate the Y-Axes based on the main chart config
- */
-export function generateYAxes(
-  conf: ChartCardConfig,
-  dataTypeMap: DataTypeMap,
-  seriesSetConf?: ChartCardSeriesSetConfig,
-): ChartCardYAxisConfig[] {
-  if (!seriesSetConf) return [];
-  const yAxes: ChartCardYAxisConfigExternal[] = seriesSetConf.yAxes ?? [{}];
-  const multiYAxis = (seriesSetConf.yAxes?.length ?? 1) > 1;
-  return yAxes.map((yaxis, index) => {
-    if (multiYAxis && yaxis.id === undefined) {
-      throw Error(
-        `Y-Axis ${index}: Must specify a value for the Y-Axis <id> when using multiple Y-Axes`,
-      );
-    }
-    const yaxisConfig: ChartCardYAxisConfig = mergeDeep(
-      {
-        floatPrecision: DEFAULT_FLOAT_PRECISION,
-        id: DEFAULT_Y_AXIS_ID,
-        index: index,
-        max_type: MinMaxType.AUTO,
-        min_type: MinMaxType.AUTO,
-        multiYAxis: multiYAxis,
-      },
-      conf.allYaxisConfig,
-      seriesSetConf.allYaxisConfig,
-      yaxis,
-    );
-
-    // Validate the 'dataTypeId' if supplied
-    const dataTypeId = yaxisConfig.dataTypeId;
-    if (dataTypeId !== undefined && !dataTypeMap.has(dataTypeId)) {
-      throw Error(
-        `Y-Axis ${index}: DataType '${dataTypeId}' requested but not found in config`,
-      );
-    }
-
-    // Set Min/Max types
-    [
-      yaxisConfig.minValue,
-      yaxisConfig.min_type,
-    ] = getTypeOfMinMax(yaxisConfig.minValue);
-    [
-      yaxisConfig.maxValue,
-      yaxisConfig.max_type,
-    ] = getTypeOfMinMax(yaxisConfig.maxValue);
-
-    return yaxisConfig;
-  });
-}
-
-/**
  * Generate the series data based on the enntities attribute data
+ * @param entity The Home Assistant entity, used to get attributes and data
+ * @param conf The base config
+ * @param seriesSetConf The SeriesSet config
+ * @returns An array of Series objects that contains the data and necessary config
  */
 export function generateSeries(
   entity: HassEntity,
-  conf: ChartCardConfig,
-  yAxes: ChartCardYAxisConfig[],
-  seriesSetConf?: ChartCardSeriesSetConfig,
-): ChartCardSeries[] {
+  conf: CardConfig,
+  seriesSetConf?: SeriesSetConfig,
+): CardSeries[] {
   if (!seriesSetConf) return [];
   const isRequestedSeries = entity.attributes.seriesSet === seriesSetConf.name;
   const entitySeriesArr: EntitySeries[] = entity.attributes.series ?? [];
-  return seriesSetConf.series.map((series, index: number) => {
-    /**
-     * Load the series config
-     */
-    const seriesConfig: ChartCardSeriesConfig = mergeDeep(
-      {
-        index: index,
-        show: {
-          inChart: true,
-          inHeader: true,
-          legendFunction: "last",
-          legendValue: false,
-          nameInHeader: true,
-        },
-        yAxisId: DEFAULT_Y_AXIS_ID,
-        yAxisIndex: -1,
-      },
-      conf.allSeriesConfig,
-      seriesSetConf.allSeriesConfig,
-      series,
-    );
-    // Set the series chart type
-    seriesConfig.type = conf.chartType
-      ? undefined
-      : seriesConfig.type || DEFAULT_SERIE_TYPE;
-
-    /**
-     * Figure out the Y-Axis
-     */
-    const yAxis = yAxes.find((yAxis) => yAxis.id === seriesConfig.yAxisId);
-    if (yAxis === undefined) {
-      if (
-        seriesSetConf.yAxes !== undefined &&
-        seriesConfig.yAxisId === DEFAULT_Y_AXIS_ID
-      ) {
-        throw Error(
-          `Series ${index}: You need to specify a 'yAxisId' matching one defined in the 'yAxes' array`,
-        );
-      } else {
-        throw Error(
-          `Series ${index}: Requested a 'yAxisId' of '${seriesConfig.yAxisId}', that does not exist`,
-        );
-      }
-    }
-    seriesConfig.yAxisIndex = yAxis.index;
-
+  return seriesSetConf.series.map((seriesConfig, index: number) => {
     /**
      * Find the data for this series item
      */
@@ -604,6 +657,8 @@ export function getResolutionLabel(resolution: Resolution): string {
       return "15m";
     case Resolution.THIRTY_MINUTES:
       return "30m";
+    case Resolution.ONE_HOUR:
+      return "1h";
     case Resolution.ONE_DAY:
       return "1d";
   }
@@ -702,14 +757,15 @@ export function getResolutionsForPeriod(period: Period): Resolution[] {
   let supportedResolutions: Resolution[];
   switch (period) {
     case Period.LAST_HOUR:
-    case Period.LAST_THREE_HOUR:
+    case Period.LAST_THREE_HOUR: {
       supportedResolutions = [
         Resolution.RAW,
         Resolution.ONE_MINUTE,
         Resolution.FIVE_MINUTES,
       ];
       break;
-    case Period.LAST_SIX_HOUR:
+    }
+    case Period.LAST_SIX_HOUR: {
       supportedResolutions = [
         Resolution.ONE_MINUTE,
         Resolution.FIVE_MINUTES,
@@ -717,24 +773,28 @@ export function getResolutionsForPeriod(period: Period): Resolution[] {
         Resolution.THIRTY_MINUTES,
       ];
       break;
+    }
     case Period.LAST_TWELVE_HOUR:
-    case Period.DAY:
+    case Period.DAY: {
       supportedResolutions = [
         Resolution.FIVE_MINUTES,
         Resolution.FIFTEEN_MINUTES,
         Resolution.THIRTY_MINUTES,
       ];
       break;
-    case Period.TWO_DAY:
+    }
+    case Period.TWO_DAY: {
       supportedResolutions = [
         Resolution.FIFTEEN_MINUTES,
         Resolution.THIRTY_MINUTES,
       ];
       break;
+    }
     case Period.WEEK:
-    case Period.MONTH:
+    case Period.MONTH: {
       supportedResolutions = [Resolution.ONE_DAY];
       break;
+    }
   }
 
   if (supportedResolutions.length === 0) {

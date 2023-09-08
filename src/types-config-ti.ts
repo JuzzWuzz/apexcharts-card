@@ -4,112 +4,25 @@
 import * as t from "ts-interface-checker";
 // tslint:disable:object-literal-key-quotes
 
-export const ChartCardConfigExternal = t.iface([], {
-  type: t.lit("custom:apexcharts-card2"),
-  entity: "string",
-  configTemplates: t.opt(t.union(t.array("string"), "string")),
-  colorList: t.opt(t.array("string")),
-  chartType: t.opt(t.union(t.lit("line"), t.lit("scatter"))),
-  header: t.opt("ChartCardHeaderExternalConfig"),
-  now: t.opt("ChartCardNowExternalConfig"),
-  show: t.opt("ChartCardShowExternalConfig"),
-  dataTypes: t.opt(t.array("ChartCardDataTypeConfigExternal")),
-  allSeriesConfig: t.opt("ChartCardAllSeriesConfigExternal"),
-  allYaxisConfig: t.opt("ChartCardAllYAxisConfigExternal"),
-  seriesSets: t.array("ChartCardSeriesSetConfigExternal"),
-  apexConfig: t.opt("any"),
-  period: t.opt("Period"),
-  showDateSelector: t.opt("boolean"),
-  autoRefreshTime: t.opt("number"),
-  rememberOptions: t.opt("boolean"),
+export const DataType = t.enumtype({
+  DEFAULT: "default",
+  ENERGY: "energy",
+  HUMIDITY: "humidity",
+  POWER: "power",
+  TEMPERATURE: "temperature",
 });
 
-export const ChartCardDataTypeConfigExternal = t.iface([], {
-  id: "string",
-  clampNegative: t.opt("boolean"),
-  floatPrecision: t.opt("number"),
-  unit: t.opt("string"),
-  unitArray: t.opt(t.array("string")),
-  unitSeparator: t.opt("string"),
-  unitStep: t.opt("number"),
+export const DataTypeGroup = t.enumtype({
+  A: 0,
+  B: 1,
 });
 
-export const ChartCardHeaderExternalConfig = t.iface([], {
-  appendSeriesSetName: t.opt("boolean"),
-  colorizeStates: t.opt("boolean"),
-  show: t.opt("boolean"),
-  showStates: t.opt("boolean"),
-  title: t.opt("string"),
+export const MinMaxType = t.enumtype({
+  AUTO: 0,
+  FIXED: 1,
+  SOFT: 2,
+  ABSOLUTE: 3,
 });
-
-export const ChartCardNowExternalConfig = t.iface([], {
-  color: t.opt("string"),
-  label: t.opt("string"),
-  show: t.opt("boolean"),
-});
-
-export const ChartCardShowExternalConfig = t.iface([], {
-  lastUpdated: t.opt("boolean"),
-  loading: t.opt("boolean"),
-});
-
-export const ChartCardAllSeriesConfigExternal = t.iface([], {
-  color: t.opt("string"),
-  curve: t.opt(t.union(t.lit("smooth"), t.lit("straight"), t.lit("stepline"))),
-  name: t.opt("string"),
-  opacity: t.opt("number"),
-  show: t.opt("ChartCardSeriesShowConfigExternal"),
-  strokeWidth: t.opt("number"),
-  type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
-});
-
-export const ChartCardSeriesConfigExternal = t.iface(
-  ["ChartCardAllSeriesConfigExternal"],
-  {
-    dataTypeId: t.opt("string"),
-    yAxisId: t.opt("string"),
-    measurement: "string",
-    device: "string",
-    channel: t.opt("string"),
-  },
-);
-
-export const ChartCardSeriesShowConfigExternal = t.iface([], {
-  extremas: t.opt(t.union("boolean", t.lit("min"), t.lit("max"))),
-  inChart: t.opt("boolean"),
-  inHeader: t.opt("boolean"),
-  legendFunction: t.opt("LegendFunction"),
-  legendValue: t.opt("boolean"),
-  nameInHeader: t.opt("boolean"),
-});
-
-export const ChartCardSeriesSetConfigExternal = t.iface([], {
-  name: "string",
-  allSeriesConfig: t.opt("ChartCardAllSeriesConfigExternal"),
-  allYaxisConfig: t.opt("ChartCardAllYAxisConfigExternal"),
-  series: t.array("ChartCardSeriesConfigExternal"),
-  yAxes: t.opt(t.array("ChartCardYAxisConfigExternal")),
-});
-
-export const ChartCardAllYAxisConfigExternal = t.iface([], {
-  alignTo: t.opt("number"),
-  floatPrecision: t.opt("number"),
-  maxValue: t.opt(t.union(t.lit("auto"), "number", "string")),
-  minValue: t.opt(t.union(t.lit("auto"), "number", "string")),
-  opposite: t.opt("boolean"),
-  show: t.opt("boolean"),
-  apexConfig: t.opt("any"),
-});
-
-export const ChartCardYAxisConfigExternal = t.iface(
-  ["ChartCardAllYAxisConfigExternal"],
-  {
-    id: t.opt("string"),
-    dataTypeId: t.opt("string"),
-  },
-);
-
-export const LegendFunction = t.union(t.lit("last"), t.lit("sum"));
 
 export const Period = t.enumtype({
   LAST_HOUR: "-1h",
@@ -128,23 +41,206 @@ export const Resolution = t.enumtype({
   FIVE_MINUTES: "PT5M",
   FIFTEEN_MINUTES: "PT15M",
   THIRTY_MINUTES: "PT30M",
+  ONE_HOUR: "PT1H",
   ONE_DAY: "P1D",
 });
 
+export const DataPoint = t.tuple("number", t.union("number", "null"));
+
+export const ExtremasType = t.union("boolean", t.lit("min"), t.lit("max"));
+
+export const LegendFunction = t.union(t.lit("last"), t.lit("sum"));
+
+export const MinMaxPoint = t.iface([], {
+  min: "DataPoint",
+  max: "DataPoint",
+});
+
+export const MinMaxValue = t.union(
+  t.lit("auto"),
+  "number",
+  "string",
+  "undefined",
+);
+
+export const CardConfigExternal = t.iface([], {
+  type: t.lit("custom:apexcharts-card2"),
+  entity: "string",
+  configTemplates: t.opt(t.union(t.array("string"), "string")),
+  colorList: t.opt(t.array("string")),
+  chartType: t.opt(t.union(t.lit("line"), t.lit("scatter"))),
+  header: t.opt("CardHeaderExternalConfig"),
+  now: t.opt("CardNowExternalConfig"),
+  show: t.opt("CardShowExternalConfig"),
+  allSeriesConfig: t.opt("AllSeriesConfigExternal"),
+  allYaxisConfig: t.opt("AllYAxisConfigExternal"),
+  seriesSets: t.array("SeriesSetConfigExternal"),
+  apexConfig: t.opt("any"),
+  period: t.opt("Period"),
+  showDateSelector: t.opt("boolean"),
+  autoRefreshTime: t.opt("number"),
+  rememberOptions: t.opt("boolean"),
+});
+
+export const CardHeaderExternalConfig = t.iface([], {
+  appendSeriesSetName: t.opt("boolean"),
+  colorizeStates: t.opt("boolean"),
+  show: t.opt("boolean"),
+  showStates: t.opt("boolean"),
+  title: t.opt("string"),
+});
+
+export const CardHeaderConfig = t.iface(["CardHeaderExternalConfig"], {
+  appendSeriesSetName: "boolean",
+  colorizeStates: "boolean",
+  show: "boolean",
+  showStates: "boolean",
+});
+
+export const CardNowExternalConfig = t.iface([], {
+  color: t.opt("string"),
+  label: t.opt("string"),
+  show: t.opt("boolean"),
+});
+
+export const CardNowConfig = t.iface(["CardNowExternalConfig"], {
+  color: "string",
+  show: "boolean",
+});
+
+export const CardShowExternalConfig = t.iface([], {
+  lastUpdated: t.opt("boolean"),
+  loading: t.opt("boolean"),
+});
+
+export const CardShowConfig = t.iface(["CardShowExternalConfig"], {
+  lastUpdated: "boolean",
+  loading: "boolean",
+});
+
+export const DataTypeConfig = t.iface([], {
+  dataType: "DataType",
+  clampNegative: "boolean",
+  floatPrecision: "number",
+  unit: t.opt("string"),
+  unitArray: t.opt(t.array("string")),
+  unitSeparator: "string",
+  unitStep: t.opt("number"),
+});
+
+export const SeriesShowConfigExternal = t.iface([], {
+  extremas: t.opt("ExtremasType"),
+  inChart: t.opt("boolean"),
+  inHeader: t.opt("boolean"),
+  legendFunction: t.opt("LegendFunction"),
+  legendValue: t.opt("boolean"),
+  nameInHeader: t.opt("boolean"),
+});
+
+export const SeriesShowConfig = t.iface(["SeriesShowConfigExternal"], {
+  extremas: "ExtremasType",
+  inChart: "boolean",
+  inHeader: "boolean",
+  legendFunction: "LegendFunction",
+  legendValue: "boolean",
+  nameInHeader: "boolean",
+});
+
+export const AllSeriesConfigExternal = t.iface([], {
+  color: t.opt("string"),
+  curve: t.opt(t.union(t.lit("smooth"), t.lit("straight"), t.lit("stepline"))),
+  name: t.opt("string"),
+  opacity: t.opt("number"),
+  show: t.opt("SeriesShowConfigExternal"),
+  strokeWidth: t.opt("number"),
+  type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
+});
+
+export const SeriesConfigExternal = t.iface(["AllSeriesConfigExternal"], {
+  dataType: t.opt("DataType"),
+  yAxisId: t.opt("string"),
+  measurement: "string",
+  device: "string",
+  channel: t.opt("string"),
+});
+
+export const SeriesConfig = t.iface(["SeriesConfigExternal"], {
+  dataType: "DataType",
+  index: "number",
+  show: "SeriesShowConfig",
+  yAxisId: "string",
+  yAxisIndex: "number",
+});
+
+export const AllYAxisConfigExternal = t.iface([], {
+  alignTo: t.opt("number"),
+  floatPrecision: t.opt("number"),
+  maxValue: "MinMaxValue",
+  minValue: "MinMaxValue",
+  opposite: t.opt("boolean"),
+  show: t.opt("boolean"),
+  apexConfig: t.opt("any"),
+});
+
+export const YAxisConfigExternal = t.iface(["AllYAxisConfigExternal"], {
+  id: t.opt("string"),
+  dataType: t.opt("DataType"),
+});
+
+export const YAxisConfig = t.iface(["YAxisConfigExternal"], {
+  id: "string",
+  dataType: "DataType",
+  floatPrecision: "number",
+  index: "number",
+  maxType: "MinMaxType",
+  minType: "MinMaxType",
+  multiYAxis: "boolean",
+  opposite: "boolean",
+  show: "boolean",
+});
+
+export const SeriesSetConfigExternal = t.iface([], {
+  name: "string",
+  allSeriesConfig: t.opt("AllSeriesConfigExternal"),
+  allYaxisConfig: t.opt("AllYAxisConfigExternal"),
+  series: t.array("SeriesConfigExternal"),
+  yAxes: t.opt(t.array("YAxisConfigExternal")),
+});
+
+export const SeriesSetConfig = t.iface([], {
+  name: "string",
+  series: t.array("SeriesConfig"),
+  yAxes: t.array("YAxisConfig"),
+});
+
 const exportedTypeSuite: t.ITypeSuite = {
-  ChartCardConfigExternal,
-  ChartCardDataTypeConfigExternal,
-  ChartCardHeaderExternalConfig,
-  ChartCardNowExternalConfig,
-  ChartCardShowExternalConfig,
-  ChartCardAllSeriesConfigExternal,
-  ChartCardSeriesConfigExternal,
-  ChartCardSeriesShowConfigExternal,
-  ChartCardSeriesSetConfigExternal,
-  ChartCardAllYAxisConfigExternal,
-  ChartCardYAxisConfigExternal,
-  LegendFunction,
+  DataType,
+  DataTypeGroup,
+  MinMaxType,
   Period,
   Resolution,
+  DataPoint,
+  ExtremasType,
+  LegendFunction,
+  MinMaxPoint,
+  MinMaxValue,
+  CardConfigExternal,
+  CardHeaderExternalConfig,
+  CardHeaderConfig,
+  CardNowExternalConfig,
+  CardNowConfig,
+  CardShowExternalConfig,
+  CardShowConfig,
+  DataTypeConfig,
+  SeriesShowConfigExternal,
+  SeriesShowConfig,
+  AllSeriesConfigExternal,
+  SeriesConfigExternal,
+  SeriesConfig,
+  AllYAxisConfigExternal,
+  YAxisConfigExternal,
+  YAxisConfig,
+  SeriesSetConfigExternal,
+  SeriesSetConfig,
 };
 export default exportedTypeSuite;

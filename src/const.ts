@@ -1,9 +1,9 @@
-import { DataPoint, MinMaxPoint } from "./types";
+import { DataPoint, DataType, MinMaxPoint } from "./types-config";
 
-export const DEFAULT_SERIE_TYPE = "line";
+export const DEFAULT_SERIES_TYPE = "line";
 
 // Data Type Config
-export const DEFAULT_DATA_TYPE_ID = "default";
+export const DEFAULT_DATA_TYPE = DataType.DEFAULT;
 export const DEFAULT_CLAMP_NEGATIVE = false;
 export const DEFAULT_FLOAT_PRECISION = 1;
 export const DEFAULT_UNIT_SEPARATOR = " ";

@@ -1,21 +1,15 @@
 import {
-  LitElement,
-  html,
-  TemplateResult,
-  PropertyValues,
   CSSResultGroup,
+  html,
+  LitElement,
+  PropertyValues,
+  TemplateResult,
 } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { ClassInfo, classMap } from "lit/directives/class-map.js";
 import { StyleInfo, styleMap } from "lit/directives/style-map.js";
 import moment, { Moment } from "moment";
-import {
-  ChartCardConfig,
-  ChartCardSeries,
-  ChartCardSeriesSetConfig,
-  ChartCardYAxisConfig,
-  DataTypeMap,
-} from "./types";
+import { CardConfig, CardSeries, DataTypeMap } from "./types";
 import * as pjson from "../package.json";
 import {
   calculateNewDates,
@@ -25,7 +19,6 @@ import {
   generateDataTypeMap,
   generateSeries,
   generateSeriesSets,
-  generateYAxes,
   getDataTypeConfig,
   getDateRangeLabel,
   getHeaderStateFunctionLabel,
@@ -41,7 +34,12 @@ import ApexCharts from "apexcharts";
 import { stylesApex } from "./styles";
 import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
-import { ChartCardConfigExternal, Period, Resolution } from "./types-config";
+import {
+  CardConfigExternal,
+  Period,
+  Resolution,
+  SeriesSetConfig,
+} from "./types-config";
 import { HomeAssistant, LovelaceCard } from "juzz-ha-helper";
 import { mdiArrowLeft, mdiArrowRight, mdiReload } from "@mdi/js";
 
@@ -61,17 +59,16 @@ class ChartsCard extends LitElement {
   private _apexChart?: ApexCharts;
 
   private _updating = false;
-  private _error?: string;
+  @state() private _error?: string;
 
   private _hass?: HomeAssistant;
   private _entity?: HassEntity;
 
   // Config variables
-  @state() private _config?: ChartCardConfig;
+  @state() private _config?: CardConfig;
   private _dataTypeMap: DataTypeMap = new Map();
-  private _seriesSets: ChartCardSeriesSetConfig[] = [];
-  private _yaxis: ChartCardYAxisConfig[] = [];
-  private _series: ChartCardSeries[] = [];
+  private _seriesSets: SeriesSetConfig[] = [];
+  private _series: CardSeries[] = [];
 
   // Time variables
   private _refreshTimer?: number;
@@ -195,9 +192,9 @@ class ChartsCard extends LitElement {
   /**
    * Sets the config for the card
    */
-  public setConfig(config: ChartCardConfigExternal) {
+  public setConfig(config: CardConfigExternal) {
 
-    let configDup: ChartCardConfigExternal = JSON.parse(JSON.stringify(config));
+    let configDup: CardConfigExternal = JSON.parse(JSON.stringify(config));
     if (configDup.configTemplates) {
       configDup.configTemplates =
         configDup.configTemplates && Array.isArray(configDup.configTemplates)
@@ -216,7 +213,7 @@ class ChartsCard extends LitElement {
       this._config = conf;
 
       // Compute the DataType Map
-      this._dataTypeMap = generateDataTypeMap(this._config);
+      this._dataTypeMap = generateDataTypeMap();
 
       // Compute the SeriesSets
       this._seriesSets = generateSeriesSets(this._config);
@@ -226,6 +223,10 @@ class ChartsCard extends LitElement {
         this._seriesSet = this._seriesSets[0].name;
       }
 
+      /**
+       * Reset the error now
+       */
+      this._error = undefined;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this._error = error.message;
@@ -264,6 +265,7 @@ class ChartsCard extends LitElement {
       [
         "_config",
         "_date",
+        "_error",
         "_lastUpdated",
         "_period",
         "_resolution",
@@ -319,26 +321,21 @@ class ChartsCard extends LitElement {
       );
 
       /**
-       * Compute the Y-Axes
-       */
-      this._yaxis = generateYAxes(this._config, this._dataTypeMap, seriesSet);
-
-      /**
        * Compute the Series
        */
-      this._series = generateSeries(
-        this._entity,
-        this._config,
-        this._yaxis,
-        seriesSet,
-      );
+      this._series = generateSeries(this._entity, this._config, seriesSet);
+
+      /**
+       * Get the YAxes
+       */
+      const yAxes = seriesSet?.yAxes ?? [];
 
       this._apexChart?.updateOptions(
         getLayoutConfig(
           this._config,
           this._dataTypeMap,
           this._series,
-          this._yaxis,
+          yAxes,
           now,
           start,
           end,
@@ -535,7 +532,7 @@ class ChartsCard extends LitElement {
       .map((s) => {
         const formatted = formatValueAndUom(
           s.headerValue,
-          getDataTypeConfig(this._dataTypeMap, s.config.dataTypeId),
+          getDataTypeConfig(this._dataTypeMap, s.config.dataType),
         );
         const styles: StyleInfo = {
           color: conf.header.colorizeStates ? s.color : "",
