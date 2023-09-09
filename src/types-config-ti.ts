@@ -120,7 +120,6 @@ export const CardShowConfig = t.iface(["CardShowExternalConfig"], {
 
 export const DataTypeConfig = t.iface([], {
   dataType: "DataType",
-  clampNegative: "boolean",
   floatPrecision: "number",
   unit: t.opt("string"),
   unitArray: t.opt(t.array("string")),
@@ -147,6 +146,7 @@ export const SeriesShowConfig = t.iface(["SeriesShowConfigExternal"], {
 });
 
 export const AllSeriesConfigExternal = t.iface([], {
+  clampNegative: t.opt("boolean"),
   color: t.opt("string"),
   curve: t.opt(t.union(t.lit("smooth"), t.lit("straight"), t.lit("stepline"))),
   dataType: t.opt("DataType"),
@@ -165,6 +165,7 @@ export const SeriesConfigExternal = t.iface(["AllSeriesConfigExternal"], {
 });
 
 export const SeriesConfig = t.iface(["SeriesConfigExternal"], {
+  clampNegative: "boolean",
   dataType: "DataType",
   index: "number",
   show: "SeriesShowConfig",

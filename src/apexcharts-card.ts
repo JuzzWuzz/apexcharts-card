@@ -538,6 +538,7 @@ class ChartsCard extends LitElement {
         const formatted = formatValueAndUom(
           s.headerValue,
           getDataTypeConfig(this._dataTypeMap, s.config.dataType),
+          s.config.clampNegative,
         );
         const styles: StyleInfo = {
           color: conf.header.colorizeStates ? s.color : "",
@@ -835,6 +836,7 @@ class ChartsCard extends LitElement {
         series: this._seriesSet.series.map((seriesConfig) => {
           return {
             index: seriesConfig.index,
+            clampNegative: seriesConfig.clampNegative,
             measurement: seriesConfig.measurement,
             device: seriesConfig.device,
             channel: seriesConfig.channel,

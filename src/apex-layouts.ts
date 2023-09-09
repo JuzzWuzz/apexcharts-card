@@ -8,7 +8,7 @@ import {
   getDataTypeConfig,
   mergeDeep,
 } from "./utils";
-import { YAxisConfig, MinMaxType, Period } from "./types-config";
+import { YAxisConfig, MinMaxType, Period, MinMaxValue } from "./types-config";
 
 export function getLayoutConfig(
   config: CardConfig,
@@ -91,6 +91,7 @@ function getLegend(dataTypeMap: DataTypeMap, series: CardSeries[]): ApexLegend {
         const formattedValue = formatValueAndUom(
           s.headerValue,
           getDataTypeConfig(dataTypeMap, s.config.dataType),
+          s.config.clampNegative,
         ).formatted();
         return `${name}: <strong>${formattedValue}</strong>`;
       }
@@ -174,31 +175,40 @@ function getXAxis(start?: Date, end?: Date): ApexXAxis {
 }
 
 function calculateMaxOrMin(
-  value,
+  value: number | null,
   isMin: boolean,
   alignTo: number | undefined,
-  configMinMax: string | number | undefined,
+  configMinMax: MinMaxValue,
   type: MinMaxType,
 ) {
   if (type === MinMaxType.FIXED) {
     return configMinMax;
   }
   let val = value;
-  if (alignTo !== undefined) {
-    const x = Math.abs(val) % alignTo;
-    const y = alignTo - x;
-    val = val >= 0 ? (isMin ? val - x : val + y) : isMin ? val - y : val + x;
-  }
-
-  if (typeof val === "number" && typeof configMinMax === "number") {
-    if (type === MinMaxType.ABSOLUTE) {
-      return val + configMinMax;
+  if (val !== null) {
+    if (alignTo !== undefined) {
+      const x = Math.abs(val) % alignTo;
+      const y = alignTo - x;
+      val = val >= 0 ? (isMin ? val - x : val + y) : isMin ? val - y : val + x;
     }
-    if (
-      type === MinMaxType.SOFT &&
-      ((isMin && val > configMinMax) || (!isMin && val < configMinMax))
-    ) {
-      return configMinMax;
+
+    if (typeof configMinMax === "number") {
+      if (type === MinMaxType.ABSOLUTE) {
+        const newVal = val + configMinMax;
+        console.log(
+          `Is Min and Abs. Val: ${val}. Conf Min/Max: ${configMinMax}. New Val: ${newVal}`,
+        );
+        if (isMin && val >= 0 && newVal < 0) {
+          return 0;
+        }
+        return newVal;
+      }
+      if (
+        type === MinMaxType.SOFT &&
+        ((isMin && val > configMinMax) || (!isMin && val < configMinMax))
+      ) {
+        return configMinMax;
+      }
     }
   }
   return val;
@@ -216,9 +226,11 @@ function getYAxis(
     delete apexConfig.max;
     delete apexConfig.decimalsInFloat;
 
+    // Get the series that are using this Y-Axis
+    const yAxisSeries = series.filter((s) => s.config.yAxisIndex === y.index);
+
     // Get the Min/Max values f or the Y-Axis
-    const minMax = series
-      .filter((s) => s.config.yAxisIndex === y.index)
+    const minMax = yAxisSeries
       .map((s) => {
         return { min: s.minMaxPoint.min[1], max: s.minMaxPoint.max[1] };
       })
@@ -241,13 +253,25 @@ function getYAxis(
         },
       );
 
+    // Check if all linked series are wanting to clamp negative
+    const clampNegative = yAxisSeries.reduce(
+      (acc, s) => acc && s.config.clampNegative,
+      true,
+    );
+
     const dataTypeConfig = getDataTypeConfig(dataTypeMap, y.dataType);
-    const mergedConfig = mergeDeep(
+
+    // Merge the final config
+    const mergedConfig: ApexYAxis = mergeDeep(
       {
         decimalsInFloat: dataTypeConfig.floatPrecision,
         labels: {
           formatter: function (value) {
-            return formatValueAndUom(value, dataTypeConfig).formatted();
+            return formatValueAndUom(
+              value,
+              dataTypeConfig,
+              clampNegative,
+            ).formatted();
           },
         },
         max: calculateMaxOrMin(
@@ -269,7 +293,7 @@ function getYAxis(
       apexConfig,
     );
 
-    return mergedConfig as ApexYAxis;
+    return mergedConfig;
   });
 }
 
@@ -290,13 +314,12 @@ function getXTooltipFormatter(config: CardConfig) {
 }
 
 function getYTooltipFormatter(dataTypeMap: DataTypeMap, series: CardSeries[]) {
-  const dataTypeConfigs = series.map((s) =>
-    getDataTypeConfig(dataTypeMap, s.config.dataType),
-  );
   return function (value, opts) {
+    const seriesConfig = series[opts.seriesIndex].config;
     const formattedValue = formatValueAndUom(
       value,
-      dataTypeConfigs[opts.seriesIndex],
+      getDataTypeConfig(dataTypeMap, seriesConfig.dataType),
+      seriesConfig.clampNegative,
     ).formatted();
     return [
       `<strong>${formattedValue}</strong>`,
@@ -371,7 +394,7 @@ function getAnnotations(
               fillColor: "var(--card-background-color)",
             },
             label: {
-              text: formatValueAndUom(p[1], dataTypeConfig).formatted(),
+              text: formatValueAndUom(p[1], dataTypeConfig, false).formatted(),
               borderColor: "var(--card-background-color)",
               borderWidth: 2,
               style: {

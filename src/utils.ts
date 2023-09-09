@@ -77,7 +77,6 @@ export function computeTextColor(backgroundColor: string): string {
 export function getDefaultDataTypeConfig(): DataTypeConfig {
   return {
     dataType: DEFAULT_DATA_TYPE,
-    clampNegative: DEFAULT_CLAMP_NEGATIVE,
     floatPrecision: DEFAULT_FLOAT_PRECISION,
     unitSeparator: DEFAULT_UNIT_SEPARATOR,
   };
@@ -154,6 +153,7 @@ export function formatApexDate(value: Date): string {
 export function formatValueAndUom(
   value: string | number | null | undefined,
   dataTypeConfig: DataTypeConfig,
+  clampNegative: boolean,
 ): FormattedValue {
   let lValue: string | number | null | undefined = value;
   let lPrecision: number = dataTypeConfig.floatPrecision;
@@ -170,7 +170,7 @@ export function formatValueAndUom(
   }
   let uom: string | undefined = undefined;
   if (typeof lValue === "number") {
-    if (dataTypeConfig.clampNegative && lValue < 0) {
+    if (clampNegative && lValue < 0) {
       lValue = 0;
     }
     if (dataTypeConfig.unitStep && dataTypeConfig.unitArray) {
@@ -193,6 +193,8 @@ export function formatValueAndUom(
       }
     }
     lValue = lValue.toFixed(lPrecision);
+    // Fix for `-0`
+    lValue = lValue.replace(/^-([.0]*)$/, "$1");
   }
 
   return {
@@ -354,21 +356,18 @@ export function generateDataTypeMap(): DataTypeMap {
   const systemDataTypes: DataTypeConfig[] = [
     {
       dataType: DataType.TEMPERATURE,
-      clampNegative: false,
-      floatPrecision: 0,
+      floatPrecision: 1,
       unit: "°C",
       unitSeparator: "",
     },
     {
       dataType: DataType.HUMIDITY,
-      clampNegative: true,
       floatPrecision: 0,
       unit: "%",
       unitSeparator: " ",
     },
     {
       dataType: DataType.POWER,
-      clampNegative: true,
       floatPrecision: 2,
       unitArray: [
         "W",
@@ -381,7 +380,6 @@ export function generateDataTypeMap(): DataTypeMap {
     },
     {
       dataType: DataType.ENERGY,
-      clampNegative: true,
       floatPrecision: 2,
       unitArray: [
         "Wh",
@@ -471,6 +469,7 @@ export function generateSeriesSets(conf: CardConfig): SeriesSetConfig[] {
       // Compute the Series Config
       const seriesConfig: SeriesConfig = mergeDeep(
         {
+          clampNegative: DEFAULT_CLAMP_NEGATIVE,
           dataType: DEFAULT_DATA_TYPE,
           index: index,
           show: {

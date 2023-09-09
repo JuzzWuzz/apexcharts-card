@@ -139,7 +139,6 @@ export interface CardShowConfig extends CardShowExternalConfig {
 
 export interface DataTypeConfig {
   dataType: DataType;
-  clampNegative: boolean;
   floatPrecision: number;
   unit?: string;
   unitArray?: string[];
@@ -174,6 +173,7 @@ export interface SeriesShowConfig extends SeriesShowConfigExternal {
  */
 
 export interface AllSeriesConfigExternal {
+  clampNegative?: boolean;
   color?: string;
   curve?: "smooth" | "straight" | "stepline";
   dataType?: DataType;
@@ -192,6 +192,7 @@ export interface SeriesConfigExternal extends AllSeriesConfigExternal {
 }
 
 export interface SeriesConfig extends SeriesConfigExternal {
+  clampNegative: boolean;
   dataType: DataType;
   index: number;
   show: SeriesShowConfig;
