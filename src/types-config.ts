@@ -176,16 +176,16 @@ export interface SeriesShowConfig extends SeriesShowConfigExternal {
 export interface AllSeriesConfigExternal {
   color?: string;
   curve?: "smooth" | "straight" | "stepline";
+  dataType?: DataType;
   name?: string;
   opacity?: number;
   show?: SeriesShowConfigExternal;
   strokeWidth?: number;
   type?: "line" | "column" | "area";
+  yAxisId?: string;
 }
 
 export interface SeriesConfigExternal extends AllSeriesConfigExternal {
-  dataType?: DataType;
-  yAxisId?: string;
   measurement: string;
   device: string;
   channel?: string;
@@ -205,6 +205,7 @@ export interface SeriesConfig extends SeriesConfigExternal {
 
 export interface AllYAxisConfigExternal {
   alignTo?: number;
+  dataType?: DataType;
   floatPrecision?: number;
   maxValue: MinMaxValue;
   minValue: MinMaxValue;
@@ -216,7 +217,6 @@ export interface AllYAxisConfigExternal {
 
 export interface YAxisConfigExternal extends AllYAxisConfigExternal {
   id?: string;
-  dataType?: DataType;
 }
 
 export interface YAxisConfig extends YAxisConfigExternal {

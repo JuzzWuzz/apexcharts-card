@@ -354,7 +354,7 @@ export function generateDataTypeMap(): DataTypeMap {
   const systemDataTypes: DataTypeConfig[] = [
     {
       dataType: DataType.TEMPERATURE,
-      clampNegative: true,
+      clampNegative: false,
       floatPrecision: 0,
       unit: "°C",
       unitSeparator: "",

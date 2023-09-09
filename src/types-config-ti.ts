@@ -149,16 +149,16 @@ export const SeriesShowConfig = t.iface(["SeriesShowConfigExternal"], {
 export const AllSeriesConfigExternal = t.iface([], {
   color: t.opt("string"),
   curve: t.opt(t.union(t.lit("smooth"), t.lit("straight"), t.lit("stepline"))),
+  dataType: t.opt("DataType"),
   name: t.opt("string"),
   opacity: t.opt("number"),
   show: t.opt("SeriesShowConfigExternal"),
   strokeWidth: t.opt("number"),
   type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
+  yAxisId: t.opt("string"),
 });
 
 export const SeriesConfigExternal = t.iface(["AllSeriesConfigExternal"], {
-  dataType: t.opt("DataType"),
-  yAxisId: t.opt("string"),
   measurement: "string",
   device: "string",
   channel: t.opt("string"),
@@ -174,6 +174,7 @@ export const SeriesConfig = t.iface(["SeriesConfigExternal"], {
 
 export const AllYAxisConfigExternal = t.iface([], {
   alignTo: t.opt("number"),
+  dataType: t.opt("DataType"),
   floatPrecision: t.opt("number"),
   maxValue: "MinMaxValue",
   minValue: "MinMaxValue",
@@ -184,7 +185,6 @@ export const AllYAxisConfigExternal = t.iface([], {
 
 export const YAxisConfigExternal = t.iface(["AllYAxisConfigExternal"], {
   id: t.opt("string"),
-  dataType: t.opt("DataType"),
 });
 
 export const YAxisConfig = t.iface(["YAxisConfigExternal"], {
