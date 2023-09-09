@@ -7,7 +7,7 @@ import * as t from "ts-interface-checker";
 export const DataType = t.enumtype({
   DEFAULT: "default",
   ENERGY: "energy",
-  HUMIDITY: "humidity",
+  PERCENTAGE: "percentage",
   POWER: "power",
   TEMPERATURE: "temperature",
 });
@@ -64,7 +64,7 @@ export const MinMaxValue = t.union(
 );
 
 export const CardConfigExternal = t.iface([], {
-  type: t.lit("custom:apexcharts-card2"),
+  type: t.lit("custom:apexcharts-card"),
   entity: "string",
   configTemplates: t.opt(t.union(t.array("string"), "string")),
   colorList: t.opt(t.array("string")),

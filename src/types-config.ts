@@ -5,7 +5,7 @@
 export enum DataType {
   DEFAULT = "default",
   ENERGY = "energy",
-  HUMIDITY = "humidity",
+  PERCENTAGE = "percentage",
   POWER = "power",
   TEMPERATURE = "temperature",
 }
@@ -66,7 +66,7 @@ export type MinMaxValue = "auto" | number | string | undefined;
  */
 
 export interface CardConfigExternal {
-  type: "custom:apexcharts-card2";
+  type: "custom:apexcharts-card";
   entity: string;
   configTemplates?: string[] | string;
   colorList?: string[];

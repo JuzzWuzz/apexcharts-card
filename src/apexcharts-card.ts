@@ -53,7 +53,7 @@ console.info(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).ApexCharts = ApexCharts;
 
-@customElement("apexcharts-card2")
+@customElement("apexcharts-card")
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class ChartsCard extends LitElement {
   private _apexChart?: ApexCharts;
@@ -87,6 +87,7 @@ class ChartsCard extends LitElement {
    * Invoked when the component is added to the document's DOM.
    */
   public connectedCallback() {
+    console.log("connectedCallback()");
     super.connectedCallback();
 
     if (this._config && this._hass) {
@@ -106,6 +107,7 @@ class ChartsCard extends LitElement {
    * Invoked when the component is removed from the document's DOM.
    */
   disconnectedCallback() {
+    console.log("disconnectedCallback()");
     super.disconnectedCallback();
 
     this._updating = false;
@@ -124,11 +126,22 @@ class ChartsCard extends LitElement {
   }
 
   private cancelTimer(): void {
+    console.log("cancelTimer()");
+
     clearInterval(this._refreshTimer);
     this._refreshTimer = undefined;
   }
 
   private async _initialLoad() {
+    console.log(
+      `_initialLoad(): ${
+        this._config &&
+        !this._apexChart &&
+        this.shadowRoot?.querySelector("#graph")
+          ? "skipping"
+          : "running"
+      }`,
+    );
     if (
       this._config &&
       !this._apexChart &&
@@ -196,6 +209,7 @@ class ChartsCard extends LitElement {
    * Sets the config for the card
    */
   public setConfig(config: CardConfigExternal) {
+    console.log("setConfig()");
 
     let configDup: CardConfigExternal = JSON.parse(JSON.stringify(config));
     if (configDup.configTemplates) {
@@ -254,6 +268,7 @@ class ChartsCard extends LitElement {
       // Check if the main graph entity has changed
       const entityId = this._config.entity;
       if (oldHass.states[entityId] !== this._hass.states[entityId]) {
+        console.log("shouldUpdate() -- _updateData()");
         this._updateData();
       }
     }
@@ -289,6 +304,7 @@ class ChartsCard extends LitElement {
 
     // We have rendered but not yet initialised
     if (this._config && !this._apexChart && this.isConnected) {
+      console.log("updated() -- _initialLoad()");
       this._initialLoad();
     }
   }
@@ -608,6 +624,7 @@ class ChartsCard extends LitElement {
    * Update the Start & End date values and call for an update
    */
   private _triggerUpdate(): void {
+    console.log(`_triggerUpdate(): ${!this._date ? "skipping" : "running"}`);
     if (!this._date) return;
 
     const newDates = calculateNewDates(
@@ -703,6 +720,7 @@ class ChartsCard extends LitElement {
    * Handle the `Next` button being pressed (Advance the day)
    */
   private _pickNext(): void {
+    console.log(`_pickNext(): ${!this._date ? "skipping" : "running"}"`);
     if (!this._date) return;
 
     const currentTime = moment();
@@ -724,6 +742,7 @@ class ChartsCard extends LitElement {
    * Handle the `Previous` button being pressed (Recede the day)
    */
   private _pickPrevious(): void {
+    console.log(`_pickPrevious(): ${!this._date ? "skipping" : "running"}`);
     if (!this._date) return;
     const duration = getPeriodDuration(this._period);
     const newDate = this._date.clone().subtract(duration);
@@ -736,6 +755,7 @@ class ChartsCard extends LitElement {
    * Set the date to the time right now
    */
   private _pickToday(): void {
+    console.log("_pickToday()");
     this._viewingLiveData = true;
     this._updateDate(moment());
   }
@@ -744,6 +764,11 @@ class ChartsCard extends LitElement {
    * Change the period of viewing
    */
   private _pickPeriod(ev): void {
+    console.log(
+      `_pickPeriod(): ${
+        ev.target.value === this._period ? "skipping" : "running"
+      }`,
+    );
     if (ev.target.value === this._period) return;
     this._updatePeriod(ev.target.value);
   }
@@ -752,6 +777,11 @@ class ChartsCard extends LitElement {
    * Change the resolution of viewing
    */
   private _pickResolution(ev): void {
+    console.log(
+      `_pickResolution(): ${
+        ev.target.value === this._resolution ? "skipping" : "running"
+      }`,
+    );
     if (ev.target.value === this._resolution) return;
     this._updateResolution(ev.target.value);
   }

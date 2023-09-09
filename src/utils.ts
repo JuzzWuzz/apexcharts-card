@@ -361,10 +361,10 @@ export function generateDataTypeMap(): DataTypeMap {
       unitSeparator: "",
     },
     {
-      dataType: DataType.HUMIDITY,
+      dataType: DataType.PERCENTAGE,
       floatPrecision: 0,
       unit: "%",
-      unitSeparator: " ",
+      unitSeparator: "",
     },
     {
       dataType: DataType.POWER,
@@ -408,7 +408,7 @@ export function generateDataTypeMap(): DataTypeMap {
 export function getDataTypeGroup(dataType: DataType): DataTypeGroup {
   switch (dataType) {
     case DataType.DEFAULT:
-    case DataType.HUMIDITY:
+    case DataType.PERCENTAGE:
     case DataType.POWER:
     case DataType.TEMPERATURE: {
       return DataTypeGroup.A;
