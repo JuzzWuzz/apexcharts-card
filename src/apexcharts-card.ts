@@ -953,7 +953,7 @@ class ChartsCard extends LitElement {
     );
 
     this._hass.callService("mqtt", "publish", {
-      topic: `graphs2/${this._config.entity}`,
+      topic: `graphs/${this._config.entity}`,
       payload: JSON.stringify({
         dataTypeGroup: this._seriesSet.dataTypeGroup,
         period: this._period,
