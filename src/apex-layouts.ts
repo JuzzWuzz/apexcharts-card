@@ -8,11 +8,19 @@ import {
   getDataTypeConfig,
   mergeDeep,
 } from "./utils";
-import { YAxisConfig, MinMaxType, Period, MinMaxValue } from "./types-config";
+import {
+  YAxisConfig,
+  MinMaxType,
+  Period,
+  MinMaxValue,
+  DataTypeGroup,
+} from "./types-config";
+import moment from "moment";
 
 export function getLayoutConfig(
   config: CardConfig,
   dataTypeMap: DataTypeMap,
+  dataTypeGroup?: DataTypeGroup,
   series: CardSeries[] = [],
   yaxis: YAxisConfig[] = [],
   now: Date = new Date(),
@@ -45,21 +53,31 @@ export function getLayoutConfig(
     colors: getColors(series),
     legend: getLegend(dataTypeMap, series),
     stroke: getStroke(config, series),
-    series: getSeries(series),
-    xaxis: getXAxis(start, end),
+    series: getSeries(series, dataTypeGroup),
+    xaxis: getXAxis(start, end, dataTypeGroup),
     yaxis: getYAxis(dataTypeMap, yaxis, series),
     tooltip: {
       x: {
-        formatter: getXTooltipFormatter(config),
+        formatter: getXTooltipFormatter(),
       },
       y: {
         formatter: getYTooltipFormatter(dataTypeMap, series),
       },
     },
-    annotations: getAnnotations(config, dataTypeMap, series, now, end, period),
+    annotations: getAnnotations(
+      config,
+      dataTypeMap,
+      series,
+      now,
+      end,
+      period,
+      dataTypeGroup,
+    ),
   };
 
-  return mergeDeep(options, evalApexConfig(config.apexConfig));
+  const x = mergeDeep(options, evalApexConfig(config.apexConfig));
+  console.log(x);
+  return x;
 }
 
 function getFill(config: CardConfig, series: CardSeries[]): ApexFill {
@@ -137,17 +155,56 @@ function getStroke(config: CardConfig, series: CardSeries[]): ApexStroke {
   };
 }
 
-function getSeries(series: CardSeries[]): ApexAxisChartSeries {
+function getSeries(
+  series: CardSeries[],
+  dataTypeGroup?: DataTypeGroup,
+): ApexAxisChartSeries {
   return series.map((s) => {
     return {
       name: s.config.name,
       type: s.config.type,
-      data: s.config.show.inChart ? s.data : [],
+      data: s.config.show.inChart
+        ? dataTypeGroup === DataTypeGroup.B
+          ? s.data.map((d) => ({ x: `${d[0]}s`, y: d[1] }))
+          : s.data
+        : [],
     };
   });
 }
 
-function getXAxis(start?: Date, end?: Date): ApexXAxis {
+function getXAxis(
+  start?: Date,
+  end?: Date,
+  dataTypeGroup?: DataTypeGroup,
+): ApexXAxis {
+  /**
+   * The energy graphs should be run as categories
+   */
+  if (dataTypeGroup === DataTypeGroup.B) {
+    return {
+      type: "category",
+      labels: {
+        rotate: 0,
+        formatter: function (value) {
+          const lValue = Number.parseInt(value);
+          if (isNaN(lValue)) {
+            return value;
+          } else {
+            const lDate = moment(lValue);
+            if (lDate.clone().startOf("day").isSame(lDate)) {
+              return lDate.format("DD MMM");
+            } else {
+              return lDate.format("HH:mm");
+            }
+          }
+        },
+      },
+    };
+  }
+
+  /**
+   * Other graphs are treated as datetime
+   */
   if (start === undefined || isNaN(start.getTime())) {
     start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -156,7 +213,7 @@ function getXAxis(start?: Date, end?: Date): ApexXAxis {
     end = new Date();
     end.setHours(23, 59, 59, 999);
   }
-  const xAxis: ApexXAxis = {
+  return {
     type: "datetime",
     min: start.getTime(),
     max: end.getTime(),
@@ -166,12 +223,11 @@ function getXAxis(start?: Date, end?: Date): ApexXAxis {
         year: "yyyy",
         month: "MMM 'yy",
         day: "dd MMM",
-        hour: "hh:mm tt",
-        minute: "hh:mm:ss tt",
+        hour: "HH:mm",
+        minute: "HH:mm",
       },
     },
   };
-  return xAxis;
 }
 
 function calculateMaxOrMin(
@@ -195,9 +251,6 @@ function calculateMaxOrMin(
     if (typeof configMinMax === "number") {
       if (type === MinMaxType.ABSOLUTE) {
         const newVal = val + configMinMax;
-        console.log(
-          `Is Min and Abs. Val: ${val}. Conf Min/Max: ${configMinMax}. New Val: ${newVal}`,
-        );
         if (isMin && val >= 0 && newVal < 0) {
           return 0;
         }
@@ -297,19 +350,14 @@ function getYAxis(
   });
 }
 
-function getXTooltipFormatter(config: CardConfig) {
-  if (config.apexConfig?.tooltip?.x?.format) return undefined;
-
-  return function (val) {
-    return new Intl.DateTimeFormat("en", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any).format(val);
+function getXTooltipFormatter() {
+  return function (value) {
+    const lValue = Number.parseInt(value);
+    if (isNaN(lValue)) {
+      return lValue;
+    } else {
+      return moment(lValue).format("DD MMM YYYY, HH:mm");
+    }
   };
 }
 
@@ -334,6 +382,7 @@ function getAnnotations(
   now: Date,
   end?: Date,
   period?: Period,
+  dataTypeGroup?: DataTypeGroup,
 ): ApexAnnotations {
   const getNowAnnotation = (): XAxisAnnotations => {
     if (
@@ -347,9 +396,12 @@ function getAnnotations(
         Period.LAST_THREE_HOUR,
         Period.LAST_SIX_HOUR,
         Period.LAST_TWELVE_HOUR,
-      ].includes(period)
+      ].includes(period) ||
+      dataTypeGroup === DataTypeGroup.B
     ) {
-      return {};
+      return {
+        x: null,
+      };
     }
     const color = computeColor(config.now.color);
     const textColor = computeTextColor(color);

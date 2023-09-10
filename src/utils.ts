@@ -305,6 +305,15 @@ export function getLovelace(): LovelaceConfig | null {
 }
 
 /**
+ * Returns whethere the supplied date is valid or not
+ * @param date The date to check
+ * @returns If the date is valid
+ */
+export function isDateValid(date): boolean {
+  return date instanceof Date && isFinite(date.getTime());
+}
+
+/**
  * ########################################
  * # Generation Functions
  * ########################################
