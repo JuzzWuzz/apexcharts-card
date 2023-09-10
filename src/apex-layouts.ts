@@ -75,9 +75,7 @@ export function getLayoutConfig(
     ),
   };
 
-  const x = mergeDeep(options, evalApexConfig(config.apexConfig));
-  console.log(x);
-  return x;
+  return mergeDeep(options, evalApexConfig(config.apexConfig));
 }
 
 function getFill(config: CardConfig, series: CardSeries[]): ApexFill {
