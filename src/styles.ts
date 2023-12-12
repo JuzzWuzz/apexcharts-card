@@ -73,7 +73,9 @@ export const stylesApex: CSSResultGroup = css`
     opacity: 0;
     pointer-events: none;
     content: "";
-    transition: opacity 15ms linear, background-color 15ms linear;
+    transition:
+      opacity 15ms linear,
+      background-color 15ms linear;
     opacity: var(--mdc-icon-button-ripple-opacity, 0.12);
   }
   ha-icon-button.active::before {

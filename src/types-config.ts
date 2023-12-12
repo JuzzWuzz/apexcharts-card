@@ -2,13 +2,7 @@
  * Base Enums
  */
 
-export enum DataType {
-  DEFAULT = "default",
-  ENERGY = "energy",
-  PERCENTAGE = "percentage",
-  POWER = "power",
-  TEMPERATURE = "temperature",
-}
+import { DataType } from "juzz-ha-helper";
 
 export enum DataTypeGroup {
   A = "a",
@@ -131,19 +125,6 @@ export interface CardShowExternalConfig {
 export interface CardShowConfig extends CardShowExternalConfig {
   lastUpdated: boolean;
   loading: boolean;
-}
-
-/**
- * Data Types Configs
- */
-
-export interface DataTypeConfig {
-  dataType: DataType;
-  floatPrecision: number;
-  unit?: string;
-  unitArray?: string[];
-  unitSeparator: string;
-  unitStep?: number;
 }
 
 /**

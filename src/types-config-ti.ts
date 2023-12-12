@@ -4,14 +4,6 @@
 import * as t from "ts-interface-checker";
 // tslint:disable:object-literal-key-quotes
 
-export const DataType = t.enumtype({
-  DEFAULT: "default",
-  ENERGY: "energy",
-  PERCENTAGE: "percentage",
-  POWER: "power",
-  TEMPERATURE: "temperature",
-});
-
 export const DataTypeGroup = t.enumtype({
   A: "a",
   B: "b",
@@ -118,15 +110,6 @@ export const CardShowConfig = t.iface(["CardShowExternalConfig"], {
   loading: "boolean",
 });
 
-export const DataTypeConfig = t.iface([], {
-  dataType: "DataType",
-  floatPrecision: "number",
-  unit: t.opt("string"),
-  unitArray: t.opt(t.array("string")),
-  unitSeparator: "string",
-  unitStep: t.opt("number"),
-});
-
 export const SeriesShowConfigExternal = t.iface([], {
   extremas: t.opt("ExtremasType"),
   inChart: t.opt("boolean"),
@@ -216,7 +199,6 @@ export const SeriesSetConfig = t.iface([], {
 });
 
 const exportedTypeSuite: t.ITypeSuite = {
-  DataType,
   DataTypeGroup,
   MinMaxType,
   Period,
@@ -233,7 +215,6 @@ const exportedTypeSuite: t.ITypeSuite = {
   CardNowConfig,
   CardShowExternalConfig,
   CardShowConfig,
-  DataTypeConfig,
   SeriesShowConfigExternal,
   SeriesShowConfig,
   AllSeriesConfigExternal,

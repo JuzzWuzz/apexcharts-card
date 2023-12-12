@@ -5,8 +5,6 @@ import {
   CardNowConfig,
   CardShowConfig,
   DataPoint,
-  DataType,
-  DataTypeConfig,
   MinMaxPoint,
   Period,
   SeriesConfig,
@@ -44,5 +42,3 @@ export interface FormattedValue {
   unitOfMeasurement: string;
   formatted(): string;
 }
-
-export type DataTypeMap = Map<DataType, DataTypeConfig>;

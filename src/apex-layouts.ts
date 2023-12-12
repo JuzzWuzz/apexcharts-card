@@ -1,25 +1,24 @@
 import { ApexOptions } from "apexcharts";
 import { DEFAULT_AREA_OPACITY, DEFAULT_SERIES_TYPE } from "./const";
-import { CardConfig, CardSeries, DataTypeMap } from "./types";
+import { CardConfig, CardSeries } from "./types";
 import {
   computeColor,
   computeTextColor,
   formatValueAndUom,
-  getDataTypeConfig,
   mergeDeep,
 } from "./utils";
 import {
-  YAxisConfig,
-  MinMaxType,
-  Period,
-  MinMaxValue,
   DataTypeGroup,
+  MinMaxType,
+  MinMaxValue,
+  Period,
+  YAxisConfig,
 } from "./types-config";
 import moment from "moment";
+import { getDataTypeConfig } from "juzz-ha-helper";
 
 export function getLayoutConfig(
   config: CardConfig,
-  dataTypeMap: DataTypeMap,
   dataTypeGroup?: DataTypeGroup,
   series: CardSeries[] = [],
   yaxis: YAxisConfig[] = [],
@@ -51,22 +50,21 @@ export function getLayoutConfig(
     },
     fill: getFill(config, series),
     colors: getColors(series),
-    legend: getLegend(dataTypeMap, series),
+    legend: getLegend(series),
     stroke: getStroke(config, series),
     series: getSeries(series, dataTypeGroup),
     xaxis: getXAxis(start, end, dataTypeGroup),
-    yaxis: getYAxis(dataTypeMap, yaxis, series),
+    yaxis: getYAxis(yaxis, series),
     tooltip: {
       x: {
         formatter: getXTooltipFormatter(),
       },
       y: {
-        formatter: getYTooltipFormatter(dataTypeMap, series),
+        formatter: getYTooltipFormatter(series),
       },
     },
     annotations: getAnnotations(
       config,
-      dataTypeMap,
       series,
       now,
       end,
@@ -97,7 +95,7 @@ function getColors(series: CardSeries[]): string[] {
   return series.map((s) => s.color);
 }
 
-function getLegend(dataTypeMap: DataTypeMap, series: CardSeries[]): ApexLegend {
+function getLegend(series: CardSeries[]): ApexLegend {
   const getLegendFormatter = () => {
     const legendValues = series.map((s) => {
       const name = s.config.name ?? "";
@@ -106,7 +104,7 @@ function getLegend(dataTypeMap: DataTypeMap, series: CardSeries[]): ApexLegend {
       } else {
         const formattedValue = formatValueAndUom(
           s.headerValue,
-          getDataTypeConfig(dataTypeMap, s.config.dataType),
+          getDataTypeConfig(s.config.dataType),
           s.config.clampNegative,
         ).formatted();
         return `${name}: <strong>${formattedValue}</strong>`;
@@ -265,11 +263,7 @@ function calculateMaxOrMin(
   return val;
 }
 
-function getYAxis(
-  dataTypeMap: DataTypeMap,
-  yAxes: YAxisConfig[],
-  series: CardSeries[],
-): ApexYAxis[] {
+function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]): ApexYAxis[] {
   return yAxes.map((y) => {
     // Construct the ApexConfig and remove items not permitted
     const apexConfig = mergeDeep(y.apexConfig);
@@ -310,7 +304,7 @@ function getYAxis(
       true,
     );
 
-    const dataTypeConfig = getDataTypeConfig(dataTypeMap, y.dataType);
+    const dataTypeConfig = getDataTypeConfig(y.dataType);
 
     // Merge the final config
     const mergedConfig: ApexYAxis = mergeDeep(
@@ -359,12 +353,12 @@ function getXTooltipFormatter() {
   };
 }
 
-function getYTooltipFormatter(dataTypeMap: DataTypeMap, series: CardSeries[]) {
+function getYTooltipFormatter(series: CardSeries[]) {
   return function (value, opts) {
     const seriesConfig = series[opts.seriesIndex].config;
     const formattedValue = formatValueAndUom(
       value,
-      getDataTypeConfig(dataTypeMap, seriesConfig.dataType),
+      getDataTypeConfig(seriesConfig.dataType),
       seriesConfig.clampNegative,
     ).formatted();
     return [
@@ -375,7 +369,6 @@ function getYTooltipFormatter(dataTypeMap: DataTypeMap, series: CardSeries[]) {
 
 function getAnnotations(
   config: CardConfig,
-  dataTypeMap: DataTypeMap,
   series: CardSeries[],
   now: Date,
   end?: Date,
@@ -421,7 +414,7 @@ function getAnnotations(
     const points: PointAnnotations[] = [];
     series.map((s) => {
       const extremas = s.config.show.extremas;
-      const dataTypeConfig = getDataTypeConfig(dataTypeMap, s.config.dataType);
+      const dataTypeConfig = getDataTypeConfig(s.config.dataType);
       if (extremas !== false) {
         [
           extremas === true || extremas.toString().includes("min")

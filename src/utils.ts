@@ -1,29 +1,17 @@
 import { TinyColor } from "@ctrl/tinycolor";
 import {
-  DEFAULT_CLAMP_NEGATIVE,
   DEFAULT_COLORS,
   DEFAULT_DATA,
-  DEFAULT_DATA_TYPE,
-  DEFAULT_FLOAT_PRECISION,
   DEFAULT_MIN_MAX,
   DEFAULT_SERIES_TYPE,
-  DEFAULT_UNIT_SEPARATOR,
   DEFAULT_Y_AXIS_ID,
   NO_VALUE,
 } from "./const";
 import { LovelaceConfig } from "juzz-ha-helper";
-import {
-  CardConfig,
-  CardSeries,
-  DataTypeMap,
-  EntitySeries,
-  FormattedValue,
-} from "./types";
+import { CardConfig, CardSeries, EntitySeries, FormattedValue } from "./types";
 import {
   CardConfigExternal,
   DataPoint,
-  DataType,
-  DataTypeConfig,
   DataTypeGroup,
   LegendFunction,
   MinMaxPoint,
@@ -37,8 +25,23 @@ import {
 } from "./types-config";
 import { HassEntity } from "home-assistant-js-websocket";
 import { createCheckers } from "ts-interface-checker";
+import { basicTypes, BasicType } from "ts-interface-checker/dist/types";
 import exportedTypeSuite from "./types-config-ti";
 import moment from "moment";
+import {
+  DataType,
+  DataTypeConfig,
+  DEFAULT_CLAMP_NEGATIVE,
+  DEFAULT_FLOAT_PRECISION,
+} from "juzz-ha-helper";
+
+/**
+ * Add support for the DataType enum
+ */
+basicTypes["DataType"] = new BasicType(
+  (v) => Object.values(DataType).includes(v),
+  "is not a DataType",
+);
 
 /**
  * ########################################
@@ -67,25 +70,6 @@ export function computeTextColor(backgroundColor: string): string {
   } else {
     return "#fff"; // Dark colors => White font
   }
-}
-
-/**
- * ########################################
- * # DataType Functions
- * ########################################
- */
-export function getDefaultDataTypeConfig(): DataTypeConfig {
-  return {
-    dataType: DEFAULT_DATA_TYPE,
-    floatPrecision: DEFAULT_FLOAT_PRECISION,
-    unitSeparator: DEFAULT_UNIT_SEPARATOR,
-  };
-}
-export function getDataTypeConfig(
-  dataTypeMap: DataTypeMap,
-  dataType: DataType,
-): DataTypeConfig {
-  return dataTypeMap.get(dataType) ?? getDefaultDataTypeConfig();
 }
 
 /**
@@ -355,60 +339,6 @@ export function generateBaseConfig(conf: CardConfigExternal): CardConfig {
 }
 
 /**
- * Generate the DataTypes Map, these are code defined values
- * This does not support User-Defined values in config
- * @returns The map of DataTypes, for easier lookup
- */
-export function generateDataTypeMap(): DataTypeMap {
-  const dataTypeMap: DataTypeMap = new Map();
-
-  const systemDataTypes: DataTypeConfig[] = [
-    {
-      dataType: DataType.TEMPERATURE,
-      floatPrecision: 1,
-      unit: "°C",
-      unitSeparator: "",
-    },
-    {
-      dataType: DataType.PERCENTAGE,
-      floatPrecision: 0,
-      unit: "%",
-      unitSeparator: "",
-    },
-    {
-      dataType: DataType.POWER,
-      floatPrecision: 2,
-      unitArray: [
-        "W",
-        "kW",
-        "MW",
-        "GW",
-      ],
-      unitSeparator: " ",
-      unitStep: 1000,
-    },
-    {
-      dataType: DataType.ENERGY,
-      floatPrecision: 2,
-      unitArray: [
-        "Wh",
-        "kWh",
-        "MWh",
-        "GWh",
-      ],
-      unitSeparator: " ",
-      unitStep: 1000,
-    },
-  ];
-
-  systemDataTypes.forEach((dataType) => {
-    dataTypeMap.set(dataType.dataType, dataType);
-  });
-
-  return dataTypeMap;
-}
-
-/**
  * Some DataTypes are not compatible for being shown on the same graph at the same time
  * Return the Group the supplied DataType belongs to
  * @param dataType The DataType to evaluate
@@ -448,7 +378,7 @@ export function generateSeriesSets(conf: CardConfig): SeriesSetConfig[] {
         {
           index: index,
           id: DEFAULT_Y_AXIS_ID,
-          dataType: DEFAULT_DATA_TYPE,
+          dataType: DataType.DEFAULT,
           floatPrecision: DEFAULT_FLOAT_PRECISION,
           maxType: MinMaxType.AUTO,
           minType: MinMaxType.AUTO,
@@ -479,7 +409,7 @@ export function generateSeriesSets(conf: CardConfig): SeriesSetConfig[] {
       const seriesConfig: SeriesConfig = mergeDeep(
         {
           clampNegative: DEFAULT_CLAMP_NEGATIVE,
-          dataType: DEFAULT_DATA_TYPE,
+          dataType: DataType.DEFAULT,
           index: index,
           show: {
             extremas: false,

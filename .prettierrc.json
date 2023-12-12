@@ -1,5 +1,5 @@
 {
-  "plugins": ["./node_modules/prettier-plugin-multiline-arrays"],
+  "plugins": ["prettier-plugin-multiline-arrays"],
   "multilineArraysWrapThreshold": 1,
   "printWidth": 80,
   "tabWidth": 2,

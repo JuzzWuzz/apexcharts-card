@@ -9,17 +9,15 @@ import { customElement, state } from "lit/decorators.js";
 import { ClassInfo, classMap } from "lit/directives/class-map.js";
 import { StyleInfo, styleMap } from "lit/directives/style-map.js";
 import moment, { Moment } from "moment";
-import { CardConfig, CardSeries, DataTypeMap } from "./types";
+import { CardConfig, CardSeries } from "./types";
 import * as pjson from "../package.json";
 import {
   calculateNewDates,
   formatApexDate,
   formatValueAndUom,
   generateBaseConfig,
-  generateDataTypeMap,
   generateSeries,
   generateSeriesSets,
-  getDataTypeConfig,
   getDateRangeLabel,
   getHeaderStateFunctionLabel,
   getLovelace,
@@ -41,7 +39,7 @@ import {
   Resolution,
   SeriesSetConfig,
 } from "./types-config";
-import { HomeAssistant, LovelaceCard } from "juzz-ha-helper";
+import { HomeAssistant, LovelaceCard, getDataTypeConfig } from "juzz-ha-helper";
 import { mdiArrowLeft, mdiArrowRight, mdiReload } from "@mdi/js";
 
 /* eslint no-console: 0 */
@@ -67,7 +65,6 @@ class ChartsCard extends LitElement {
 
   // Config variables
   @state() private _config?: CardConfig;
-  private _dataTypeMap: DataTypeMap = new Map();
   private _seriesSets: SeriesSetConfig[] = [];
   private _series: CardSeries[] = [];
 
@@ -142,7 +139,7 @@ class ChartsCard extends LitElement {
     if (this._config && this.shadowRoot?.querySelector("#graph")) {
       this._apexChart = new ApexCharts(
         this.shadowRoot.querySelector("#graph"),
-        mergeDeep(getLayoutConfig(this._config, this._dataTypeMap), {
+        mergeDeep(getLayoutConfig(this._config), {
           chart: { height: "300px" },
         }),
       );
@@ -238,9 +235,6 @@ class ChartsCard extends LitElement {
 
       // Now update the config
       this._config = conf;
-
-      // Compute the DataType Map
-      this._dataTypeMap = generateDataTypeMap();
 
       // Compute the SeriesSets
       this._seriesSets = generateSeriesSets(this._config);
@@ -433,7 +427,6 @@ class ChartsCard extends LitElement {
       this._apexChart?.updateOptions(
         getLayoutConfig(
           this._config,
-          this._dataTypeMap,
           this._seriesSet?.dataTypeGroup,
           this._series,
           yAxes,
@@ -638,7 +631,7 @@ class ChartsCard extends LitElement {
       .map((s) => {
         const formatted = formatValueAndUom(
           s.headerValue,
-          getDataTypeConfig(this._dataTypeMap, s.config.dataType),
+          getDataTypeConfig(s.config.dataType),
           s.config.clampNegative,
         );
         const styles: StyleInfo = {
@@ -679,9 +672,10 @@ class ChartsCard extends LitElement {
           @selected=${this._pickSeriesSet}
         >
           ${this._seriesSets.map(
-            (seriesSet) => html`<mwc-list-item .value=${seriesSet.name}
-              >${seriesSet.name}</mwc-list-item
-            >`,
+            (seriesSet) =>
+              html`<mwc-list-item .value=${seriesSet.name}
+                >${seriesSet.name}</mwc-list-item
+              >`,
           )}</ha-select
         >
       </div>
