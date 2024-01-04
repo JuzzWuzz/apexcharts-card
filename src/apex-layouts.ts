@@ -117,7 +117,7 @@ function getLegend(series: CardSeries[]): ApexLegend {
 
   return {
     onItemClick: {
-      toggleDataSeries: false,
+      toggleDataSeries: true,
     },
     position: "bottom",
     show: true,
@@ -264,7 +264,7 @@ function calculateMaxOrMin(
 }
 
 function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]): ApexYAxis[] {
-  return yAxes.map((y) => {
+  const apexYAxes: ApexYAxis[] = yAxes.map((y) => {
     // Construct the ApexConfig and remove items not permitted
     const apexConfig = mergeDeep(y.apexConfig);
     delete apexConfig.min;
@@ -304,11 +304,13 @@ function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]): ApexYAxis[] {
       true,
     );
 
+    // Get the DataType's config
     const dataTypeConfig = getDataTypeConfig(y.dataType);
 
     // Merge the final config
-    const mergedConfig: ApexYAxis = mergeDeep(
+    return mergeDeep(
       {
+        showAlways: true,
         decimalsInFloat: dataTypeConfig.floatPrecision,
         labels: {
           formatter: function (value) {
@@ -337,9 +339,25 @@ function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]): ApexYAxis[] {
       y,
       apexConfig,
     );
-
-    return mergedConfig;
   });
+
+  /**
+   * When using multiple Y-Axes there needs to be one per series
+   * But must only show the same axis once
+   */
+  if (yAxes.length === 1) {
+    return apexYAxes;
+  } else {
+    const yAxisSeen: Map<number, boolean> = new Map();
+    return series.map((s) => {
+      const yAxisIndex = s.config.yAxisIndex;
+      const showAxis = (yAxisSeen.get(yAxisIndex) ?? false) === false;
+      yAxisSeen.set(yAxisIndex, true);
+      return mergeDeep(apexYAxes[yAxisIndex], {
+        show: showAxis,
+      });
+    });
+  }
 }
 
 function getXTooltipFormatter() {
