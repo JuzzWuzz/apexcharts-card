@@ -88,6 +88,7 @@ export const stylesApex: CSSResultGroup = css`
 
   #graph {
     padding-left: -16px;
+    overflow: hidden;
   }
 
   /* Needed for minimal layout */
