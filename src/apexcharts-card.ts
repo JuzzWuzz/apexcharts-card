@@ -931,7 +931,8 @@ class ChartsCard extends LitElement {
       !this._seriesSet ||
       !this._timeDate ||
       !this._timeStart ||
-      !this._timeEnd
+      !this._timeEnd ||
+      !this.hass.connected
     ) {
       return;
     }
