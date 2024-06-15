@@ -7,7 +7,13 @@ import {
   DEFAULT_Y_AXIS_ID,
   NO_VALUE,
 } from "./const";
-import { LovelaceConfig } from "juzz-ha-helper";
+import {
+  DataType,
+  DataTypeConfig,
+  DEFAULT_CLAMP_NEGATIVE,
+  DEFAULT_FLOAT_PRECISION,
+  LovelaceConfig,
+} from "juzz-ha-helper";
 import { CardConfig, CardSeries, EntitySeries, FormattedValue } from "./types";
 import {
   CardConfigExternal,
@@ -28,12 +34,6 @@ import { createCheckers } from "ts-interface-checker";
 import { basicTypes, BasicType } from "ts-interface-checker/dist/types";
 import exportedTypeSuite from "./types-config-ti";
 import moment from "moment";
-import {
-  DataType,
-  DataTypeConfig,
-  DEFAULT_CLAMP_NEGATIVE,
-  DEFAULT_FLOAT_PRECISION,
-} from "juzz-ha-helper";
 
 /**
  * Add support for the DataType enum
@@ -345,17 +345,11 @@ export function generateBaseConfig(conf: CardConfigExternal): CardConfig {
  * @returns The DataTypeGroup this belongs to
  */
 export function getDataTypeGroup(dataType: DataType): DataTypeGroup {
-  switch (dataType) {
-    case DataType.DEFAULT:
-    case DataType.PERCENTAGE:
-    case DataType.POWER:
-    case DataType.TEMPERATURE: {
-      return DataTypeGroup.A;
-    }
-    case DataType.ENERGY: {
-      return DataTypeGroup.B;
-    }
+  if (dataType === DataType.ENERGY) {
+    return DataTypeGroup.B;
   }
+
+  return DataTypeGroup.A;
 }
 
 /**
@@ -599,8 +593,6 @@ export function getPeriodLabel(period: Period): string {
  */
 export function getResolutionLabel(resolution: Resolution): string {
   switch (resolution) {
-    case Resolution.RAW:
-      return "Raw";
     case Resolution.ONE_MINUTE:
       return "1m";
     case Resolution.FIVE_MINUTES:
@@ -663,10 +655,8 @@ export function calculateNewDates(
     case Period.LAST_THREE_HOUR:
     case Period.LAST_SIX_HOUR:
     case Period.LAST_TWELVE_HOUR: {
-      // We rounding up to the end of the next interval. Raw items round up to next minute
-      const duration = moment.duration(
-        resolution !== Resolution.RAW ? resolution : Resolution.ONE_MINUTE,
-      );
+      // We rounding up to the end of the next interval
+      const duration = moment.duration(resolution);
       endDate = moment(Math.ceil(+endDate / +duration) * +duration);
       startDate = endDate.clone().subtract(periodDuration);
       break;
@@ -717,7 +707,6 @@ export function getResolutionsForPeriod(
         case Period.LAST_HOUR:
         case Period.LAST_THREE_HOUR: {
           supportedResolutions = [
-            Resolution.RAW,
             Resolution.ONE_MINUTE,
             Resolution.FIVE_MINUTES,
           ];

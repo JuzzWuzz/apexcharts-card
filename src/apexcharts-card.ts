@@ -959,7 +959,7 @@ class ChartsCard extends LitElement {
             clampNegative: seriesConfig.clampNegative,
             measurement: seriesConfig.measurement,
             device: seriesConfig.device,
-            channel: seriesConfig.channel,
+            field: seriesConfig.field,
           };
         }),
         seriesSet: this._seriesSet.name,

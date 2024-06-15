@@ -28,7 +28,6 @@ export const Period = t.enumtype({
 });
 
 export const Resolution = t.enumtype({
-  RAW: "RAW",
   ONE_MINUTE: "PT1M",
   FIVE_MINUTES: "PT5M",
   FIFTEEN_MINUTES: "PT15M",
@@ -139,13 +138,12 @@ export const AllSeriesConfigExternal = t.iface([], {
   strokeWidth: t.opt("number"),
   type: t.opt(t.union(t.lit("line"), t.lit("column"), t.lit("area"))),
   yAxisId: t.opt("string"),
+  measurement: t.opt("string"),
+  device: t.opt("string"),
+  field: t.opt("string"),
 });
 
-export const SeriesConfigExternal = t.iface(["AllSeriesConfigExternal"], {
-  measurement: "string",
-  device: "string",
-  channel: t.opt("string"),
-});
+export const SeriesConfigExternal = t.iface(["AllSeriesConfigExternal"], {});
 
 export const SeriesConfig = t.iface(["SeriesConfigExternal"], {
   clampNegative: "boolean",
@@ -154,6 +152,9 @@ export const SeriesConfig = t.iface(["SeriesConfigExternal"], {
   show: "SeriesShowConfig",
   yAxisId: "string",
   yAxisIndex: "number",
+  measurement: "string",
+  device: "string",
+  field: "string",
 });
 
 export const AllYAxisConfigExternal = t.iface([], {

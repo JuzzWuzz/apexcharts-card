@@ -29,7 +29,6 @@ export enum Period {
 }
 
 export enum Resolution {
-  RAW = "RAW",
   ONE_MINUTE = "PT1M",
   FIVE_MINUTES = "PT5M",
   FIFTEEN_MINUTES = "PT15M",
@@ -164,13 +163,12 @@ export interface AllSeriesConfigExternal {
   strokeWidth?: number;
   type?: "line" | "column" | "area";
   yAxisId?: string;
+  measurement?: string;
+  device?: string;
+  field?: string;
 }
 
-export interface SeriesConfigExternal extends AllSeriesConfigExternal {
-  measurement: string;
-  device: string;
-  channel?: string;
-}
+export interface SeriesConfigExternal extends AllSeriesConfigExternal {}
 
 export interface SeriesConfig extends SeriesConfigExternal {
   clampNegative: boolean;
@@ -179,6 +177,9 @@ export interface SeriesConfig extends SeriesConfigExternal {
   show: SeriesShowConfig;
   yAxisId: string;
   yAxisIndex: number;
+  measurement: string;
+  device: string;
+  field: string;
 }
 
 /**
