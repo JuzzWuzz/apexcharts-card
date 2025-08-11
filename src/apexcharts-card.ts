@@ -69,7 +69,7 @@ class ChartsCard extends LitElement {
   private _series: CardSeries[] = [];
 
   // Time variables
-  private _refreshTimer?: number;
+  private _refreshTimer?: NodeJS.Timeout;
   @state() private _timeDate?: Moment;
   @state() private _lastUpdated: Date = new Date();
   private _timeViewingLiveData = true;
