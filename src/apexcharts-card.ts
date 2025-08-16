@@ -69,7 +69,7 @@ class ChartsCard extends LitElement {
   private _series: CardSeries[] = [];
 
   // Time variables
-  private _refreshTimer?: NodeJS.Timeout;
+  private _refreshTimer?: number;
   @state() private _timeDate?: Moment;
   @state() private _lastUpdated: Date = new Date();
   private _timeViewingLiveData = true;
@@ -687,7 +687,7 @@ class ChartsCard extends LitElement {
       return html``;
     }
     return html`
-      <div id="lastUpdated">${formatApexDate(this._lastUpdated)}</div>
+      <div id="last_updated">${formatApexDate(this._lastUpdated)}</div>
     `;
   }
 

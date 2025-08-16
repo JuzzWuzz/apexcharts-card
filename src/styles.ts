@@ -2,7 +2,7 @@ import { css, CSSResultGroup } from "lit";
 
 export const stylesApex: CSSResultGroup = css`
   :host {
-    --mdc-button-outline-color: currentColor;
+    display: block;
   }
 
   #date-selector {
@@ -42,53 +42,25 @@ export const stylesApex: CSSResultGroup = css`
     --ha-select-min-width: 0;
   }
 
-  mwc-button {
-    flex-shrink: 0;
-    margin-left: 8px;
-  }
-  ha-button-toggle-group {
-    direction: var(--direction);
-    padding-inline-start: 8px;
-    padding-left: 8px;
-  }
-  ha-icon-button,
-  ha-icon-button-arrow-prev,
-  ha-icon-button-arrow-next {
-    margin-left: 4px;
-    --mdc-icon-button-size: 28px;
-    --mdc-icon-size: 20px;
-  }
-  ha-svg-icon {
-    height: 36px;
-    width: 36px;
-  }
-  ha-icon-button.active::before,
-  mwc-button.active::before {
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    background-color: currentColor;
-    opacity: 0;
-    pointer-events: none;
-    content: "";
-    transition:
-      opacity 15ms linear,
-      background-color 15ms linear;
-    opacity: var(--mdc-icon-button-ripple-opacity, 0.12);
-  }
-  ha-icon-button.active::before {
-    border-radius: 50%;
-  }
-
-  .apexcharts-legend {
-    padding: 0px;
-  }
-
-  #graph {
-    padding-left: -16px;
+  ha-card {
     overflow: hidden;
+    position: relative;
+  }
+
+  .wrapper {
+    display: grid;
+    grid-template-areas: "header" "graph";
+    grid-template-columns: 1fr;
+    grid-template-rows: min-content 1fr;
+  }
+
+  #graph-wrapper {
+    height: 100%;
+    grid-area: graph;
+  }
+
+  #brush {
+    margin-top: -30px;
   }
 
   /* Needed for minimal layout */
@@ -96,14 +68,25 @@ export const stylesApex: CSSResultGroup = css`
     overflow: visible !important;
   }
 
+  #header {
+    padding: 8px 16px 0px;
+    grid-area: header;
+  }
+  #header.floating {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+  }
+
   #header__title {
-    font-size: 20px;
+    color: var(--secondary-text-color);
+    font-size: 16px;
     font-weight: 500;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     padding-bottom: 5px;
-    position: relative;
   }
 
   #header__states {
@@ -120,6 +103,20 @@ export const stylesApex: CSSResultGroup = css`
   #states__state {
     flex: 0 0 10%;
     position: relative;
+  }
+
+  #header__title {
+    position: relative;
+  }
+
+  #header__title.actions,
+  #states__state.actions {
+    cursor: pointer;
+  }
+
+  #header__title.disabled,
+  #states__state.disabled {
+    pointer-events: none;
   }
 
   #state__value {
@@ -140,13 +137,6 @@ export const stylesApex: CSSResultGroup = css`
     white-space: nowrap;
   }
 
-  #state__value > #function {
-    font-size: 0.8em;
-    font-weight: 300;
-    opacity: 0.8;
-    white-space: nowrap;
-  }
-
   #state__name {
     font-size: 0.8em;
     font-weight: 300;
@@ -155,7 +145,7 @@ export const stylesApex: CSSResultGroup = css`
     text-overflow: ellipsis;
   }
 
-  #lastUpdated {
+  #last_updated {
     font-size: 0.63em;
     font-weight: 300;
     overflow: hidden;
@@ -735,6 +725,27 @@ export const stylesApex: CSSResultGroup = css`
     }
   }
 
+  .apexcharts-datalabel.apexcharts-element-hidden {
+    opacity: 0;
+  }
+
+  .apexcharts-pie-label,
+  .apexcharts-datalabels,
+  .apexcharts-datalabel,
+  .apexcharts-datalabel-label,
+  .apexcharts-datalabel-value {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .apexcharts-pie-label-delay {
+    opacity: 0;
+    animation-name: opaque;
+    animation-duration: 0.3s;
+    animation-fill-mode: forwards;
+    animation-timing-function: ease;
+  }
+
   .apexcharts-canvas .apexcharts-element-hidden {
     opacity: 0;
   }
@@ -828,45 +839,5 @@ export const stylesApex: CSSResultGroup = css`
 
   #spinner {
     position: relative;
-  }
-
-  .lds-ring,
-  .lds-ring div {
-    box-sizing: border-box;
-  }
-  .lds-ring {
-    display: inline-block;
-    position: relative;
-    width: 20px;
-    height: 20px;
-  }
-  .lds-ring div {
-    box-sizing: border-box;
-    display: block;
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    margin: 2px;
-    border: 2px solid var(--primary-text-color);
-    border-radius: 50%;
-    animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-    border-color: var(--primary-text-color) transparent transparent transparent;
-  }
-  .lds-ring div:nth-child(1) {
-    animation-delay: -0.45s;
-  }
-  .lds-ring div:nth-child(2) {
-    animation-delay: -0.3s;
-  }
-  .lds-ring div:nth-child(3) {
-    animation-delay: -0.15s;
-  }
-  @keyframes lds-ring {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
   }
 `;
