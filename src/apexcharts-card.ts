@@ -295,10 +295,12 @@ class ChartsCard extends LitElement {
   protected updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
 
-    // We have rendered but not yet initialised
+    // We have rendered but not yet initialised.
+    // Defer by one animation frame so the browser completes layout before
+    // ApexCharts reads the container width (otherwise it falls back to 500px).
     if (this._config && !this._apexChart && this.isConnected) {
       console.log("updated() -- _initialLoad()");
-      this._initialLoad();
+      requestAnimationFrame(() => this._initialLoad());
     }
   }
 
@@ -803,9 +805,7 @@ class ChartsCard extends LitElement {
     const currentTime = DateTime.now();
     const duration = getPeriodDuration(this._period);
     const newDate = this._timeDate.plus(duration);
-    console.log(
-      `New Date: ${newDate.toISO()}... ${newDate > currentTime}`,
-    );
+    console.log(`New Date: ${newDate.toISO()}... ${newDate > currentTime}`);
 
     if (newDate > currentTime) {
       this._timeViewingLiveData = true;
@@ -893,7 +893,11 @@ class ChartsCard extends LitElement {
       }`,
     );
 
-    if (this._timeViewingLiveData && this._timeEnd && currentTime > this._timeEnd) {
+    if (
+      this._timeViewingLiveData &&
+      this._timeEnd &&
+      currentTime > this._timeEnd
+    ) {
       this._updateDate(currentTime);
     } else {
       this._triggerUpdate();
