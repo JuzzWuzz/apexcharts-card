@@ -28,12 +28,6 @@ export const DEFAULT_AREA_OPACITY = 0.7;
 export const DEFAULT_DATA: Array<DataPoint> = [];
 
 export const DEFAULT_MIN_MAX: MinMaxPoint = {
-  min: [
-    0,
-    0,
-  ],
-  max: [
-    0,
-    0,
-  ],
+  min: [0, null],
+  max: [0, null],
 };

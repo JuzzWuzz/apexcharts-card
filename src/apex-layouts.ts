@@ -468,7 +468,7 @@ function getAnnotations(
   };
   const getMinMaxPoints = (): PointAnnotations[] => {
     const points: PointAnnotations[] = [];
-    series.map((s) => {
+    series.forEach((s) => {
       const extremas = s.config.show.extremas;
       const dataTypeConfig = getDataTypeConfig(s.config.dataType);
       if (extremas !== false) {
@@ -479,8 +479,8 @@ function getAnnotations(
           extremas === true || extremas.toString().includes("max")
             ? s.minMaxPoint.max
             : null,
-        ].map((p) => {
-          if (p === null) return;
+        ].forEach((p) => {
+          if (p === null || p[1] === null) return;
           const bgColor = computeColor(s.color);
           const txtColor = computeTextColor(bgColor);
           points.push({
@@ -516,13 +516,13 @@ function getAnnotations(
 function evalApexConfig(apexConfig?: ApexOptions): ApexOptions | undefined {
   if (!apexConfig) return undefined;
 
-  const eval2 = eval;
   Object.keys(apexConfig).forEach((key) => {
     if (
       typeof apexConfig[key] === "string" &&
       apexConfig[key].trim().startsWith("EVAL:")
     ) {
-      apexConfig[key] = eval2(`(${apexConfig[key].trim().slice(5)})`);
+      // eslint-disable-next-line no-eval
+      apexConfig[key] = eval(`(${apexConfig[key].trim().slice(5)})`);
     }
     if (typeof apexConfig[key] === "object") {
       apexConfig[key] = evalApexConfig(apexConfig[key]);

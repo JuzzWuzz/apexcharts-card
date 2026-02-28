@@ -183,16 +183,16 @@ class ChartsCard extends LitElement {
             }
           }
         }
-
-        // Refresh the data
-        this._refresh();
-
-        // Update the graph data
-        this._updateData();
-
-        // Init the timer
-        this.initTimer();
       }
+
+      // Refresh the data
+      this._refresh();
+
+      // Update the graph data
+      this._updateData();
+
+      // Init the timer
+      this.initTimer();
     }
   }
 
@@ -266,17 +266,6 @@ class ChartsCard extends LitElement {
       return false;
     }
 
-    // Check if the entity we are tracking has changed
-    const oldHass = changedProps.get("_hass") as HomeAssistant | undefined;
-    if (oldHass && this._hass) {
-      // Check if the main graph entity has changed
-      const entityId = this._config.entity;
-      if (oldHass.states[entityId] !== this._hass.states[entityId]) {
-        console.log("shouldUpdate() -- _updateData()");
-        this._updateData();
-      }
-    }
-
     // If we have not yet initialised
     if (!this._apexChart) {
       return true;
@@ -286,7 +275,7 @@ class ChartsCard extends LitElement {
     if (
       [
         "_config",
-        "_date",
+        "_timeDate",
         "_error",
         "_lastUpdated",
         "_period",
@@ -376,11 +365,14 @@ class ChartsCard extends LitElement {
         const entitySeriesSet = this._entity.attributes.seriesSet;
         const updatedSeriesSet = (() => {
           if (entitySeriesSet !== this._seriesSet?.name) {
-            this._seriesSet = this._seriesSets.find(
+            const newSeriesSet = this._seriesSets.find(
               (seriesSet) => seriesSet.name === entitySeriesSet,
             );
-            this.initGraph();
-            return true;
+            if (newSeriesSet) {
+              this._seriesSet = newSeriesSet;
+              this.initGraph();
+              return true;
+            }
           }
           return false;
         })();
@@ -726,7 +718,7 @@ class ChartsCard extends LitElement {
     );
 
     // If the chosen date is the same, skip the update
-    if (this._timeDate === date) {
+    if (this._timeDate?.isSame(date)) {
       return;
     }
 
@@ -754,10 +746,14 @@ class ChartsCard extends LitElement {
     );
 
     /**
-     * Grab the last resolution (coarsest) if one is not definend or the one defined is not in the supported list
-     * If we are updating the resolution, that function will call a refresh
-     * Otherwise call for a refresh
+     * Grab the last resolution (coarsest) if one is not defined or the one defined is not in the supported list.
+     * If the list is empty (dataTypeGroup not yet known), leave resolution unchanged and skip refresh.
+     * If we are updating the resolution, that function will call a refresh.
+     * Otherwise call for a refresh.
      */
+    if (supportedResolutions.length === 0) {
+      return;
+    }
     if (!supportedResolutions.includes(this._resolution)) {
       this._updateResolution(supportedResolutions.pop(), callRefresh);
     } else if (callRefresh) {
@@ -812,7 +808,7 @@ class ChartsCard extends LitElement {
     );
 
     if (newDate.isAfter(currentTime)) {
-      this._timeViewingLiveData = false;
+      this._timeViewingLiveData = true;
       this._updateDate(currentTime);
     } else {
       this._updateDate(newDate);

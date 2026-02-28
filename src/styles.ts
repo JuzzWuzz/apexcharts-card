@@ -47,22 +47,6 @@ export const stylesApex: CSSResultGroup = css`
     position: relative;
   }
 
-  .wrapper {
-    display: grid;
-    grid-template-areas: "header" "graph";
-    grid-template-columns: 1fr;
-    grid-template-rows: min-content 1fr;
-  }
-
-  #graph-wrapper {
-    height: 100%;
-    grid-area: graph;
-  }
-
-  #brush {
-    margin-top: -30px;
-  }
-
   /* Needed for minimal layout */
   svg:not(:root) {
     overflow: visible !important;

@@ -120,9 +120,7 @@ export function getTypeOfMinMax(
  */
 
 export function formatApexDate(value: Date): string {
-  const old = true;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hours12 = old ? { hour12: true } : { hourCycle: "h23" };
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",
@@ -130,7 +128,7 @@ export function formatApexDate(value: Date): string {
     hour: "numeric",
     minute: "numeric",
     second: "numeric",
-    ...hours12,
+    hourCycle: "h23",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any).format(value);
 }
@@ -766,8 +764,10 @@ export function getResolutionsForPeriod(
     }
   }
 
-  if (supportedResolutions.length === 0) {
-    //throw new Error("No supported resolutions for the chosen period");
+  if (supportedResolutions.length === 0 && dataTypeGroup !== undefined) {
+    throw new Error(
+      `No supported resolutions for period '${period}' with dataTypeGroup '${dataTypeGroup}'`,
+    );
   }
 
   return supportedResolutions;
@@ -797,6 +797,7 @@ export function getDateRangeLabel(
     case Period.TWO_DAY:
     case Period.WEEK: {
       return `${startDate.format("D MMM")} - ${endDate
+        .clone()
         .subtract(1, "second")
         .format("D MMM")}`;
     }
