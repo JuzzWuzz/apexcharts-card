@@ -114,7 +114,7 @@ export function getLayoutConfig(
   return mergeDeep(options, evalApexConfig(config.apexConfig));
 }
 
-function getFill(config: CardConfig, series: CardSeries[]): ApexFill {
+function getFill(config: CardConfig, series: CardSeries[]) {
   const getOpacity = () => {
     return series.map((s) => {
       return (
@@ -133,7 +133,7 @@ function getColors(series: CardSeries[]): string[] {
   return series.map((s) => s.color);
 }
 
-function getLegend(series: CardSeries[]): ApexLegend {
+function getLegend(series: CardSeries[]) {
   const getLegendFormatter = () => {
     const legendValues = series.map((s) => {
       const name = s.config.name ?? "";
@@ -163,7 +163,7 @@ function getLegend(series: CardSeries[]): ApexLegend {
   };
 }
 
-function getStroke(config: CardConfig, series: CardSeries[]): ApexStroke {
+function getStroke(config: CardConfig, series: CardSeries[]) {
   const getStrokeWidth = () => {
     if (config.chartType !== undefined && config.chartType !== "line")
       return config.apexConfig?.stroke?.width ?? 3;
@@ -189,10 +189,7 @@ function getStroke(config: CardConfig, series: CardSeries[]): ApexStroke {
   };
 }
 
-function getSeries(
-  series: CardSeries[],
-  dataTypeGroup?: DataTypeGroup,
-): ApexAxisChartSeries {
+function getSeries(series: CardSeries[], dataTypeGroup?: DataTypeGroup) {
   return series.map((s) => {
     return {
       name: s.config.name,
@@ -206,11 +203,7 @@ function getSeries(
   });
 }
 
-function getXAxis(
-  start?: Date,
-  end?: Date,
-  dataTypeGroup?: DataTypeGroup,
-): ApexXAxis {
+function getXAxis(start?: Date, end?: Date, dataTypeGroup?: DataTypeGroup) {
   /**
    * The energy graphs should be run as categories
    */
@@ -301,8 +294,8 @@ function calculateMaxOrMin(
   return val;
 }
 
-function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]): ApexYAxis[] {
-  const apexYAxes: ApexYAxis[] = yAxes.map((y) => {
+function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]) {
+  const apexYAxes = yAxes.map((y) => {
     // Construct the ApexConfig and remove items not permitted
     const apexConfig = mergeDeep(y.apexConfig);
     delete apexConfig.min;
@@ -430,8 +423,8 @@ function getAnnotations(
   end?: Date,
   period?: Period,
   dataTypeGroup?: DataTypeGroup,
-): ApexAnnotations {
-  const getNowAnnotation = (): XAxisAnnotations => {
+) {
+  const getNowAnnotation = () => {
     if (
       !config.now.show ||
       series.length === 0 ||
@@ -466,8 +459,8 @@ function getAnnotations(
       borderColor: color,
     };
   };
-  const getMinMaxPoints = (): PointAnnotations[] => {
-    const points: PointAnnotations[] = [];
+  const getMinMaxPoints = () => {
+    const points: object[] = [];
     series.forEach((s) => {
       const extremas = s.config.show.extremas;
       const dataTypeConfig = getDataTypeConfig(s.config.dataType);
