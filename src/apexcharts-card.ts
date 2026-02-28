@@ -8,7 +8,7 @@ import {
 import { customElement, state } from "lit/decorators.js";
 import { ClassInfo, classMap } from "lit/directives/class-map.js";
 import { StyleInfo, styleMap } from "lit/directives/style-map.js";
-import moment, { Moment } from "moment";
+import { DateTime } from "luxon";
 import { CardConfig, CardSeries } from "./types";
 import * as pjson from "../package.json";
 import {
@@ -70,13 +70,13 @@ class ChartsCard extends LitElement {
 
   // Time variables
   private _refreshTimer?: number;
-  @state() private _timeDate?: Moment;
+  @state() private _timeDate?: DateTime;
   @state() private _lastUpdated: Date = new Date();
   private _timeViewingLiveData = true;
 
   // Graph display variables
-  private _timeStart?: Moment;
-  private _timeEnd?: Moment;
+  private _timeStart?: DateTime;
+  private _timeEnd?: DateTime;
   @state() private _period: Period = Period.TWO_DAY;
   @state() private _resolution: Resolution = Resolution.THIRTY_MINUTES;
   @state() private _seriesSet?: SeriesSetConfig;
@@ -340,18 +340,18 @@ class ChartsCard extends LitElement {
             isDateValid(timeStart) &&
             isDateValid(timeEnd)
           ) {
-            const momentTimeDate = moment(timeDate);
-            const momentTimeStart = moment(timeStart);
-            const momentTimeEnd = moment(timeEnd);
+            const dtTimeDate = DateTime.fromJSDate(timeDate);
+            const dtTimeStart = DateTime.fromJSDate(timeStart);
+            const dtTimeEnd = DateTime.fromJSDate(timeEnd);
             if (
-              !momentTimeDate.isSame(this._timeDate) ||
-              !momentTimeStart.isSame(this._timeStart) ||
-              !momentTimeEnd.isSame(this._timeEnd) ||
+              dtTimeDate.toMillis() !== (this._timeDate?.toMillis() ?? NaN) ||
+              dtTimeStart.toMillis() !== (this._timeStart?.toMillis() ?? NaN) ||
+              dtTimeEnd.toMillis() !== (this._timeEnd?.toMillis() ?? NaN) ||
               timeLiveData !== this._timeViewingLiveData
             ) {
-              this._timeDate = momentTimeDate;
-              this._timeStart = momentTimeStart;
-              this._timeEnd = momentTimeEnd;
+              this._timeDate = dtTimeDate;
+              this._timeStart = dtTimeStart;
+              this._timeEnd = dtTimeEnd;
               this._timeViewingLiveData = timeLiveData;
               return true;
             }
@@ -712,13 +712,13 @@ class ChartsCard extends LitElement {
     this.callService();
   }
 
-  private _updateDate(date: moment.Moment) {
+  private _updateDate(date: DateTime) {
     console.log(
-      `updateDate(): ${this._timeDate === date ? "skipping" : "running"}`,
+      `updateDate(): ${this._timeDate?.toMillis() === date.toMillis() ? "skipping" : "running"}`,
     );
 
     // If the chosen date is the same, skip the update
-    if (this._timeDate?.isSame(date)) {
+    if (this._timeDate && this._timeDate.toMillis() === date.toMillis()) {
       return;
     }
 
@@ -800,14 +800,14 @@ class ChartsCard extends LitElement {
     console.log(`_pickNext(): ${!this._timeDate ? "skipping" : "running"}"`);
     if (!this._timeDate) return;
 
-    const currentTime = moment();
+    const currentTime = DateTime.now();
     const duration = getPeriodDuration(this._period);
-    const newDate = this._timeDate.clone().add(duration);
+    const newDate = this._timeDate.plus(duration);
     console.log(
-      `New Date: ${newDate.toISOString()}... ${newDate.isAfter(currentTime)}`,
+      `New Date: ${newDate.toISO()}... ${newDate > currentTime}`,
     );
 
-    if (newDate.isAfter(currentTime)) {
+    if (newDate > currentTime) {
       this._timeViewingLiveData = true;
       this._updateDate(currentTime);
     } else {
@@ -822,7 +822,7 @@ class ChartsCard extends LitElement {
     console.log(`_pickPrevious(): ${!this._timeDate ? "skipping" : "running"}`);
     if (!this._timeDate) return;
     const duration = getPeriodDuration(this._period);
-    const newDate = this._timeDate.clone().subtract(duration);
+    const newDate = this._timeDate.minus(duration);
     this._timeViewingLiveData = false;
 
     this._updateDate(newDate);
@@ -834,7 +834,7 @@ class ChartsCard extends LitElement {
   private _pickToday(): void {
     console.log("_pickToday()");
     this._timeViewingLiveData = true;
-    this._updateDate(moment());
+    this._updateDate(DateTime.now());
   }
 
   /**
@@ -886,14 +886,14 @@ class ChartsCard extends LitElement {
    * Refresh the graph data. Either auto or manual
    */
   private _refresh(): void {
-    const currentTime = moment();
+    const currentTime = DateTime.now();
     console.log(
-      `_refresh(): ${this._timeEnd?.toISOString()} -- ${currentTime.toISOString()}. ${
+      `_refresh(): ${this._timeEnd?.toISO()} -- ${currentTime.toISO()}. ${
         this._timeViewingLiveData
       }`,
     );
 
-    if (this._timeViewingLiveData && currentTime.isAfter(this._timeEnd)) {
+    if (this._timeViewingLiveData && this._timeEnd && currentTime > this._timeEnd) {
       this._updateDate(currentTime);
     } else {
       this._triggerUpdate();
@@ -934,7 +934,7 @@ class ChartsCard extends LitElement {
     }
 
     console.log(
-      `Sending:\nDate: ${this._timeDate.toISOString()}\nStart: ${this._timeStart.toISOString()}\nEnd: ${this._timeEnd.toISOString()}\nViewing Live: ${
+      `Sending:\nDate: ${this._timeDate.toUTC().toISO()}\nStart: ${this._timeStart.toUTC().toISO()}\nEnd: ${this._timeEnd.toUTC().toISO()}\nViewing Live: ${
         this._timeViewingLiveData
       }\nPeriod: ${this._period}\nResolution: ${
         this._resolution
@@ -959,9 +959,9 @@ class ChartsCard extends LitElement {
           };
         }),
         seriesSet: this._seriesSet.name,
-        timeDate: this._timeDate.toISOString(),
-        timeStart: this._timeStart.toISOString(),
-        timeEnd: this._timeEnd.toISOString(),
+        timeDate: this._timeDate.toUTC().toISO(),
+        timeStart: this._timeStart.toUTC().toISO(),
+        timeEnd: this._timeEnd.toUTC().toISO(),
         timeLiveData: this._timeViewingLiveData,
       }),
     });

@@ -14,7 +14,7 @@ import {
   Period,
   YAxisConfig,
 } from "./types-config";
-import moment from "moment";
+import { DateTime } from "luxon";
 import { getDataTypeConfig } from "juzz-ha-helper";
 
 export function getLayoutConfig(
@@ -224,11 +224,11 @@ function getXAxis(
           if (isNaN(lValue)) {
             return value;
           } else {
-            const lDate = moment(lValue);
-            if (lDate.clone().startOf("day").isSame(lDate)) {
-              return lDate.format("DD MMM");
+            const lDate = DateTime.fromMillis(lValue);
+            if (lDate.startOf("day").toMillis() === lDate.toMillis()) {
+              return lDate.toFormat("dd MMM");
             } else {
-              return lDate.format("HH:mm");
+              return lDate.toFormat("HH:mm");
             }
           }
         },
@@ -404,7 +404,7 @@ function getXTooltipFormatter() {
     if (isNaN(lValue)) {
       return lValue;
     } else {
-      return moment(lValue).format("DD MMM YYYY, HH:mm");
+      return DateTime.fromMillis(lValue).toFormat("dd MMM yyyy, HH:mm");
     }
   };
 }

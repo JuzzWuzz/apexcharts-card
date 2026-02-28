@@ -33,7 +33,7 @@ import { HassEntity } from "home-assistant-js-websocket";
 import { createCheckers } from "ts-interface-checker";
 import { basicTypes, BasicType } from "ts-interface-checker/dist/types";
 import exportedTypeSuite from "./types-config-ti";
-import moment from "moment";
+import { DateTime, Duration } from "luxon";
 
 /**
  * Add support for the DataType enum
@@ -609,27 +609,27 @@ export function getResolutionLabel(resolution: Resolution): string {
 /**
  * Helper to get a duration value to add/subtract a time value
  * @param period
- * @returns A moment duration
+ * @returns A luxon Duration
  */
-export function getPeriodDuration(period: Period): moment.Duration {
+export function getPeriodDuration(period: Period): Duration {
   switch (period) {
     case Period.LAST_TWELVE_HOUR:
-      return moment.duration(12, "hour");
+      return Duration.fromObject({ hours: 12 });
     case Period.LAST_SIX_HOUR:
-      return moment.duration(6, "hour");
+      return Duration.fromObject({ hours: 6 });
     case Period.LAST_THREE_HOUR:
-      return moment.duration(3, "hour");
+      return Duration.fromObject({ hours: 3 });
     case Period.LAST_HOUR:
-      return moment.duration(1, "hour");
+      return Duration.fromObject({ hours: 1 });
     case Period.DAY:
     case Period.TWO_DAY:
-      return moment.duration(1, "day");
+      return Duration.fromObject({ days: 1 });
     case Period.WEEK:
-      return moment.duration(1, "week");
+      return Duration.fromObject({ weeks: 1 });
     case Period.MONTH:
-      return moment.duration(1, "month");
+      return Duration.fromObject({ months: 1 });
     // case Periods.YEAR:
-    //   return moment.duration(1, "year");
+    //   return Duration.fromObject({ years: 1 });
   }
 }
 
@@ -640,43 +640,48 @@ export function getPeriodDuration(period: Period): moment.Duration {
  * @returns A dictionary of the calculated start and end dates
  */
 export function calculateNewDates(
-  date: moment.Moment,
+  date: DateTime,
   period: Period,
   resolution: Resolution,
-): { startDate: moment.Moment; endDate: moment.Moment } {
+): { startDate: DateTime; endDate: DateTime } {
   const periodDuration = getPeriodDuration(period);
 
-  let startDate = date.clone();
-  let endDate = date.clone();
+  // DateTime is immutable — no clone() needed
+  let startDate = date;
+  let endDate = date;
   switch (period) {
     case Period.LAST_HOUR:
     case Period.LAST_THREE_HOUR:
     case Period.LAST_SIX_HOUR:
     case Period.LAST_TWELVE_HOUR: {
-      // We rounding up to the end of the next interval
-      const duration = moment.duration(resolution);
-      endDate = moment(Math.ceil(+endDate / +duration) * +duration);
-      startDate = endDate.clone().subtract(periodDuration);
+      // Round up to the end of the next interval
+      const duration = Duration.fromISO(resolution);
+      const durationMs = duration.toMillis();
+      endDate = DateTime.fromMillis(
+        Math.ceil(endDate.toMillis() / durationMs) * durationMs,
+      );
+      startDate = endDate.minus(periodDuration);
       break;
     }
     case Period.DAY: {
       startDate = startDate.startOf("day");
-      endDate = endDate.add(periodDuration).startOf("day");
+      endDate = endDate.plus(periodDuration).startOf("day");
       break;
     }
     case Period.TWO_DAY: {
-      startDate = startDate.subtract(periodDuration).startOf("day");
-      endDate = endDate.add(periodDuration).startOf("day");
+      startDate = startDate.minus(periodDuration).startOf("day");
+      endDate = endDate.plus(periodDuration).startOf("day");
       break;
     }
     case Period.WEEK: {
-      startDate = startDate.startOf("isoWeek");
-      endDate = endDate.add(periodDuration).startOf("isoWeek");
+      // Luxon's startOf("week") is Monday per ISO 8601, matching moment's startOf("isoWeek")
+      startDate = startDate.startOf("week");
+      endDate = endDate.plus(periodDuration).startOf("week");
       break;
     }
     case Period.MONTH: {
       startDate = startDate.startOf("month");
-      endDate = endDate.add(periodDuration).startOf("month");
+      endDate = endDate.plus(periodDuration).startOf("month");
       break;
     }
   }
@@ -774,8 +779,8 @@ export function getResolutionsForPeriod(
 }
 
 export function getDateRangeLabel(
-  startDate: moment.Moment,
-  endDate: moment.Moment,
+  startDate: DateTime,
+  endDate: DateTime,
   period: Period,
 ): string {
   switch (period) {
@@ -783,26 +788,19 @@ export function getDateRangeLabel(
     case Period.LAST_THREE_HOUR:
     case Period.LAST_SIX_HOUR:
     case Period.LAST_TWELVE_HOUR: {
-      // if (startDate.isSame(endDate, "day")) {
-      return `${startDate.format("D MMM HH:mm")} - ${endDate.format("HH:mm")}`;
-      // } else {
-      //   return `${startDate.format("D MMM HH:mm")} - ${endDate.format(
-      //     "HH:mm",
-      //   )}`;
-      // }
+      return `${startDate.toFormat("d MMM HH:mm")} - ${endDate.toFormat("HH:mm")}`;
     }
     case Period.DAY: {
-      return startDate.format("D MMM YYYY");
+      return startDate.toFormat("d MMM yyyy");
     }
     case Period.TWO_DAY:
     case Period.WEEK: {
-      return `${startDate.format("D MMM")} - ${endDate
-        .clone()
-        .subtract(1, "second")
-        .format("D MMM")}`;
+      return `${startDate.toFormat("d MMM")} - ${endDate
+        .minus({ seconds: 1 })
+        .toFormat("d MMM")}`;
     }
     case Period.MONTH: {
-      return startDate.format("MMMM YYYY");
+      return startDate.toFormat("MMMM yyyy");
     }
   }
 }
