@@ -41,6 +41,9 @@ import {
 } from "./types-config";
 import { HomeAssistant, LovelaceCard, getDataTypeConfig } from "juzz-ha-helper";
 import { mdiArrowLeft, mdiArrowRight, mdiReload } from "@mdi/js";
+import { BUILD_NUMBER } from "./const";
+
+declare const __RELEASE__: boolean;
 
 /* eslint no-console: 0 */
 console.info(
@@ -56,6 +59,8 @@ console.info(
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class ChartsCard extends LitElement {
   private _apexChart?: ApexCharts;
+  private _resizeObserver?: ResizeObserver;
+  private _sizeObserver?: ResizeObserver;
 
   private _updating = false;
   @state() private _error?: string;
@@ -110,6 +115,10 @@ class ChartsCard extends LitElement {
 
     this._updating = false;
     this.cancelTimer();
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = undefined;
+    this._sizeObserver?.disconnect();
+    this._sizeObserver = undefined;
   }
 
   private initTimer(): void {
@@ -136,17 +145,48 @@ class ChartsCard extends LitElement {
       this._apexChart.destroy();
       this._apexChart = undefined;
     }
-    if (this._config && this.shadowRoot?.querySelector("#graph")) {
+    // Clean up any previous size observer
+    this._sizeObserver?.disconnect();
+    this._sizeObserver = undefined;
+
+    const graphEl = this.shadowRoot?.querySelector(
+      "#graph",
+    ) as HTMLElement | null;
+    if (this._config && graphEl) {
+      // ApexCharts 5.6+ Shadow DOM detection reads HOST.getBoundingClientRect()
+      // when resolving "100%" width, but the HOST width includes card padding,
+      // making the chart wider than the actual content area. We instead measure
+      // #graph directly to get the correct inner content width.
+      const measuredWidth = graphEl.getBoundingClientRect().width;
+      const chartWidth = measuredWidth > 0 ? `${measuredWidth}px` : "100%";
+
       this._apexChart = new ApexCharts(
-        this.shadowRoot.querySelector("#graph"),
+        graphEl,
         mergeDeep(getLayoutConfig(this._config), {
-          chart: { height: "300px" },
+          chart: { height: "300px", width: chartWidth },
         }),
       );
       this._apexChart.render();
 
-      // We created the graph
-      console.log("initGraph(): true");
+      // Keep chart correctly sized. We observe #graph (not the host) because
+      // when ha-card renders its shadow DOM it applies padding that shrinks
+      // #graph's width (e.g. 500→468px) without changing the host width — so
+      // observing the host would miss that initial correction. Observing #graph
+      // catches both the ha-card render correction and subsequent card resizes.
+      this._sizeObserver = new ResizeObserver(() => {
+        if (!this._apexChart) return;
+        const w = graphEl.getBoundingClientRect().width;
+        if (w > 0) {
+          this._apexChart.updateOptions(
+            { chart: { width: `${w}px` } },
+            false,
+            false,
+          );
+        }
+      });
+      this._sizeObserver.observe(graphEl);
+
+      console.log(`initGraph(): true, width: ${chartWidth}`);
       return true;
     }
 
@@ -296,11 +336,30 @@ class ChartsCard extends LitElement {
     super.updated(changedProperties);
 
     // We have rendered but not yet initialised.
-    // Defer by one animation frame so the browser completes layout before
-    // ApexCharts reads the container width (otherwise it falls back to 500px).
     if (this._config && !this._apexChart && this.isConnected) {
       console.log("updated() -- _initialLoad()");
-      requestAnimationFrame(() => this._initialLoad());
+      // ApexCharts 5.6+ uses Shadow DOM detection: it reads the HOST element's
+      // getBoundingClientRect() (not #graph's clientWidth) to resolve "100%".
+      // If the host has no layout yet, getDimensions() returns 0 and the chart
+      // falls back to its 500px default.  We therefore observe the HOST element
+      // (this) and delay init until it reports a non-zero width.
+      if (this.getBoundingClientRect().width === 0) {
+        this._resizeObserver?.disconnect();
+        this._resizeObserver = new ResizeObserver(() => {
+          if (
+            this._config &&
+            !this._apexChart &&
+            this.getBoundingClientRect().width > 0
+          ) {
+            this._resizeObserver?.disconnect();
+            this._resizeObserver = undefined;
+            this._initialLoad();
+          }
+        });
+        this._resizeObserver.observe(this);
+      } else {
+        this._initialLoad();
+      }
     }
   }
 
@@ -680,7 +739,13 @@ class ChartsCard extends LitElement {
     if (!this._config || !this._config.show.lastUpdated) {
       return html``;
     }
+    const buildInfo = __RELEASE__
+      ? html``
+      : html`<div id="build_info">
+          v${pjson.version}.bld${String(BUILD_NUMBER).padStart(2, "0")}
+        </div>`;
     return html`
+      ${buildInfo}
       <div id="last_updated">${formatApexDate(this._lastUpdated)}</div>
     `;
   }

@@ -2,11 +2,13 @@ import commonjs from "@rollup/plugin-commonjs";
 import babel from "@rollup/plugin-babel";
 import json from "@rollup/plugin-json";
 import nodeResolve from "@rollup/plugin-node-resolve";
+import replace from "@rollup/plugin-replace";
 import serve from "rollup-plugin-serve";
 import terser from "@rollup/plugin-terser";
 import typescript from "rollup-plugin-typescript2";
 
 const dev = process.env.ROLLUP_WATCH;
+const isRelease = process.env.npm_config_release === "true";
 
 const serveopts = {
   contentBase: ["./dist"],
@@ -24,6 +26,12 @@ const plugins = [
   commonjs(),
   typescript(),
   json(),
+  replace({
+    preventAssignment: true,
+    values: {
+      __RELEASE__: JSON.stringify(isRelease),
+    },
+  }),
   babel({
     exclude: "node_modules/**",
     babelHelpers: "bundled",

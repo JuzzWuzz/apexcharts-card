@@ -129,6 +129,16 @@ export const stylesApex: CSSResultGroup = css`
     text-overflow: ellipsis;
   }
 
+  #build_info {
+    font-size: 0.63em;
+    font-weight: 300;
+    white-space: nowrap;
+    position: absolute;
+    bottom: 0px;
+    left: 4px;
+    opacity: 0.5;
+  }
+
   #last_updated {
     font-size: 0.63em;
     font-weight: 300;

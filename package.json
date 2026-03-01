@@ -1,15 +1,15 @@
 {
   "name": "apexcharts-card",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A Home Assistant Lovelace card using ApexCharts to render graphs",
   "main": "src/apexcharts-card.ts",
   "type": "module",
   "scripts": {
-    "build": "rimraf dist && npm run build:check && npm run lint && npm run rollup",
+    "build": "npm run build:check && npm run lint && rollup -c rollup.config.js",
+    "build:clean": "rimraf dist",
     "build:check": "ts-interface-builder src/types-config.ts",
     "lint": "eslint --fix src/**/*.ts",
     "format": "prettier --write src/**/*.ts",
-    "rollup": "rollup -c rollup.config.js",
     "start": "rollup -c rollup.config.js --watch"
   },
   "keywords": [
@@ -36,6 +36,7 @@
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@types/luxon": "^3.4.2",
     "@typescript-eslint/eslint-plugin": "^7.13.0",

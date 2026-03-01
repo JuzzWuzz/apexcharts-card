@@ -31,7 +31,6 @@ export function getLayoutConfig(
     chart: {
       type: config.chartType || DEFAULT_SERIES_TYPE,
       foreColor: "var(--primary-text-color)",
-      width: "100%",
       zoom: {
         enabled: true,
       },
