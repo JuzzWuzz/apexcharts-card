@@ -24,7 +24,6 @@ import {
   MinMaxType,
   MinMaxValue,
   Period,
-  Resolution,
   SeriesConfig,
   SeriesSetConfig,
   YAxisConfig,
@@ -585,28 +584,6 @@ export function getPeriodLabel(period: Period): string {
 }
 
 /**
- * Returns a label for the given resolution
- * @param resolution
- * @returns Formatted label
- */
-export function getResolutionLabel(resolution: Resolution): string {
-  switch (resolution) {
-    case Resolution.ONE_MINUTE:
-      return "1m";
-    case Resolution.FIVE_MINUTES:
-      return "5m";
-    case Resolution.FIFTEEN_MINUTES:
-      return "15m";
-    case Resolution.THIRTY_MINUTES:
-      return "30m";
-    case Resolution.ONE_HOUR:
-      return "1h";
-    case Resolution.ONE_DAY:
-      return "1d";
-  }
-}
-
-/**
  * Helper to get a duration value to add/subtract a time value
  * @param period
  * @returns A luxon Duration
@@ -642,7 +619,6 @@ export function getPeriodDuration(period: Period): Duration {
 export function calculateNewDates(
   date: DateTime,
   period: Period,
-  resolution: Resolution,
 ): { startDate: DateTime; endDate: DateTime } {
   const periodDuration = getPeriodDuration(period);
 
@@ -654,13 +630,7 @@ export function calculateNewDates(
     case Period.LAST_THREE_HOUR:
     case Period.LAST_SIX_HOUR:
     case Period.LAST_TWELVE_HOUR: {
-      // Round up to the end of the next interval
-      const duration = Duration.fromISO(resolution);
-      const durationMs = duration.toMillis();
-      endDate = DateTime.fromMillis(
-        Math.ceil(endDate.toMillis() / durationMs) * durationMs,
-      );
-      startDate = endDate.minus(periodDuration);
+      startDate = date.minus(periodDuration);
       break;
     }
     case Period.DAY: {
@@ -690,92 +660,6 @@ export function calculateNewDates(
     startDate: startDate,
     endDate: endDate,
   };
-}
-
-/**
- * Helper to get the supported resolutions based on the period
- * @param period
- * @param dataTypeGroup
- * @returns An array of supported resolutions
- * @throws Error if the "Supported Resolutions" for the desired period is empty
- */
-export function getResolutionsForPeriod(
-  period: Period,
-  dataTypeGroup?: DataTypeGroup,
-): Resolution[] {
-  let supportedResolutions: Resolution[] = [];
-  switch (dataTypeGroup) {
-    case DataTypeGroup.A: {
-      switch (period) {
-        case Period.LAST_HOUR:
-        case Period.LAST_THREE_HOUR: {
-          supportedResolutions = [
-            Resolution.ONE_MINUTE,
-            Resolution.FIVE_MINUTES,
-          ];
-          break;
-        }
-        case Period.LAST_SIX_HOUR: {
-          supportedResolutions = [
-            Resolution.ONE_MINUTE,
-            Resolution.FIVE_MINUTES,
-            Resolution.FIFTEEN_MINUTES,
-            Resolution.THIRTY_MINUTES,
-          ];
-          break;
-        }
-        case Period.LAST_TWELVE_HOUR:
-        case Period.DAY: {
-          supportedResolutions = [
-            Resolution.FIVE_MINUTES,
-            Resolution.FIFTEEN_MINUTES,
-            Resolution.THIRTY_MINUTES,
-          ];
-          break;
-        }
-        case Period.TWO_DAY: {
-          supportedResolutions = [
-            Resolution.FIFTEEN_MINUTES,
-            Resolution.THIRTY_MINUTES,
-          ];
-          break;
-        }
-        case Period.WEEK:
-        case Period.MONTH: {
-          supportedResolutions = [Resolution.ONE_DAY];
-          break;
-        }
-      }
-      break;
-    }
-    case DataTypeGroup.B: {
-      switch (period) {
-        case Period.LAST_HOUR:
-        case Period.LAST_THREE_HOUR:
-        case Period.LAST_SIX_HOUR:
-        case Period.LAST_TWELVE_HOUR:
-        case Period.DAY:
-        case Period.TWO_DAY: {
-          supportedResolutions = [Resolution.ONE_HOUR];
-          break;
-        }
-        case Period.WEEK:
-        case Period.MONTH: {
-          supportedResolutions = [Resolution.ONE_DAY];
-          break;
-        }
-      }
-      break;
-    }
-  }
-
-  if (supportedResolutions.length === 0 && dataTypeGroup !== undefined) {
-    throw new Error(
-      `No supported resolutions for period '${period}' with dataTypeGroup '${dataTypeGroup}'`,
-    );
-  }
-
-  return supportedResolutions;
 }
 
 export function getDateRangeLabel(

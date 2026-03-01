@@ -32,48 +32,10 @@ export function getLayoutConfig(
       type: config.chartType || DEFAULT_SERIES_TYPE,
       foreColor: "var(--primary-text-color)",
       zoom: {
-        enabled: true,
+        enabled: false,
       },
       toolbar: {
-        show: true,
-        tools: {
-          download: false,
-          selection: false,
-          zoom: true,
-          zoomin: false,
-          zoomout: false,
-          pan: true,
-        },
-      },
-      events: {
-        click: function (event, chartContext) {
-          // Reset zoom on double-click
-          if (event.detail === 2) {
-            chartContext.ctx.resetSeries();
-          }
-        },
-        beforeZoom: function (chartContext, { xaxis }) {
-          const min = xaxis.min;
-          const max = xaxis.max;
-          const interval = chartContext.w.globals.minXDiff;
-
-          // Can't use a smaller window than twice our x-axis interval
-          if (max - min < interval * 2) {
-            const midPointDate = new Date((min + max) / 2);
-            const midPoint = midPointDate
-              .setMinutes(Math.round(midPointDate.getMinutes() / 30) * 30, 0)
-              .valueOf();
-
-            return {
-              xaxis: {
-                min: Math.min(min, midPoint - interval),
-                max: Math.max(max, midPoint + interval),
-              },
-            };
-          } else {
-            return xaxis;
-          }
-        },
+        show: false,
       },
     },
     grid: {

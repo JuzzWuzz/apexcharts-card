@@ -23,6 +23,29 @@ export const stylesApex: CSSResultGroup = css`
     font-weight: var(--mdc-typography-button-font-weight, 500);
   }
 
+  .today-btn {
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    color: var(--mdc-theme-primary);
+    cursor: pointer;
+    font-family: var(
+      --mdc-typography-button-font-family,
+      var(--mdc-typography-font-family, Roboto)
+    );
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 0 8px;
+    height: 28px;
+    text-transform: uppercase;
+    transition: background 0.15s ease;
+  }
+
+  .today-btn:hover {
+    background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.08);
+  }
+
   #graph-controls {
     align-items: center;
     display: flex;

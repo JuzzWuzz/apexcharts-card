@@ -27,15 +27,6 @@ export const Period = t.enumtype({
   MONTH: "1m",
 });
 
-export const Resolution = t.enumtype({
-  ONE_MINUTE: "PT1M",
-  FIVE_MINUTES: "PT5M",
-  FIFTEEN_MINUTES: "PT15M",
-  THIRTY_MINUTES: "PT30M",
-  ONE_HOUR: "PT1H",
-  ONE_DAY: "P1D",
-});
-
 export const DataPoint = t.tuple("number", t.union("number", "null"));
 
 export const ExtremasType = t.union("boolean", t.lit("min"), t.lit("max"));
@@ -203,7 +194,6 @@ const exportedTypeSuite: t.ITypeSuite = {
   DataTypeGroup,
   MinMaxType,
   Period,
-  Resolution,
   DataPoint,
   ExtremasType,
   LegendFunction,

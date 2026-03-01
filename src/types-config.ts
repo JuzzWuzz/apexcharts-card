@@ -28,15 +28,6 @@ export enum Period {
   // YEAR = "1y",
 }
 
-export enum Resolution {
-  ONE_MINUTE = "PT1M",
-  FIVE_MINUTES = "PT5M",
-  FIFTEEN_MINUTES = "PT15M",
-  THIRTY_MINUTES = "PT30M",
-  ONE_HOUR = "PT1H",
-  ONE_DAY = "P1D",
-}
-
 /**
  * Base Types
  */
