@@ -611,7 +611,9 @@ class ChartsCard extends LitElement {
         <ha-select
           .label=${"Period"}
           .value=${this._period}
-          .options=${Object.values(Period)
+          @selected=${this._pickPeriod}
+        >
+          ${Object.values(Period)
             .filter(
               (p) =>
                 ![
@@ -619,12 +621,13 @@ class ChartsCard extends LitElement {
                   Period.MONTH,
                 ].includes(p),
             )
-            .map((period) => ({
-              value: period,
-              label: getPeriodLabel(period),
-            }))}
-          @value-changed=${this._pickPeriod}
-        ></ha-select>
+            .map(
+              (period) =>
+                html`<mwc-list-item .value=${period}
+                  >${getPeriodLabel(period)}</mwc-list-item
+                >`,
+            )}
+        </ha-select>
       </div>
     `;
   }
@@ -681,12 +684,15 @@ class ChartsCard extends LitElement {
         <ha-select
           .label=${"Series"}
           .value=${this._seriesSet?.name}
-          .options=${this._seriesSets.map((seriesSet) => ({
-            value: seriesSet.name,
-            label: seriesSet.name,
-          }))}
-          @value-changed=${this._pickSeriesSet}
-        ></ha-select>
+          @selected=${this._pickSeriesSet}
+        >
+          ${this._seriesSets.map(
+            (seriesSet) =>
+              html`<mwc-list-item .value=${seriesSet.name}
+                >${seriesSet.name}</mwc-list-item
+              >`,
+          )}
+        </ha-select>
       </div>
     `;
   }
@@ -806,7 +812,7 @@ class ChartsCard extends LitElement {
    * Change the period of viewing
    */
   private _pickPeriod(ev): void {
-    const value = ev.detail.value;
+    const value = ev.target.value;
     console.log(
       `_pickPeriod(): ${value === this._period ? "skipping" : "running"}`,
     );
@@ -818,7 +824,7 @@ class ChartsCard extends LitElement {
    * Change the series set to view
    */
   private _pickSeriesSet(ev): void {
-    const value = ev.detail.value;
+    const value = ev.target.value;
     console.log(
       `_pickSeriesSet(): ${
         value === this._seriesSet?.name ? "skipping" : "running"
