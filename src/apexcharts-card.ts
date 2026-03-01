@@ -22,7 +22,6 @@ import {
   getHeaderStateFunctionLabel,
   getLovelace,
   getPeriodDuration,
-  getPeriodLabel,
   isDateValid,
   mergeConfigTemplates,
   mergeDeep,
@@ -33,7 +32,14 @@ import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
 import { CardConfigExternal, Period, SeriesSetConfig } from "./types-config";
 import { HomeAssistant, LovelaceCard, getDataTypeConfig } from "juzz-ha-helper";
-import { mdiArrowLeft, mdiArrowRight, mdiReload } from "@mdi/js";
+import {
+  mdiArrowLeft,
+  mdiArrowRight,
+  mdiCalendar,
+  mdiChevronLeft,
+  mdiChevronRight,
+  mdiReload,
+} from "@mdi/js";
 import { BUILD_NUMBER } from "./const";
 
 declare const __RELEASE__: boolean;
@@ -75,8 +81,14 @@ class ChartsCard extends LitElement {
   // Graph display variables
   private _timeStart?: DateTime;
   private _timeEnd?: DateTime;
-  @state() private _period: Period = Period.TWO_DAY;
+  @state() private _period: Period = Period.DAY;
   @state() private _seriesSet?: SeriesSetConfig;
+
+  // Calendar popup
+  @state() private _calendarOpen = false;
+  @state() private _calendarViewDate: DateTime = DateTime.now();
+  @state() private _calendarSelectedDate: DateTime = DateTime.now();
+  private _calendarPosition = { top: 0, right: 0 };
 
   /**
    * Invoked when the component is added to the document's DOM.
@@ -116,7 +128,7 @@ class ChartsCard extends LitElement {
   private initTimer(): void {
     console.log("initTimer()");
 
-    if (this._config && this._hass && !this._refreshTimer) {
+    if (this._config && !this._refreshTimer) {
       this._pickToday();
       this._refreshTimer = setInterval(() => {
         this._refresh();
@@ -269,7 +281,7 @@ class ChartsCard extends LitElement {
       const conf = generateBaseConfig(configDup);
 
       // Set the time data
-      this._updatePeriod(conf.period, false);
+      this._period = conf.period;
 
       // Now update the config
       this._config = conf;
@@ -318,6 +330,9 @@ class ChartsCard extends LitElement {
         "_lastUpdated",
         "_period",
         "_seriesSet",
+        "_calendarOpen",
+        "_calendarViewDate",
+        "_calendarSelectedDate",
       ].some((key) => changedProps.has(key))
     ) {
       return true;
@@ -529,7 +544,6 @@ class ChartsCard extends LitElement {
       <ha-card>
         <div class="card-content">
           ${this._renderTitle()} ${this._renderDateSelector()}
-          ${this._renderControls()}
           <div id="spinner-wrapper">
             <div id="spinner" class=${classMap(spinnerClass)}></div>
           </div>
@@ -579,7 +593,6 @@ class ChartsCard extends LitElement {
         <div id="date">
           ${getDateRangeLabel(this._timeStart, this._timeEnd, this._period)}
         </div>
-        <button class="today-btn" @click=${this._pickToday}>Today</button>
         <ha-icon-button
           .path=${mdiArrowLeft}
           @click=${this._pickPrevious}
@@ -589,47 +602,176 @@ class ChartsCard extends LitElement {
           @click=${this._pickNext}
         ></ha-icon-button>
         <ha-icon-button
+          .path=${mdiCalendar}
+          @click=${this._toggleCalendar}
+        ></ha-icon-button>
+        <button class="today-btn" @click=${this._pickToday}>Now</button>
+        <ha-icon-button
           .path=${mdiReload}
           @click=${this._refresh}
         ></ha-icon-button>
       </div>
+      ${this._calendarOpen
+        ? html`
+            <div id="cal-backdrop" @click=${this._calendarCancel}></div>
+            <div
+              id="calendar-popup"
+              style="top:${this._calendarPosition.top}px;right:${this
+                ._calendarPosition.right}px"
+            >
+              ${this._renderCalendarPopup()}
+            </div>
+          `
+        : ""}
     `;
   }
 
-  private _renderControls(): TemplateResult {
-    if (
-      !this._config ||
-      !this._config.showDateSelector ||
-      !this._timeStart ||
-      !this._timeEnd
-    ) {
-      return html``;
-    }
+  private _renderCalendarPopup(): TemplateResult {
+    const presets: Array<{
+      label: string;
+      period: Period;
+      date: () => DateTime;
+    }> = [
+      { label: "Today", period: Period.DAY, date: () => DateTime.now() },
+      {
+        label: "Yesterday",
+        period: Period.DAY,
+        date: () => DateTime.now().minus({ days: 1 }),
+      },
+      { label: "This week", period: Period.WEEK, date: () => DateTime.now() },
+      { label: "This month", period: Period.MONTH, date: () => DateTime.now() },
+      { label: "This year", period: Period.YEAR, date: () => DateTime.now() },
+    ];
 
     return html`
-      <div id="graph-controls">
-        <ha-select
-          .label=${"Period"}
-          .value=${this._period}
-          @selected=${this._pickPeriod}
-        >
-          ${Object.values(Period)
-            .filter(
-              (p) =>
-                ![
-                  Period.WEEK,
-                  Period.MONTH,
-                ].includes(p),
-            )
-            .map(
-              (period) =>
-                html`<mwc-list-item .value=${period}
-                  >${getPeriodLabel(period)}</mwc-list-item
-                >`,
-            )}
-        </ha-select>
+      <div id="cal-presets">
+        ${presets.map(
+          (p) => html`
+            <button
+              class="cal-preset"
+              @click=${() => this._calendarPreset(p.period, p.date())}
+            >
+              ${p.label}
+            </button>
+          `,
+        )}
+      </div>
+      <div id="cal-calendar">
+        <div id="cal-nav">
+          <ha-icon-button
+            .path=${mdiChevronLeft}
+            @click=${() => this._calendarNavMonth(-1)}
+          ></ha-icon-button>
+          <span>${this._calendarViewDate.toFormat("MMMM yyyy")}</span>
+          <ha-icon-button
+            .path=${mdiChevronRight}
+            @click=${() => this._calendarNavMonth(1)}
+          ></ha-icon-button>
+        </div>
+        <div id="cal-grid">
+          ${[
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun",
+          ].map((d) => html`<div class="cal-dow">${d}</div>`)}
+          ${this._renderCalendarDays()}
+        </div>
+        <div id="cal-actions">
+          <button class="cal-action-btn" @click=${this._calendarCancel}>
+            Cancel
+          </button>
+          <button
+            class="cal-action-btn primary"
+            @click=${this._calendarConfirm}
+          >
+            Select
+          </button>
+        </div>
       </div>
     `;
+  }
+
+  private _renderCalendarDays(): TemplateResult[] {
+    const firstOfMonth = this._calendarViewDate.startOf("month");
+    const startOfGrid = firstOfMonth.minus({ days: firstOfMonth.weekday - 1 });
+    const today = DateTime.now().startOf("day");
+    const selected = this._calendarSelectedDate.startOf("day");
+
+    const cells: TemplateResult[] = [];
+    for (let i = 0; i < 42; i++) {
+      const day = startOfGrid.plus({ days: i });
+      const isCurrentMonth = day.month === this._calendarViewDate.month;
+      const isSelected = day.startOf("day").toMillis() === selected.toMillis();
+      const isToday = day.startOf("day").toMillis() === today.toMillis();
+      cells.push(html`
+        <div
+          class=${classMap({
+            "cal-day": true,
+            "other-month": !isCurrentMonth,
+            selected: isSelected,
+            today: isToday && !isSelected,
+          })}
+          @click=${() => this._calendarSelectDay(day)}
+        >
+          ${day.day}
+        </div>
+      `);
+    }
+    return cells;
+  }
+
+  private _toggleCalendar(ev: Event): void {
+    if (this._calendarOpen) {
+      this._calendarOpen = false;
+      return;
+    }
+    const btn = ev.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    this._calendarPosition = {
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    };
+    this._calendarViewDate = this._timeDate ?? DateTime.now();
+    this._calendarSelectedDate = this._timeDate ?? DateTime.now();
+    this._calendarOpen = true;
+  }
+
+  private _calendarPreset(period: Period, date: DateTime): void {
+    this._period = period;
+    this._updateDate(date);
+    this._calendarOpen = false;
+  }
+
+  /**
+   * Navigates the calendar popup view by the specified number of months.
+   * A positive `delta` moves the view forward, while a negative `delta` moves it backward.
+   *
+   * @param delta - The number of months to navigate.
+   */
+  private _calendarNavMonth(delta: number): void {
+    this._calendarViewDate = this._calendarViewDate.plus({ months: delta });
+  }
+
+  /**
+   * Selects a day in the calendar and updates the internal selected date.
+   * @param day - The DateTime object representing the selected day
+   */
+  private _calendarSelectDay(day: DateTime): void {
+    this._calendarSelectedDate = day;
+  }
+
+  private _calendarConfirm(): void {
+    this._period = Period.DAY;
+    this._updateDate(this._calendarSelectedDate);
+    this._calendarOpen = false;
+  }
+
+  private _calendarCancel(): void {
+    this._calendarOpen = false;
   }
 
   private _renderStates(): TemplateResult {
@@ -717,26 +859,10 @@ class ChartsCard extends LitElement {
   }
 
   /**
-   * Button clicking functions
+   * Updates the internal date and triggers a chart update if the date has changed.
+   * @param date - The new DateTime to set
+   * @returns void
    */
-
-  /**
-   * Update the Start & End date values and call for an update
-   */
-  private _triggerUpdate(): void {
-    console.log(
-      `_triggerUpdate(): ${!this._timeDate ? "skipping" : "running"}`,
-    );
-    if (!this._timeDate) return;
-
-    const newDates = calculateNewDates(this._timeDate, this._period);
-    this._timeStart = newDates.startDate;
-    this._timeEnd = newDates.endDate;
-
-    // Update the graphs
-    this.callService();
-  }
-
   private _updateDate(date: DateTime) {
     console.log(
       `updateDate(): ${this._timeDate?.toMillis() === date.toMillis() ? "skipping" : "running"}`,
@@ -750,24 +876,30 @@ class ChartsCard extends LitElement {
     // Update the date
     this._timeDate = date;
 
-    // Trigger an update
-    this._triggerUpdate();
-  }
+    const newDates = calculateNewDates(this._timeDate, this._period);
+    this._timeStart = newDates.startDate;
+    this._timeEnd = newDates.endDate;
 
-  /**
-   * Update the period being observed
-   * @param period
-   */
-  private _updatePeriod(period: Period, callRefresh = true) {
-    console.log("_updatePeriod()");
-    this._period = period;
-    if (callRefresh) {
-      this._refresh();
+    // Check if we are viewing live data based on the new time range
+    const currentTime = DateTime.now();
+    if (this._timeStart <= currentTime && this._timeEnd >= currentTime) {
+      this._timeViewingLiveData = true;
+    } else {
+      this._timeViewingLiveData = false;
     }
+
+    // Update the graphs
+    this.callService();
   }
 
   /**
-   * Handle the `Next` button being pressed (Advance the day)
+   * Advances the time by one period (e.g. day, week, month)
+   *
+   * Adds the duration of the current period to the stored time date
+   * to calculate the next date.
+   * Will not advance into the future.
+   *
+   * @private
    */
   private _pickNext(): void {
     console.log(`_pickNext(): ${!this._timeDate ? "skipping" : "running"}"`);
@@ -776,10 +908,8 @@ class ChartsCard extends LitElement {
     const currentTime = DateTime.now();
     const duration = getPeriodDuration(this._period);
     const newDate = this._timeDate.plus(duration);
-    console.log(`New Date: ${newDate.toISO()}... ${newDate > currentTime}`);
 
     if (newDate > currentTime) {
-      this._timeViewingLiveData = true;
       this._updateDate(currentTime);
     } else {
       this._updateDate(newDate);
@@ -787,37 +917,31 @@ class ChartsCard extends LitElement {
   }
 
   /**
-   * Handle the `Previous` button being pressed (Recede the day)
+   * Moves the time back by one period (e.g. day, week, month)
+   *
+   * Subtracts the duration of the current period from the stored time date
+   * to calculate the previous date.
+   *
+   * @private
    */
   private _pickPrevious(): void {
     console.log(`_pickPrevious(): ${!this._timeDate ? "skipping" : "running"}`);
     if (!this._timeDate) return;
+
     const duration = getPeriodDuration(this._period);
     const newDate = this._timeDate.minus(duration);
-    this._timeViewingLiveData = false;
 
     this._updateDate(newDate);
   }
 
   /**
-   * Set the date to the time right now
+   * Switches the view to today's date and enables live data viewing.
+   * Updates the internal date to the current date and time.
+   * @private
    */
   private _pickToday(): void {
     console.log("_pickToday()");
-    this._timeViewingLiveData = true;
     this._updateDate(DateTime.now());
-  }
-
-  /**
-   * Change the period of viewing
-   */
-  private _pickPeriod(ev): void {
-    const value = ev.target.value;
-    console.log(
-      `_pickPeriod(): ${value === this._period ? "skipping" : "running"}`,
-    );
-    if (value === this._period) return;
-    this._updatePeriod(value);
   }
 
   /**
@@ -834,7 +958,6 @@ class ChartsCard extends LitElement {
     this._seriesSet = this._seriesSets.find(
       (seriesSet) => seriesSet.name === value,
     );
-    this._updatePeriod(this._period, false);
     this.initGraph();
     this._updateData();
     this.callService();
@@ -842,15 +965,13 @@ class ChartsCard extends LitElement {
 
   /**
    * Refresh the graph data. Either auto or manual
+   * Only update the date if viewing live data and the current time passed the end time
+   * Otherwise just call for an update with the current date range
    */
   private _refresh(): void {
-    const currentTime = DateTime.now();
-    console.log(
-      `_refresh(): ${this._timeEnd?.toISO()} -- ${currentTime.toISO()}. ${
-        this._timeViewingLiveData
-      }`,
-    );
+    console.log(`_refresh(): live=${this._timeViewingLiveData}`);
 
+    const currentTime = DateTime.now();
     if (
       this._timeViewingLiveData &&
       this._timeEnd &&
@@ -858,7 +979,7 @@ class ChartsCard extends LitElement {
     ) {
       this._updateDate(currentTime);
     } else {
-      this._triggerUpdate();
+      this.callService();
     }
   }
 

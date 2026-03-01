@@ -21,10 +21,10 @@ export const Period = t.enumtype({
   LAST_THREE_HOUR: "-3h",
   LAST_SIX_HOUR: "-6h",
   LAST_TWELVE_HOUR: "-12h",
-  DAY: "1d",
-  TWO_DAY: "2d",
-  WEEK: "1w",
-  MONTH: "1m",
+  DAY: "day",
+  WEEK: "week",
+  MONTH: "month",
+  YEAR: "year",
 });
 
 export const DataPoint = t.tuple("number", t.union("number", "null"));

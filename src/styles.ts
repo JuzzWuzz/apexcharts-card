@@ -46,20 +46,167 @@ export const stylesApex: CSSResultGroup = css`
     background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.08);
   }
 
-  #graph-controls {
+  /* Suppress focus ring on mouse click for all buttons (keep for keyboard nav) */
+  ha-icon-button:focus:not(:focus-visible) {
+    --mdc-ripple-focus-opacity: 0;
+  }
+
+  button:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Calendar popup */
+
+  #cal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+  }
+
+  #calendar-popup {
+    background: var(--card-background-color);
+    border: 1px solid var(--divider-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    display: flex;
+    overflow: hidden;
+    position: fixed;
+    z-index: 999;
+  }
+
+  #cal-presets {
+    border-right: 1px solid var(--divider-color);
+    display: flex;
+    flex-direction: column;
+    min-width: 130px;
+    padding: 8px 0;
+  }
+
+  .cal-preset {
+    background: none;
+    border: none;
+    color: var(--primary-text-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 10px 16px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .cal-preset:hover {
+    background: var(--secondary-background-color);
+    color: var(--primary-color);
+  }
+
+  #cal-calendar {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+  }
+
+  #cal-nav {
     align-items: center;
     display: flex;
     justify-content: space-between;
+    padding: 0 0 4px;
   }
 
-  #graph-controls,
+  #cal-nav span {
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  #cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 36px);
+    gap: 2px;
+  }
+
+  .cal-dow {
+    color: var(--secondary-text-color);
+    font-size: 0.72rem;
+    font-weight: 500;
+    height: 28px;
+    line-height: 28px;
+    text-align: center;
+  }
+
+  .cal-day {
+    align-items: center;
+    border-radius: 50%;
+    color: var(--primary-text-color);
+    cursor: pointer;
+    display: flex;
+    font-size: 0.875rem;
+    height: 36px;
+    justify-content: center;
+    width: 36px;
+  }
+
+  .cal-day:hover {
+    background: var(--secondary-background-color);
+  }
+
+  .cal-day.other-month {
+    color: var(--secondary-text-color);
+    opacity: 0.4;
+  }
+
+  .cal-day.today {
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 500;
+  }
+
+  .cal-day.selected {
+    background: var(--primary-color);
+    color: var(--text-primary-color, #fff);
+    font-weight: 500;
+  }
+
+  #cal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 8px 0 4px;
+  }
+
+  .cal-action-btn {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    text-transform: uppercase;
+    transition: background 0.15s ease;
+  }
+
+  .cal-action-btn:hover {
+    background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.08);
+  }
+
+  .cal-action-btn.primary {
+    background: var(--primary-color);
+    color: var(--text-primary-color, #fff);
+  }
+
+  .cal-action-btn.primary:hover {
+    opacity: 0.9;
+  }
+
   #series-selector {
+    align-items: center;
     color: var(--mdc-theme-primary);
-    margin-bottom: 5px;
+    display: flex;
     gap: 32px;
+    justify-content: space-between;
+    margin-bottom: 5px;
   }
 
-  #graph-controls > ha-select,
   #series-selector > ha-select {
     width: 100%;
     --ha-select-min-width: 0;

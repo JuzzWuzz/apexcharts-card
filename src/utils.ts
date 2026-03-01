@@ -326,7 +326,7 @@ export function generateBaseConfig(conf: CardConfigExternal): CardConfig {
         lastUpdated: true,
         loading: true,
       },
-      period: Period.TWO_DAY,
+      period: Period.DAY,
       showDateSelector: false,
       autoRefreshTime: 120,
       rememberOptions: true,
@@ -558,32 +558,6 @@ export function generateSeries(
  */
 
 /**
- * Returns a label for the given period
- * @param period
- * @returns Formatted label
- */
-export function getPeriodLabel(period: Period): string {
-  switch (period) {
-    case Period.LAST_HOUR:
-      return "Last hour";
-    case Period.LAST_THREE_HOUR:
-      return "Last 3 hours";
-    case Period.LAST_SIX_HOUR:
-      return "Last 6 hours";
-    case Period.LAST_TWELVE_HOUR:
-      return "Last 12 hours";
-    case Period.DAY:
-      return "Day";
-    case Period.TWO_DAY:
-      return "2 Days";
-    case Period.WEEK:
-      return "Week";
-    case Period.MONTH:
-      return "Month";
-  }
-}
-
-/**
  * Helper to get a duration value to add/subtract a time value
  * @param period
  * @returns A luxon Duration
@@ -599,14 +573,13 @@ export function getPeriodDuration(period: Period): Duration {
     case Period.LAST_HOUR:
       return Duration.fromObject({ hours: 1 });
     case Period.DAY:
-    case Period.TWO_DAY:
       return Duration.fromObject({ days: 1 });
     case Period.WEEK:
       return Duration.fromObject({ weeks: 1 });
     case Period.MONTH:
       return Duration.fromObject({ months: 1 });
-    // case Periods.YEAR:
-    //   return Duration.fromObject({ years: 1 });
+    case Period.YEAR:
+      return Duration.fromObject({ years: 1 });
   }
 }
 
@@ -638,13 +611,7 @@ export function calculateNewDates(
       endDate = endDate.plus(periodDuration).startOf("day");
       break;
     }
-    case Period.TWO_DAY: {
-      startDate = startDate.minus(periodDuration).startOf("day");
-      endDate = endDate.plus(periodDuration).startOf("day");
-      break;
-    }
     case Period.WEEK: {
-      // Luxon's startOf("week") is Monday per ISO 8601, matching moment's startOf("isoWeek")
       startDate = startDate.startOf("week");
       endDate = endDate.plus(periodDuration).startOf("week");
       break;
@@ -652,6 +619,11 @@ export function calculateNewDates(
     case Period.MONTH: {
       startDate = startDate.startOf("month");
       endDate = endDate.plus(periodDuration).startOf("month");
+      break;
+    }
+    case Period.YEAR: {
+      startDate = startDate.startOf("year");
+      endDate = endDate.plus(periodDuration).startOf("year");
       break;
     }
   }
@@ -677,7 +649,6 @@ export function getDateRangeLabel(
     case Period.DAY: {
       return startDate.toFormat("d MMM yyyy");
     }
-    case Period.TWO_DAY:
     case Period.WEEK: {
       return `${startDate.toFormat("d MMM")} - ${endDate
         .minus({ seconds: 1 })
@@ -685,6 +656,9 @@ export function getDateRangeLabel(
     }
     case Period.MONTH: {
       return startDate.toFormat("MMMM yyyy");
+    }
+    case Period.YEAR: {
+      return startDate.toFormat("yyyy");
     }
   }
 }
