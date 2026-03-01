@@ -1,6 +1,6 @@
 import { ApexOptions } from "apexcharts";
 import { DEFAULT_AREA_OPACITY, DEFAULT_SERIES_TYPE } from "./const";
-import { CardConfig, CardSeries } from "./types";
+import { CardConfig, CardSeries, DataInterval } from "./types";
 import {
   computeColor,
   computeTextColor,
@@ -26,6 +26,7 @@ export function getLayoutConfig(
   start?: Date,
   end?: Date,
   period?: Period,
+  dataInterval?: DataInterval,
 ): ApexOptions {
   const options = {
     chart: {
@@ -56,7 +57,7 @@ export function getLayoutConfig(
     yaxis: getYAxis(yaxis, series),
     tooltip: {
       x: {
-        formatter: getXTooltipFormatter(),
+        formatter: getXTooltipFormatter(dataInterval),
       },
       y: {
         formatter: getYTooltipFormatter(series),
@@ -352,13 +353,28 @@ function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]) {
   }
 }
 
-function getXTooltipFormatter() {
+function getXTooltipFormatter(dataInterval?: DataInterval) {
   return function (value) {
     const lValue = Number.parseInt(value);
-    if (isNaN(lValue)) {
-      return lValue;
-    } else {
-      return DateTime.fromMillis(lValue).toFormat("dd MMM yyyy, HH:mm");
+    if (isNaN(lValue)) return value;
+    const dt = DateTime.fromMillis(lValue);
+    switch (dataInterval?.unit) {
+      case "year":
+        return dt.toFormat("yyyy");
+      case "month":
+        return dt.toFormat("MMMM yyyy");
+      case "day":
+        return dt.toFormat("d MMMM yyyy");
+      case "week": {
+        const weekEnd = dt.plus({ days: 6 });
+        if (dt.year === weekEnd.year) {
+          return `${dt.toFormat("d MMM")} - ${weekEnd.toFormat("d MMM yyyy")}`;
+        }
+        return `${dt.toFormat("d MMM yyyy")} - ${weekEnd.toFormat("d MMM yyyy")}`;
+      }
+      default:
+        // minute, hour, or unknown: include time
+        return dt.toFormat("d MMM yyyy, HH:mm");
     }
   };
 }

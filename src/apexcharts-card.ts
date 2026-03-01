@@ -9,7 +9,7 @@ import { customElement, state } from "lit/decorators.js";
 import { ClassInfo, classMap } from "lit/directives/class-map.js";
 import { StyleInfo, styleMap } from "lit/directives/style-map.js";
 import { DateTime } from "luxon";
-import { CardConfig, CardSeries } from "./types";
+import { CardConfig, CardSeries, DataInterval } from "./types";
 import * as pjson from "../package.json";
 import {
   calculateNewDates,
@@ -82,6 +82,7 @@ class ChartsCard extends LitElement {
   private _timeStart?: DateTime;
   private _timeEnd?: DateTime;
   @state() private _period: Period = Period.DAY;
+  private _dataInterval?: DataInterval;
   @state() private _seriesSet?: SeriesSetConfig;
 
   // Calendar popup
@@ -483,6 +484,7 @@ class ChartsCard extends LitElement {
        * Get the YAxes
        */
       const yAxes = this._seriesSet?.yAxes ?? [];
+      this._dataInterval = this._entity.attributes.dataInterval;
 
       this._apexChart?.updateOptions(
         getLayoutConfig(
@@ -494,6 +496,7 @@ class ChartsCard extends LitElement {
           timeStart,
           timeEnd,
           this._period,
+          this._dataInterval,
         ),
         false,
         false,

@@ -36,6 +36,20 @@ export interface EntitySeries {
   minMax: MinMaxPoint;
 }
 
+export type DataIntervalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "year";
+
+export interface DataInterval {
+  amount: number;
+  unit: DataIntervalUnit;
+  unitPlural: string;
+}
+
 export interface FormattedValue {
   value: string;
   unitSeparator: string;
