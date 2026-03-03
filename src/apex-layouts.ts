@@ -52,7 +52,7 @@ export function getLayoutConfig(
     colors: getColors(series),
     legend: getLegend(series),
     stroke: getStroke(config, series),
-    series: getSeries(series, dataTypeGroup),
+    series: getSeries(series),
     xaxis: getXAxis(start, end, dataTypeGroup),
     yaxis: getYAxis(yaxis, series),
     tooltip: {
@@ -151,71 +151,45 @@ function getStroke(config: CardConfig, series: CardSeries[]) {
   };
 }
 
-function getSeries(series: CardSeries[], dataTypeGroup?: DataTypeGroup) {
+function getSeries(series: CardSeries[]) {
   return series.map((s) => {
     return {
       name: s.config.name,
       type: s.config.type,
       data: s.config.show.inChart
-        ? dataTypeGroup === DataTypeGroup.B
-          ? s.data.map((d) => ({ x: `${d[0]}s`, y: d[1] }))
-          : s.data
+        ? s.data.map((d) => ({ x: d[0], y: d[1] }))
         : [],
     };
   });
 }
 
 function getXAxis(start?: Date, end?: Date, dataTypeGroup?: DataTypeGroup) {
-  /**
-   * The energy graphs should be run as categories
-   */
+  const labels = {
+    datetimeUTC: false,
+    datetimeFormatter: {
+      year: "yyyy",
+      month: "MMM 'yy",
+      day: "dd MMM",
+      hour: "HH:mm",
+      minute: "HH:mm",
+    },
+  };
+
   if (dataTypeGroup === DataTypeGroup.B) {
-    return {
-      type: "category",
-      labels: {
-        rotate: 0,
-        formatter: function (value) {
-          const lValue = Number.parseInt(value);
-          if (isNaN(lValue)) {
-            return value;
-          } else {
-            const lDate = DateTime.fromMillis(lValue);
-            if (lDate.startOf("day").toMillis() === lDate.toMillis()) {
-              return lDate.toFormat("dd MMM");
-            } else {
-              return lDate.toFormat("HH:mm");
-            }
-          }
-        },
-      },
-    };
+    return { type: "datetime", labels };
   }
 
-  /**
-   * Other graphs are treated as datetime
-   */
   if (start === undefined || isNaN(start.getTime())) {
-    start = new Date();
-    start.setHours(0, 0, 0, 0);
+    start = DateTime.now().startOf("day").toJSDate();
   }
   if (end === undefined || isNaN(end.getTime())) {
-    end = new Date();
-    end.setHours(23, 59, 59, 999);
+    end = DateTime.now().endOf("day").toJSDate();
   }
   return {
     type: "datetime",
     min: start.getTime(),
-    max: end.getTime(),
-    labels: {
-      datetimeUTC: false,
-      datetimeFormatter: {
-        year: "yyyy",
-        month: "MMM 'yy",
-        day: "dd MMM",
-        hour: "HH:mm",
-        minute: "HH:mm",
-      },
-    },
+    max: end.getTime() - 1,
+    labels,
   };
 }
 

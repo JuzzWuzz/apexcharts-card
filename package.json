@@ -5,7 +5,7 @@
   "main": "src/apexcharts-card.ts",
   "type": "module",
   "scripts": {
-    "build": "npm run build:check && npm run lint && rollup -c rollup.config.js",
+    "build": "npm run build:clean && npm run build:check && npm run lint && rollup -c rollup.config.js",
     "build:clean": "rimraf dist",
     "build:check": "ts-interface-builder src/types-config.ts",
     "lint": "eslint --fix src/**/*.ts",
