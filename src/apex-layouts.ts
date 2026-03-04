@@ -7,27 +7,40 @@ import {
   formatValueAndUom,
   mergeDeep,
 } from "./utils";
-import {
-  DataTypeGroup,
-  MinMaxType,
-  MinMaxValue,
-  Period,
-  YAxisConfig,
-} from "./types-config";
+import { MinMaxType, MinMaxValue, Period, YAxisConfig } from "./types-config";
 import { DateTime } from "luxon";
 import { getDataTypeConfig } from "juzz-ha-helper";
 
-export function getLayoutConfig(
-  config: CardConfig,
-  dataTypeGroup?: DataTypeGroup,
-  series: CardSeries[] = [],
-  yaxis: YAxisConfig[] = [],
-  now: Date = new Date(),
-  start?: Date,
-  end?: Date,
-  period?: Period,
-  dataInterval?: DataInterval,
-): ApexOptions {
+export interface LayoutConfigOpts {
+  config: CardConfig;
+  series?: CardSeries[];
+  yaxis?: YAxisConfig[];
+  now?: Date;
+  useBarChart?: boolean;
+  start?: Date;
+  end?: Date;
+  period?: Period;
+  dataInterval?: DataInterval;
+}
+
+export function getLayoutConfig({
+  config,
+  series = [],
+  yaxis = [],
+  now = new Date(),
+  useBarChart = false,
+  start = DateTime.now().startOf("day").toJSDate(),
+  end = DateTime.now().endOf("day").toJSDate(),
+  period = Period.DAY,
+  dataInterval,
+}: LayoutConfigOpts): ApexOptions {
+  // For bar charts, compute sorted unique timestamps once — shared by x-axis and tooltip.
+  const barCategories: number[] = useBarChart
+    ? [...new Set(series.flatMap((s) => s.data.map((d) => d[0])))].sort(
+        (a, b) => a - b,
+      )
+    : [];
+
   const options = {
     chart: {
       type: config.chartType || DEFAULT_SERIES_TYPE,
@@ -52,25 +65,22 @@ export function getLayoutConfig(
     colors: getColors(series),
     legend: getLegend(series),
     stroke: getStroke(config, series),
-    series: getSeries(series),
-    xaxis: getXAxis(start, end, dataTypeGroup),
+    series: getSeries(useBarChart, series),
+    xaxis: getXAxis(useBarChart, start, end, barCategories, dataInterval),
     yaxis: getYAxis(yaxis, series),
     tooltip: {
       x: {
-        formatter: getXTooltipFormatter(dataInterval),
+        formatter: getXTooltipFormatter(
+          useBarChart,
+          barCategories,
+          dataInterval,
+        ),
       },
       y: {
         formatter: getYTooltipFormatter(series),
       },
     },
-    annotations: getAnnotations(
-      config,
-      series,
-      now,
-      end,
-      period,
-      dataTypeGroup,
-    ),
+    annotations: getAnnotations(config, useBarChart, series, now, end, period),
   };
 
   return mergeDeep(options, evalApexConfig(config.apexConfig));
@@ -151,45 +161,88 @@ function getStroke(config: CardConfig, series: CardSeries[]) {
   };
 }
 
-function getSeries(series: CardSeries[]) {
+function getSeries(useBarChart: boolean, series: CardSeries[]) {
   return series.map((s) => {
+    function getSeriesData() {
+      // If the series is not meant to be shown in the chart, return an empty array
+      if (!s.config.show.inChart) {
+        return [];
+      }
+      // For bar charts, return just the y-values in the order of the sorted unique timestamps (x-values)
+      if (useBarChart) {
+        return [...s.data].sort((a, b) => a[0] - b[0]).map((d) => d[1]);
+      }
+
+      // For other chart types, return the data as an array of {x, y} objects
+      return s.data.map((d) => ({ x: d[0], y: d[1] }));
+    }
     return {
       name: s.config.name,
       type: s.config.type,
-      data: s.config.show.inChart
-        ? s.data.map((d) => ({ x: d[0], y: d[1] }))
-        : [],
+      data: getSeriesData(),
     };
   });
 }
 
-function getXAxis(start?: Date, end?: Date, dataTypeGroup?: DataTypeGroup) {
-  const labels = {
-    datetimeUTC: false,
-    datetimeFormatter: {
-      year: "yyyy",
-      month: "MMM 'yy",
-      day: "dd MMM",
-      hour: "HH:mm",
-      minute: "HH:mm",
-    },
-  };
+function getXAxis(
+  useBarChart: boolean,
+  start: Date,
+  end: Date,
+  barCategories: number[],
+  dataInterval?: DataInterval,
+) {
+  // For bar charts, use category type with the sorted unique timestamps as categories
+  if (useBarChart) {
+    return {
+      type: "category",
+      categories: barCategories,
+      labels: {
+        rotate: 0,
+        formatter: (value: string) => {
+          // Convert the category value (which is a timestamp) to a formatted date string
+          const ts = Number(value);
+          // Handle invalid timestamp gracefully
+          if (isNaN(ts)) {
+            return "";
+          }
+          const dt = DateTime.fromMillis(ts);
 
-  if (dataTypeGroup === DataTypeGroup.B) {
-    return { type: "datetime", labels };
+          // Based on the data interval, format the x-axis label appropriately
+          switch (dataInterval?.unit) {
+            case "year": {
+              return dt.toFormat("yyyy");
+            }
+            case "month": {
+              return dt.toFormat("MMM 'yy");
+            }
+            case "day":
+            case "week": {
+              return dt.toFormat("dd MMM");
+            }
+            default: {
+              return dt.toFormat("HH:mm");
+            }
+          }
+        },
+      },
+    };
   }
 
-  if (start === undefined || isNaN(start.getTime())) {
-    start = DateTime.now().startOf("day").toJSDate();
-  }
-  if (end === undefined || isNaN(end.getTime())) {
-    end = DateTime.now().endOf("day").toJSDate();
-  }
+  // For other chart types, use datetime type with the provided start and end timestamps
   return {
     type: "datetime",
     min: start.getTime(),
     max: end.getTime() - 1,
-    labels,
+    labels: {
+      datetimeUTC: false,
+      datetimeFormatter: {
+        year: "yyyy",
+        month: "MMM 'yy",
+        day: "dd MMM",
+        hour: "HH:mm",
+        minute: "HH:mm",
+      },
+    },
   };
 }
 
@@ -327,18 +380,34 @@ function getYAxis(yAxes: YAxisConfig[], series: CardSeries[]) {
   }
 }
 
-function getXTooltipFormatter(dataInterval?: DataInterval) {
-  return function (value) {
-    const lValue = Number.parseInt(value);
-    if (isNaN(lValue)) return value;
+function getXTooltipFormatter(
+  useBarChart: boolean,
+  barCategories: number[],
+  dataInterval?: DataInterval,
+) {
+  return function (value: string, opts: { dataPointIndex: number }) {
+    // For category-type charts, value is the 1-based index — look up the real timestamp
+    const lValue = useBarChart
+      ? (barCategories[opts.dataPointIndex] ?? NaN)
+      : Number.parseInt(value);
+
+    // Handle invalid timestamp gracefully
+    if (isNaN(lValue)) {
+      return value;
+    }
     const dt = DateTime.fromMillis(lValue);
+
+    // Based on the data interval, format the tooltip label appropriately
     switch (dataInterval?.unit) {
-      case "year":
+      case "year": {
         return dt.toFormat("yyyy");
-      case "month":
+      }
+      case "month": {
         return dt.toFormat("MMMM yyyy");
-      case "day":
+      }
+      case "day": {
         return dt.toFormat("d MMMM yyyy");
+      }
       case "week": {
         const weekEnd = dt.plus({ days: 6 });
         if (dt.year === weekEnd.year) {
@@ -346,9 +415,11 @@ function getXTooltipFormatter(dataInterval?: DataInterval) {
         }
         return `${dt.toFormat("d MMM yyyy")} - ${weekEnd.toFormat("d MMM yyyy")}`;
       }
-      default:
-        // minute, hour, or unknown: include time
+      case "hour":
+      case "minute":
+      default: {
         return dt.toFormat("d MMM yyyy, HH:mm");
+      }
     }
   };
 }
@@ -369,26 +440,24 @@ function getYTooltipFormatter(series: CardSeries[]) {
 
 function getAnnotations(
   config: CardConfig,
+  useBarChart: boolean,
   series: CardSeries[],
   now: Date,
-  end?: Date,
-  period?: Period,
-  dataTypeGroup?: DataTypeGroup,
+  end: Date,
+  period: Period,
 ) {
   const getNowAnnotation = () => {
     if (
       !config.now.show ||
+      useBarChart ||
       series.length === 0 ||
-      !end ||
       now.getTime() > end.getTime() ||
-      !period ||
       [
         Period.LAST_HOUR,
         Period.LAST_THREE_HOUR,
         Period.LAST_SIX_HOUR,
         Period.LAST_TWELVE_HOUR,
-      ].includes(period) ||
-      dataTypeGroup === DataTypeGroup.B
+      ].includes(period)
     ) {
       return {
         x: null,

@@ -30,7 +30,12 @@ import ApexCharts from "apexcharts";
 import { stylesApex } from "./styles";
 import { HassEntity } from "home-assistant-js-websocket";
 import { getLayoutConfig } from "./apex-layouts";
-import { CardConfigExternal, Period, SeriesSetConfig } from "./types-config";
+import {
+  CardConfigExternal,
+  DataTypeGroup,
+  Period,
+  SeriesSetConfig,
+} from "./types-config";
 import { HomeAssistant, LovelaceCard, getDataTypeConfig } from "juzz-ha-helper";
 import {
   mdiArrowLeft,
@@ -167,9 +172,16 @@ class ChartsCard extends LitElement {
 
       this._apexChart = new ApexCharts(
         graphEl,
-        mergeDeep(getLayoutConfig(this._config, undefined, this._series), {
-          chart: { height: "300px", width: chartWidth },
-        }),
+        mergeDeep(
+          getLayoutConfig({
+            config: this._config,
+            series: this._series,
+            useBarChart: this._seriesSet?.dataTypeGroup === DataTypeGroup.B,
+          }),
+          {
+            chart: { height: "300px", width: chartWidth },
+          },
+        ),
       );
       this._apexChart.render();
 
@@ -487,17 +499,17 @@ class ChartsCard extends LitElement {
       this._dataInterval = this._entity.attributes.dataInterval;
 
       this._apexChart?.updateOptions(
-        getLayoutConfig(
-          this._config,
-          this._seriesSet?.dataTypeGroup,
-          this._series,
-          yAxes,
+        getLayoutConfig({
+          config: this._config,
+          series: this._series,
+          yaxis: yAxes,
           now,
-          timeStart,
-          timeEnd,
-          this._period,
-          this._dataInterval,
-        ),
+          useBarChart: this._seriesSet?.dataTypeGroup === DataTypeGroup.B,
+          start: timeStart,
+          end: timeEnd,
+          period: this._period,
+          dataInterval: this._dataInterval,
+        }),
         false,
         false,
       );
