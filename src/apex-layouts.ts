@@ -184,6 +184,79 @@ function getSeries(useBarChart: boolean, series: CardSeries[]) {
   });
 }
 
+/**
+ * Builds a set of timestamps to be labeled on a chart based on the number of categories and data interval unit.
+ *
+ * The function intelligently selects which timestamps to label by applying different filtering strategies
+ * depending on the data interval unit and the total number of categories:
+ * - hour intervals:     <=8: show all. <=16: every 2nd, >16: every 3rd
+ * - day/week intervals: <=7: show all, <=14: every 2nd, <=21: every 3rd, >21: every 4th
+ * - month intervals:    <=6: show all, >6: every 2nd
+ * - Other intervals:    show at most 8 labels, evenly spaced
+ *
+ * @param barCategories - Array of timestamps (in milliseconds) representing the bar chart categories
+ * @param dataInterval - Optional configuration object specifying the unit of the data interval
+ * @returns A Set of timestamps that should be displayed as labels on the chart
+ */
+function buildLabeledTs(
+  barCategories: number[],
+  dataInterval?: DataInterval,
+): Set<number> {
+  const unit = dataInterval?.unit;
+  const amount = dataInterval?.amount ?? 1;
+  switch (true) {
+    case unit === "month": {
+      /**
+       * Monthly labels
+       * <= 6: show all
+       * >  6: every 2nd
+       */
+      const n = barCategories.length;
+      const step = n <= 6 ? 1 : 2;
+      return new Set(barCategories.filter((_, i) => i % step === 0));
+    }
+    case unit === "day" || unit === "week": {
+      /**
+       * Daily labels
+       * <=  7: show all
+       * <= 14: every 2nd
+       * <= 21: every 3rd
+       * >  21: every 4th
+       */
+      const n = barCategories.length;
+      const step = n <= 7 ? 1 : n <= 14 ? 2 : n <= 21 ? 3 : 4;
+      return new Set(barCategories.filter((_, i) => i % step === 0));
+    }
+    case unit === "hour" || (unit === "minute" && amount === 30): {
+      /**
+       * Hourly labels
+       * <=  8: show all
+       * <= 16: every 2nd
+       * >  16: every 3rd
+       */
+      const hourlyCategories =
+        unit === "hour"
+          ? barCategories
+          : barCategories.filter((ts) => {
+              const dt = DateTime.fromMillis(ts);
+              return dt.minute === 0;
+            });
+      const n = hourlyCategories.length;
+      const step = n <= 8 ? 1 : n <= 16 ? 2 : 3;
+      return new Set(hourlyCategories.filter((_, i) => i % step === 0));
+    }
+    default: {
+      /**
+       * Other intervals
+       * Show at most 8 labels, evenly spaced
+       */
+      const n = barCategories.length;
+      const step = Math.max(1, Math.ceil(n / 8));
+      return new Set(barCategories.filter((_, i) => i % step === 0));
+    }
+  }
+}
+
 function getXAxis(
   useBarChart: boolean,
   start: Date,
@@ -193,16 +266,16 @@ function getXAxis(
 ) {
   // For bar charts, use category type with the sorted unique timestamps as categories
   if (useBarChart) {
+    const labeledTs = buildLabeledTs(barCategories, dataInterval);
+
     return {
       type: "category",
       categories: barCategories,
       labels: {
         rotate: 0,
         formatter: (value: string) => {
-          // Convert the category value (which is a timestamp) to a formatted date string
           const ts = Number(value);
-          // Handle invalid timestamp gracefully
-          if (isNaN(ts)) {
+          if (isNaN(ts) || !labeledTs.has(ts)) {
             return "";
           }
           const dt = DateTime.fromMillis(ts);
@@ -213,7 +286,7 @@ function getXAxis(
               return dt.toFormat("yyyy");
             }
             case "month": {
-              return dt.toFormat("MMM 'yy");
+              return dt.toFormat("MMM ''yy");
             }
             case "day":
             case "week": {

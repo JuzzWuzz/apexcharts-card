@@ -841,15 +841,9 @@ class ChartsCard extends LitElement {
         <ha-select
           .label=${"Series"}
           .value=${this._seriesSet?.name}
+          .options=${this._seriesSets.map((s) => ({ value: s.name }))}
           @selected=${this._pickSeriesSet}
-        >
-          ${this._seriesSets.map(
-            (seriesSet) =>
-              html`<mwc-list-item .value=${seriesSet.name}
-                >${seriesSet.name}</mwc-list-item
-              >`,
-          )}
-        </ha-select>
+        ></ha-select>
       </div>
     `;
   }
@@ -963,7 +957,7 @@ class ChartsCard extends LitElement {
    * Change the series set to view
    */
   private _pickSeriesSet(ev): void {
-    const value = ev.target.value;
+    const value = ev.detail.value;
     console.log(
       `_pickSeriesSet(): ${
         value === this._seriesSet?.name ? "skipping" : "running"

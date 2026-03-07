@@ -23,7 +23,7 @@ export const DEFAULT_COLORS = [
 
 export const NO_VALUE = "N/A";
 
-export const BUILD_NUMBER = 33;
+export const BUILD_NUMBER = 40;
 
 export const DEFAULT_AREA_OPACITY = 0.7;
 
