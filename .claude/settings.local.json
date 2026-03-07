@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/c/Coding/apexcharts-card/**)",
+      "Write(/c/Coding/apexcharts-card/src/**)",
+      "Write(/c/Coding/apexcharts-card/docs/**)",
+      "Write(/c/Coding/apexcharts-card/.eslintrc.js)",
+      "Write(/c/Coding/apexcharts-card/.prettierrc)",
+      "Write(/c/Coding/apexcharts-card/package.json)",
+      "Write(/c/Coding/apexcharts-card/README.md)",
+      "Write(/c/Coding/apexcharts-card/rollup.config.js)",
+      "Write(/c/Coding/apexcharts-card/tsconfig.json)",
+      "Bash(cd /c/Coding/apexcharts-card && npm run *)"
+    ]
+  }
+}

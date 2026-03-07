@@ -120,24 +120,46 @@ Do **not** set `_timeViewingLiveData` manually at call sites.
 
 `getLayoutConfig()` is a **pure function** — no side effects, no class access. Returns a full `ApexOptions` object.
 
-Signature:
+Accepts a `LayoutConfigOpts` named options object (all fields optional except `config`):
 ```typescript
-export function getLayoutConfig(
-  config: CardConfig,
-  dataTypeGroup?: DataTypeGroup,
-  series: CardSeries[] = [],
-  yaxis: YAxisConfig[] = [],
-  now: Date = new Date(),
-  start?: Date,
-  end?: Date,
-  period?: Period,
-  dataInterval?: DataInterval,
-): ApexOptions
+export interface LayoutConfigOpts {
+  config: CardConfig;
+  series?: CardSeries[];
+  yaxis?: YAxisConfig[];
+  now?: Date;
+  useBarChart?: boolean;   // true for DataTypeGroup.B (energy bar charts)
+  start?: Date;
+  end?: Date;
+  period?: Period;
+  dataInterval?: DataInterval;
+}
+export function getLayoutConfig(opts: LayoutConfigOpts): ApexOptions
 ```
 
 **Never add `chart: { width: "100%" }` here.** Width is exclusively managed by `initGraph()` + the `_sizeObserver` ResizeObserver.
 
-**Tooltip x-axis format** (driven by `dataInterval.unit`):
+#### Bar chart (Group B) vs datetime (Group A) x-axis
+
+`useBarChart` selects between two x-axis strategies:
+- **`false` (default)** — `type: "datetime"` with `min`/`max` driven by `start`/`end`. Series data as `{x, y}` objects.
+- **`true`** — `type: "category"` with sorted unique timestamps as categories. Series data as y-values only (sorted by timestamp). `tickAmount` is ignored by ApexCharts when a custom `formatter` is present; use `buildLabeledTs()` instead to return `""` for skipped categories.
+
+**Cannot switch axis type via `updateOptions`** — requires full chart destroy+recreate. `initGraph()` must be called with the correct `useBarChart` value. `_updateData()` always sets `this._seriesSet` before calling `initGraph()`, so `this._seriesSet?.dataTypeGroup === DataTypeGroup.B` is correct at both call sites.
+
+`barCategories` (sorted unique timestamps across all series) is computed once inside `getLayoutConfig` and shared between `getXAxis` and `getXTooltipFormatter`.
+
+#### Label thinning (`buildLabeledTs`)
+
+Returns the subset of category timestamps that should show a label. Formatter returns `""` for timestamps not in this set.
+| interval | strategy |
+|---|---|
+| `hour` / `minute@30` | on-the-hour only; ≤8 all, ≤16 every 2nd, >16 every 3rd |
+| `minute` (other) | ≤15 all, ≤30 every 2nd, >30 every 3rd |
+| `day` / `week` | ≤7 all, ≤14 every 2nd, ≤21 every 3rd, >21 every 4th |
+| `month` | ≤6 all, >6 every 2nd |
+| default | up to 8 evenly spaced |
+
+#### Tooltip x-axis format (driven by `dataInterval.unit`)
 | unit | format |
 |---|---|
 | `minute` / `hour` / undefined | `d MMM yyyy, HH:mm` |
@@ -145,6 +167,11 @@ export function getLayoutConfig(
 | `week` | `d MMM - d MMM yyyy` (or `d MMM yyyy - d MMM yyyy` if cross-year) |
 | `month` | `MMMM yyyy` |
 | `year` | `yyyy` |
+
+For category axis, the tooltip formatter receives the **1-based index**, not the timestamp. Use `opts.dataPointIndex` to look up the real timestamp from `barCategories`.
+
+#### Luxon format strings
+Use `"MMM ''yy"` (double single-quote) to render "Jan '26". A bare `"MMM 'yy"` outputs the literal string "yy" because `'` starts a Luxon escape sequence. ApexCharts' internal `datetimeFormatter` uses its own syntax — keep `"MMM 'yy"` there.
 
 ### `src/utils.ts`
 
@@ -206,10 +233,25 @@ Do not attempt to import HA types from `home-assistant-frontend` — use `juzz-h
 ### `ha-icon-button`
 Use `.path=${mdiIconPath}` from `@mdi/js`. Events via `@click`. Do not use `mwc-icon-button` directly.
 
-### `ha-select` + `mwc-list-item`
-In the current HA version deployed here, `ha-select`:
-- Requires children as `<mwc-list-item .value=${val}>` — the `.options` array property is **not** supported
-- Use `@selected` event with `ev.target.value` — `@value-changed` is **not** reliably fired
+### `ha-select` (HA 2026.3+)
+`ha-select` was rewritten around webawesome in HA 2026.3. The old `mwc-list-item` slot children no longer work.
+- Pass options via `.options=${array}` where each item is `{ value: string, label?: string }`
+- Use `@selected` event; read the selected value from `ev.detail.value` (not `ev.target.value`)
+
+```html
+<ha-select
+  .label=${"My Label"}
+  .value=${this._currentValue}
+  .options=${items.map((i) => ({ value: i.name }))}
+  @selected=${this._handleSelect}
+></ha-select>
+```
+```typescript
+private _handleSelect(ev): void {
+  const value = ev.detail.value;
+  ...
+}
+```
 
 ### Calendar popup positioning
 Use `getBoundingClientRect()` on the trigger button, then `position: fixed` with `top`/`right` to position the popup. This escapes `ha-card { overflow: hidden }`. The backdrop (`#cal-backdrop`) handles dismiss-on-click-outside.
