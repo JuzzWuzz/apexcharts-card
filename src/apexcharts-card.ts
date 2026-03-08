@@ -79,6 +79,7 @@ class ChartsCard extends LitElement {
 
   // Time variables
   private _refreshTimer?: number;
+  private _hassUpdateTimer?: number;
   private _lastManualRefreshMs = 0;
   @state() private _timeDate?: DateTime;
   @state() private _lastUpdated: Date = new Date();
@@ -126,6 +127,8 @@ class ChartsCard extends LitElement {
 
     this._updating = false;
     this.cancelTimer();
+    clearTimeout(this._hassUpdateTimer);
+    this._hassUpdateTimer = undefined;
     this._resizeObserver?.disconnect();
     this._resizeObserver = undefined;
     this._sizeObserver?.disconnect();
@@ -272,7 +275,19 @@ class ChartsCard extends LitElement {
     const entityState = hass.states[this._config.entity];
     if (entityState && this._entity !== entityState) {
       this._entity = entityState;
-      this._updateData(true);
+      clearTimeout(this._hassUpdateTimer);
+      this._hassUpdateTimer = window.setTimeout(() => {
+        this._hassUpdateTimer = undefined;
+        if (this._updating) {
+          // _updateData is mid-run; reschedule once so the latest state is not dropped
+          this._hassUpdateTimer = window.setTimeout(() => {
+            this._hassUpdateTimer = undefined;
+            this._updateData(true);
+          }, 50);
+        } else {
+          this._updateData(true);
+        }
+      }, 50);
     }
   }
 
