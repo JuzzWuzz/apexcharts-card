@@ -85,7 +85,7 @@ export function getLayoutConfig({
     annotations: getAnnotations(config, useBarChart, series, now, end, period),
   };
 
-  return mergeDeep(options, evalApexConfig(config.apexConfig));
+  return mergeDeep(options, config.apexConfig);
 }
 
 function getFill(config: CardConfig, series: CardSeries[]) {
@@ -500,12 +500,17 @@ function getXTooltipFormatter(
 }
 
 function getYTooltipFormatter(series: CardSeries[]) {
+  // Pre-compute once at layout-build time; avoids a getDataTypeConfig() call on every tooltip hover
+  const dataTypeConfigs = series.map((s) =>
+    getDataTypeConfig(s.config.dataType),
+  );
+
   return function (value, opts) {
-    const seriesConfig = series[opts.seriesIndex].config;
+    const s = series[opts.seriesIndex];
     const formattedValue = formatValueAndUom(
       value,
-      getDataTypeConfig(seriesConfig.dataType),
-      seriesConfig.clampNegative,
+      dataTypeConfigs[opts.seriesIndex],
+      s.config.clampNegative,
     ).formatted();
     return [
       `<strong>${formattedValue}</strong>`,
@@ -599,22 +604,4 @@ function getAnnotations(
     xaxis: [getNowAnnotation()],
     points: getMinMaxPoints(),
   };
-}
-
-function evalApexConfig(apexConfig?: ApexOptions): ApexOptions | undefined {
-  if (!apexConfig) return undefined;
-
-  Object.keys(apexConfig).forEach((key) => {
-    if (
-      typeof apexConfig[key] === "string" &&
-      apexConfig[key].trim().startsWith("EVAL:")
-    ) {
-      // eslint-disable-next-line no-eval
-      apexConfig[key] = eval(`(${apexConfig[key].trim().slice(5)})`);
-    }
-    if (typeof apexConfig[key] === "object") {
-      apexConfig[key] = evalApexConfig(apexConfig[key]);
-    }
-  });
-  return apexConfig;
 }

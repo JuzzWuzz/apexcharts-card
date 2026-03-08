@@ -309,7 +309,7 @@ export function generateBaseConfig(conf: CardConfigExternal): CardConfig {
   const { CardConfigExternal } = createCheckers(exportedTypeSuite);
   CardConfigExternal.strictCheck(conf);
 
-  return mergeDeep(
+  const cardConfig = mergeDeep(
     {
       colorList: DEFAULT_COLORS,
       header: {
@@ -333,6 +333,34 @@ export function generateBaseConfig(conf: CardConfigExternal): CardConfig {
     },
     conf,
   );
+
+  // Evaluate any "EVAL:" string values in apexConfig once at config-build time,
+  // rather than on every getLayoutConfig() call (i.e. every entity state update).
+  evalApexConfig(cardConfig.apexConfig);
+
+  return cardConfig;
+}
+
+/**
+ * Recursively evaluates any string values prefixed with "EVAL:" as JavaScript expressions.
+ * Mutates the object in place. Called once at setConfig() time so getLayoutConfig() receives
+ * a pre-evaluated config and does not repeat the walk on every entity state change.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function evalApexConfig(apexConfig?: any): void {
+  if (!apexConfig) return;
+  Object.keys(apexConfig).forEach((key) => {
+    if (
+      typeof apexConfig[key] === "string" &&
+      apexConfig[key].trim().startsWith("EVAL:")
+    ) {
+      // eslint-disable-next-line no-eval
+      apexConfig[key] = eval(`(${apexConfig[key].trim().slice(5)})`);
+    }
+    if (typeof apexConfig[key] === "object") {
+      evalApexConfig(apexConfig[key]);
+    }
+  });
 }
 
 /**

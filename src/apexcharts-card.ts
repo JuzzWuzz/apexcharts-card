@@ -79,6 +79,7 @@ class ChartsCard extends LitElement {
 
   // Time variables
   private _refreshTimer?: number;
+  private _lastManualRefreshMs = 0;
   @state() private _timeDate?: DateTime;
   @state() private _lastUpdated: Date = new Date();
   private _timeViewingLiveData = true;
@@ -989,6 +990,11 @@ class ChartsCard extends LitElement {
     ) {
       this._updateDate(currentTime);
     } else {
+      // Throttle to prevent duplicate MQTT publishes from rapid button clicks.
+      // Only applies to this path; _updateDate() calls are intentional state changes.
+      const now = Date.now();
+      if (now - this._lastManualRefreshMs < 500) return;
+      this._lastManualRefreshMs = now;
       this.callService();
     }
   }

@@ -149,7 +149,7 @@ function getYTooltipFormatter(series: CardSeries[]) {
 ### 6. Move `evalApexConfig` from `getLayoutConfig()` to `generateBaseConfig()` — `src/utils.ts` + `src/apex-layouts.ts`
 
 **Problem:** `evalApexConfig()` recursively walks the entire `apexConfig` object tree (evaluating
-`func:` prefixed strings) every time `getLayoutConfig()` is called. `getLayoutConfig` is called
+`EVAL:` prefixed strings) every time `getLayoutConfig()` is called. `getLayoutConfig` is called
 on every entity state change via `_updateData()`. The `apexConfig` comes from the card config,
 which is static after `setConfig()`.
 
@@ -169,21 +169,25 @@ which is static after `setConfig()`.
 **Problem:** The refresh button calls `_refresh()` → `callService()` directly with no guard.
 Rapid clicks send multiple MQTT publishes before any response arrives.
 
-**Fix:** Add a simple debounce (e.g. 500ms, leading-edge) or a short cooldown flag on
-`callService()` itself.
+**Fix:** Add debounce/throttle for the **manual refresh path only** (or dedupe identical in-flight
+payloads), rather than a global cooldown in `callService()`.
+
+`callService()` is also used by `_updateDate()` and series-set/date navigation flows; a global
+leading-edge cooldown can suppress legitimate state-changing requests and leave stale/empty data.
 
 ```typescript
-private _lastServiceCall = 0;
+private _lastManualRefreshMs = 0;
 
-public callService(): void {
+private _refresh(): void {
+  // ... keep existing live/historical branching logic
   const now = Date.now();
-  if (now - this._lastServiceCall < 500) return;
-  this._lastServiceCall = now;
-  // ... existing callService logic
+  if (now - this._lastManualRefreshMs < 500) return;
+  this._lastManualRefreshMs = now;
+  this.callService();
 }
 ```
 
-**Impact:** Prevents duplicate MQTT publishes from rapid UI interaction.
+**Impact:** Prevents duplicate manual refresh publishes without blocking valid navigation/update requests.
 
 ---
 
@@ -198,13 +202,16 @@ on the ApexCharts instance.
 The existing `_updating` guard prevents concurrent runs, but fast sequential updates (where each
 completes before the next arrives) still each cause a full chart update.
 
-**Approach:** Introduce a short debounce window (e.g. 50–100ms) so burst updates are coalesced
-into a single `_updateData()` call. The last-wins semantics are correct since we always want
-the most recent entity state.
+**Approach:** Debounce/coalesce updates triggered by `set hass()` only (e.g. 50–100ms), keeping
+the latest pending `newEntityState=true` signal and invoking `_updateData(true)` once per burst.
+Do not debounce direct/internal callers that intentionally force immediate updates.
 
 **Consideration:** Must be careful not to interfere with the `_updating` flag or the
 `newEntityState` path that triggers `initGraph()` on axis type changes. Test against both cold
 start and live-data refresh scenarios.
+
+If updates arrive while `_updating` is true, queue one follow-up run (last-wins) so the final HA
+state is not dropped.
 
 ---
 
