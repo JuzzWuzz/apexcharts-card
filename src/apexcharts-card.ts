@@ -713,15 +713,16 @@ class ChartsCard extends LitElement {
   private _renderCalendarDays(): TemplateResult[] {
     const firstOfMonth = this._calendarViewDate.startOf("month");
     const startOfGrid = firstOfMonth.minus({ days: firstOfMonth.weekday - 1 });
-    const today = DateTime.now().startOf("day");
-    const selected = this._calendarSelectedDate.startOf("day");
+    const todayMs = DateTime.now().startOf("day").toMillis();
+    const selectedMs = this._calendarSelectedDate.startOf("day").toMillis();
 
     const cells: TemplateResult[] = [];
     for (let i = 0; i < 42; i++) {
       const day = startOfGrid.plus({ days: i });
+      const dayMs = day.startOf("day").toMillis();
       const isCurrentMonth = day.month === this._calendarViewDate.month;
-      const isSelected = day.startOf("day").toMillis() === selected.toMillis();
-      const isToday = day.startOf("day").toMillis() === today.toMillis();
+      const isSelected = dayMs === selectedMs;
+      const isToday = dayMs === todayMs;
       cells.push(html`
         <div
           class=${classMap({

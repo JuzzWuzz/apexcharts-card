@@ -446,12 +446,10 @@ export function generateSeriesSets(conf: CardConfig): SeriesSetConfig[] {
     });
 
     // Check for compatibility between the series
-    const dataTypes = series
-      .map((series) => series.dataType)
-      .filter((value, index, array) => array.indexOf(value) === index);
-    const dataTypeGroups = dataTypes
-      .map((dataType) => getDataTypeGroup(dataType))
-      .filter((value, index, array) => array.indexOf(value) === index);
+    const dataTypes = [...new Set(series.map((s) => s.dataType))];
+    const dataTypeGroups = [
+      ...new Set(dataTypes.map((dataType) => getDataTypeGroup(dataType))),
+    ];
     if (dataTypeGroups.length > 1) {
       throw Error(
         `Series Set '${
@@ -491,14 +489,19 @@ export function generateSeries(
   if (!seriesSetConf) return [];
   const isRequestedSeries = entity.attributes.seriesSet === seriesSetConf.name;
   const entitySeriesArr: EntitySeries[] = entity.attributes.series ?? [];
+  const entitySeriesByIndex = new Map(
+    entitySeriesArr.map((es) => [
+      es.index,
+      es,
+    ]),
+  );
   return seriesSetConf.series.map((seriesConfig, index: number) => {
     /**
      * Find the data for this series item
      */
-    const entitySeries = entitySeriesArr.find(
-      (entitySeries) =>
-        isRequestedSeries && entitySeries.index === seriesConfig.index,
-    );
+    const entitySeries = isRequestedSeries
+      ? entitySeriesByIndex.get(seriesConfig.index)
+      : undefined;
 
     /**
      * Load the series data

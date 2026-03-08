@@ -35,11 +35,13 @@ export function getLayoutConfig({
   dataInterval,
 }: LayoutConfigOpts): ApexOptions {
   // For bar charts, compute sorted unique timestamps once — shared by x-axis and tooltip.
-  const barCategories: number[] = useBarChart
-    ? [...new Set(series.flatMap((s) => s.data.map((d) => d[0])))].sort(
-        (a, b) => a - b,
-      )
-    : [];
+  // Single-pass accumulation avoids the three intermediate arrays from flatMap+Set+spread.
+  const barCategories: number[] = (() => {
+    if (!useBarChart) return [];
+    const set = new Set<number>();
+    for (const s of series) for (const d of s.data) set.add(d[0]);
+    return Array.from(set).sort((a, b) => a - b);
+  })();
 
   const options = {
     chart: {
